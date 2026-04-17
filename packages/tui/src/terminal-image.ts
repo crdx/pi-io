@@ -109,6 +109,7 @@ export function encodeKitty(
 		columns?: number;
 		rows?: number;
 		imageId?: number;
+		suppressCursorMovement?: boolean;
 	} = {},
 ): string {
 	const CHUNK_SIZE = 4096;
@@ -118,6 +119,7 @@ export function encodeKitty(
 	if (options.columns) params.push(`c=${options.columns}`);
 	if (options.rows) params.push(`r=${options.rows}`);
 	if (options.imageId) params.push(`i=${options.imageId}`);
+	if (options.suppressCursorMovement) params.push("C=1");
 
 	if (base64Data.length <= CHUNK_SIZE) {
 		return `\x1b_G${params.join(",")};${base64Data}\x1b\\`;
@@ -344,7 +346,7 @@ export function renderImage(
 	base64Data: string,
 	imageDimensions: ImageDimensions,
 	options: ImageRenderOptions = {},
-): { sequence: string; rows: number; imageId?: number } | null {
+): { sequence: string; rows: number; imageId?: number; sequenceFirst?: boolean } | null {
 	const caps = getCapabilities();
 
 	if (!caps.images) {
@@ -356,8 +358,8 @@ export function renderImage(
 
 	if (caps.images === "kitty") {
 		// Only use imageId if explicitly provided - static images don't need IDs
-		const sequence = encodeKitty(base64Data, { columns: maxWidth, rows, imageId: options.imageId });
-		return { sequence, rows, imageId: options.imageId };
+		const sequence = encodeKitty(base64Data, { columns: maxWidth, rows, imageId: options.imageId, suppressCursorMovement: true });
+		return { sequence, rows, imageId: options.imageId, sequenceFirst: true };
 	}
 
 	if (caps.images === "iterm2") {

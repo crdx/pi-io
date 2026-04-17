@@ -1,5 +1,6 @@
 import {
 	getCapabilities,
+	getCellDimensions,
 	getImageDimensions,
 	type ImageDimensions,
 	imageFallback,
@@ -60,7 +61,9 @@ export class Image implements Component {
 			return this.cachedLines;
 		}
 
-		const maxWidth = Math.min(width - 2, this.options.maxWidthCells ?? 60);
+		const cap = Math.min(width - 2, this.options.maxWidthCells ?? 60);
+		const native = Math.ceil(this.dimensions.widthPx / getCellDimensions().widthPx);
+		const maxWidth = Math.min(cap, native);
 
 		const caps = getCapabilities();
 		let lines: string[];
@@ -78,15 +81,25 @@ export class Image implements Component {
 				}
 
 				// Return `rows` lines so TUI accounts for image height
-				// First (rows-1) lines are empty (TUI clears them)
-				// Last line: move cursor back up, then output image sequence
-				lines = [];
-				for (let i = 0; i < result.rows - 1; i++) {
-					lines.push("");
+				if (result.sequenceFirst) {
+					// Kitty C=1 mode: sequence on first line, empty lines after.
+					// No cursor-up needed; kitty does not move the cursor (C=1),
+					// and the TUI advances through the empty lines naturally.
+					lines = [result.sequence];
+					for (let i = 1; i < result.rows; i++) {
+						lines.push("");
+					}
+				} else {
+					// Legacy cursor-up approach (iTerm2 etc.):
+					// First (rows-1) lines are empty, last line moves cursor
+					// back up then outputs the image sequence.
+					lines = [];
+					for (let i = 0; i < result.rows - 1; i++) {
+						lines.push("");
+					}
+					const moveUp = result.rows > 1 ? `\x1b[${result.rows - 1}A` : "";
+					lines.push(moveUp + result.sequence);
 				}
-				// Move cursor up to first row, then output image
-				const moveUp = result.rows > 1 ? `\x1b[${result.rows - 1}A` : "";
-				lines.push(moveUp + result.sequence);
 			} else {
 				const fallback = imageFallback(this.mimeType, this.dimensions, this.options.filename);
 				lines = [this.theme.fallbackColor(fallback)];

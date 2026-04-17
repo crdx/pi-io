@@ -669,7 +669,7 @@ function buildParams(
 				// Adaptive thinking: Claude decides when and how much to think
 				params.thinking = { type: "adaptive" };
 				if (options.effort) {
-					params.output_config = { effort: options.effort };
+					params.output_config = { effort: options.effort as "low" | "medium" | "high" | "max" };
 				}
 			} else {
 				// Budget-based thinking for older models

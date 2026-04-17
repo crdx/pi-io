@@ -102,7 +102,6 @@ export {
 	bashTool,
 	codingTools,
 	createBashTool,
-	// Tool factories (for custom cwd)
 	createCodingTools,
 	createEditTool,
 	createFindTool,
@@ -116,7 +115,6 @@ export {
 	grepTool,
 	lsTool,
 	readOnlyTools,
-	// Pre-built tools (use process.cwd())
 	readTool,
 	withFileMutationQueue,
 	writeTool,

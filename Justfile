@@ -54,7 +54,6 @@ generate-models:
 
 # tag and push a release
 deploy:
-    git push
     tools/deploy
 
 [private]

@@ -24,6 +24,7 @@ export interface AppKeybindings {
 	"app.session.toggleNamedFilter": true;
 	"app.editor.external": true;
 	"app.message.followUp": true;
+	"app.message.steer": true;
 	"app.message.dequeue": true;
 	"app.clipboard.pasteImage": true;
 	"app.session.new": true;
@@ -80,6 +81,10 @@ export const KEYBINDINGS = {
 	"app.message.followUp": {
 		defaultKeys: "alt+enter",
 		description: "Queue follow-up message",
+	},
+	"app.message.steer": {
+		defaultKeys: [],
+		description: "Steer agent with message",
 	},
 	"app.message.dequeue": {
 		defaultKeys: "alt+up",
@@ -168,6 +173,7 @@ const KEYBINDING_NAME_MIGRATIONS = {
 	toggleSessionNamedFilter: "app.session.toggleNamedFilter",
 	externalEditor: "app.editor.external",
 	followUp: "app.message.followUp",
+	steer: "app.message.steer",
 	dequeue: "app.message.dequeue",
 	pasteImage: "app.clipboard.pasteImage",
 	newSession: "app.session.new",

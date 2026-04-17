@@ -54,14 +54,7 @@ generate-models:
 
 # tag and push a release
 deploy:
-    #!/bin/bash
-    VERSION=$(jq -r .version packages/coding-agent/package.json)
-    LAST=$(git tag -l "v${VERSION}-crdx.*" | sed 's/.*crdx\.//' | sort -n | tail -1)
-    NEXT=$(( ${LAST:-0} + 1 ))
-    TAG="v${VERSION}-crdx.${NEXT}"
-    echo "tagging ${TAG}"
-    git tag "$TAG"
-    git push origin "$TAG"
+    tools/deploy
 
 [private]
 _copy-assets:

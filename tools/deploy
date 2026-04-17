@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+
+import json
+import subprocess
+import sys
+
+def run(*args):
+    result = subprocess.run(args, capture_output=True, text=True)
+    return result.stdout.strip()
+
+def main():
+    with open('packages/coding-agent/package.json') as f:
+        version = json.load(f)['version']
+
+    prefix = 'v%s-crdx.' % version
+    tags = run('git', 'tag', '-l', '%s*' % prefix).splitlines()
+
+    last_num = 0
+    for tag in tags:
+        n = int(tag.removeprefix(prefix))
+        if n > last_num:
+            last_num = n
+
+    if last_num > 0:
+        prev_tag = '%s%d' % (prefix, last_num)
+        head = run('git', 'rev-parse', 'HEAD')
+        prev = run('git', 'rev-parse', prev_tag)
+        if head == prev:
+            print('no new commits since %s' % prev_tag, file=sys.stderr)
+            sys.exit(1)
+
+    next_num = last_num + 1
+    tag = '%s%d' % (prefix, next_num)
+    print('tagging %s' % tag)
+    subprocess.run(['git', 'tag', tag], check=True)
+    subprocess.run(['git', 'push', 'origin', tag], check=True)
+
+if __name__ == '__main__':
+    main()

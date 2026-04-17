@@ -1,0 +1,46 @@
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/core/settings-manager.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/core/settings-manager.js
+@@ -358,20 +358,16 @@
+     }
+     setDefaultProvider(provider) {
+         this.globalSettings.defaultProvider = provider;
+-        this.markModified("defaultProvider");
+-        this.save();
++        this.settings = deepMergeSettings(this.globalSettings, this.projectSettings);
+     }
+     setDefaultModel(modelId) {
+         this.globalSettings.defaultModel = modelId;
+-        this.markModified("defaultModel");
+-        this.save();
++        this.settings = deepMergeSettings(this.globalSettings, this.projectSettings);
+     }
+     setDefaultModelAndProvider(provider, modelId) {
+         this.globalSettings.defaultProvider = provider;
+         this.globalSettings.defaultModel = modelId;
+-        this.markModified("defaultProvider");
+-        this.markModified("defaultModel");
+-        this.save();
++        this.settings = deepMergeSettings(this.globalSettings, this.projectSettings);
+     }
+     getSteeringMode() {
+         return this.settings.steeringMode || "one-at-a-time";
+@@ -402,8 +398,7 @@
+     }
+     setDefaultThinkingLevel(level) {
+         this.globalSettings.defaultThinkingLevel = level;
+-        this.markModified("defaultThinkingLevel");
+-        this.save();
++        this.settings = deepMergeSettings(this.globalSettings, this.projectSettings);
+     }
+     getTransport() {
+         return this.settings.transport ?? "sse";
+@@ -470,8 +465,7 @@
+     }
+     setHideThinkingBlock(hide) {
+         this.globalSettings.hideThinkingBlock = hide;
+-        this.markModified("hideThinkingBlock");
+-        this.save();
++        this.settings = deepMergeSettings(this.globalSettings, this.projectSettings);
+     }
+     getShellPath() {
+         return this.settings.shellPath;

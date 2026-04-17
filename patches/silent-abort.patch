@@ -1,0 +1,98 @@
+From 4180656408c1e93dd165f58a236b638112ead78f Mon Sep 17 00:00:00 2001
+From: crdx <pub@crdx.org>
+Date: Tue, 24 Mar 2026 23:01:58 +0000
+Subject: [PATCH] suppress all abort messages in assistant-message and
+ interactive-mode
+
+---
+ .../components/assistant-message.js           | 12 ++-----
+ .../modes/interactive/interactive-mode.js     | 34 ++++++++++---------
+ 2 files changed, 20 insertions(+), 26 deletions(-)
+
+diff --git usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/components/assistant-message.js usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/components/assistant-message.js
+index e6e5318..24e6a4e 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/components/assistant-message.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/components/assistant-message.js
+@@ -74,16 +74,8 @@ export class AssistantMessageComponent extends Container {
+         const hasToolCalls = message.content.some((c) => c.type === "toolCall");
+         if (!hasToolCalls) {
+             if (message.stopReason === "aborted") {
+-                const abortMessage = message.errorMessage && message.errorMessage !== "Request was aborted"
+-                    ? message.errorMessage
+-                    : "Operation aborted";
+-                if (hasVisibleContent) {
+-                    this.contentContainer.addChild(new Spacer(1));
+-                }
+-                else {
+-                    this.contentContainer.addChild(new Spacer(1));
+-                }
+-                this.contentContainer.addChild(new Text(theme.fg("error", abortMessage), 1, 0));
++                // Suppress all abort messages. The user already knows they aborted.
++                // Retry count messages come from interactive-mode.js, not here.
+             }
+             else if (message.stopReason === "error") {
+                 const errorMsg = message.errorMessage || "Unknown error";
+diff --git usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/interactive-mode.js usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/interactive-mode.js
+index ad6f1b2..20f29e0 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/interactive-mode.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/interactive-mode.js
+@@ -1835,22 +1835,23 @@ export class InteractiveMode {
+                     let errorMessage;
+                     if (this.streamingMessage.stopReason === "aborted") {
+                         const retryAttempt = this.session.retryAttempt;
+-                        errorMessage =
+-                            retryAttempt > 0
+-                                ? `Aborted after ${retryAttempt} retry attempt${retryAttempt > 1 ? "s" : ""}`
+-                                : "Operation aborted";
+-                        this.streamingMessage.errorMessage = errorMessage;
++                        if (retryAttempt > 0) {
++                            errorMessage = `Aborted after ${retryAttempt} retry attempt${retryAttempt > 1 ? "s" : ""}`;
++                            this.streamingMessage.errorMessage = errorMessage;
++                        }
+                     }
+                     this.streamingComponent.updateContent(this.streamingMessage);
+                     if (this.streamingMessage.stopReason === "aborted" || this.streamingMessage.stopReason === "error") {
+                         if (!errorMessage) {
+-                            errorMessage = this.streamingMessage.errorMessage || "Error";
++                            errorMessage = this.streamingMessage.errorMessage || (this.streamingMessage.stopReason === "error" ? "Error" : undefined);
+                         }
+-                        for (const [, component] of this.pendingTools.entries()) {
+-                            component.updateResult({
+-                                content: [{ type: "text", text: errorMessage }],
+-                                isError: true,
+-                            });
++                        if (errorMessage) {
++                            for (const [, component] of this.pendingTools.entries()) {
++                                component.updateResult({
++                                    content: [{ type: "text", text: errorMessage }],
++                                    isError: true,
++                                });
++                            }
+                         }
+                         this.pendingTools.clear();
+                     }
+@@ -2132,15 +2133,16 @@ export class InteractiveMode {
+                             let errorMessage;
+                             if (message.stopReason === "aborted") {
+                                 const retryAttempt = this.session.retryAttempt;
+-                                errorMessage =
+-                                    retryAttempt > 0
+-                                        ? `Aborted after ${retryAttempt} retry attempt${retryAttempt > 1 ? "s" : ""}`
+-                                        : "Operation aborted";
++                                if (retryAttempt > 0) {
++                                    errorMessage = `Aborted after ${retryAttempt} retry attempt${retryAttempt > 1 ? "s" : ""}`;
++                                }
+                             }
+                             else {
+                                 errorMessage = message.errorMessage || "Error";
+                             }
+-                            component.updateResult({ content: [{ type: "text", text: errorMessage }], isError: true });
++                            if (errorMessage) {
++                                component.updateResult({ content: [{ type: "text", text: errorMessage }], isError: true });
++                            }
+                         }
+                         else {
+                             this.pendingTools.set(content.id, component);
+-- 
+2.53.0
+

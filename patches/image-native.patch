@@ -1,0 +1,33 @@
+From 4be47516ae0e1ec883ac5806103ec030d39575c2 Mon Sep 17 00:00:00 2001
+From: crdx <pub@crdx.org>
+Date: Mon, 23 Mar 2026 19:34:57 +0000
+Subject: [PATCH 2/2] clamp image display to native pixel width
+
+---
+ .../@mariozechner/pi-tui/dist/components/image.js           | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-tui/dist/components/image.js b/usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-tui/dist/components/image.js
+index 292505a..8fe46df 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-tui/dist/components/image.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-tui/dist/components/image.js
+@@ -1,4 +1,4 @@
+-import { getCapabilities, getImageDimensions, imageFallback, renderImage, } from "../terminal-image.js";
++import { getCapabilities, getCellDimensions, getImageDimensions, imageFallback, renderImage, } from "../terminal-image.js";
+ export class Image {
+     base64Data;
+     mimeType;
+@@ -28,7 +28,9 @@ export class Image {
+         if (this.cachedLines && this.cachedWidth === width) {
+             return this.cachedLines;
+         }
+-        const maxWidth = Math.min(width - 2, this.options.maxWidthCells ?? 60);
++        const cap = Math.min(width - 2, this.options.maxWidthCells ?? 60);
++        const native = Math.ceil(this.dimensions.widthPx / getCellDimensions().widthPx);
++        const maxWidth = Math.min(cap, native);
+         const caps = getCapabilities();
+         let lines;
+         if (caps.images) {
+-- 
+2.53.0
+

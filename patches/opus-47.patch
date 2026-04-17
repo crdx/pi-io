@@ -1,0 +1,116 @@
+From 130b8691532a2805fa702e356138bb483c592ce0 Mon Sep 17 00:00:00 2001
+From: anon <anon@system>
+Date: Thu, 16 Apr 2026 23:02:01 +0100
+Subject: [PATCH] add opus 4.7 model and adaptive thinking support
+
+---
+ .../pi-ai/dist/models.generated.js              | 17 +++++++++++++++++
+ .../@mariozechner/pi-ai/dist/models.js          |  3 ++-
+ .../pi-ai/dist/providers/amazon-bedrock.js      | 10 +++++++++-
+ .../pi-ai/dist/providers/anthropic.js           | 11 +++++++++--
+ 4 files changed, 37 insertions(+), 4 deletions(-)
+
+diff --git usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/models.generated.js usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/models.generated.js
+index ad5a546..f1f43db 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/models.generated.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/models.generated.js
+@@ -1721,6 +1721,23 @@ export const MODELS = {
+             contextWindow: 1000000,
+             maxTokens: 128000,
+         },
++        "claude-opus-4-7": {
++            id: "claude-opus-4-7",
++            name: "Claude Opus 4.7",
++            api: "anthropic-messages",
++            provider: "anthropic",
++            baseUrl: "https://api.anthropic.com",
++            reasoning: true,
++            input: ["text", "image"],
++            cost: {
++                input: 5,
++                output: 25,
++                cacheRead: 0.5,
++                cacheWrite: 6.25,
++            },
++            contextWindow: 1000000,
++            maxTokens: 128000,
++        },
+         "claude-sonnet-4-0": {
+             id: "claude-sonnet-4-0",
+             name: "Claude Sonnet 4 (latest)",
+diff --git usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/models.js usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/models.js
+index b859f4a..7e37ba8 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/models.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/models.js
+@@ -38,7 +38,8 @@ export function supportsXhigh(model) {
+     if (model.id.includes("gpt-5.2") || model.id.includes("gpt-5.3") || model.id.includes("gpt-5.4")) {
+         return true;
+     }
+-    if (model.id.includes("opus-4-6") || model.id.includes("opus-4.6")) {
++    if (model.id.includes("opus-4-6") || model.id.includes("opus-4.6") ||
++        model.id.includes("opus-4-7") || model.id.includes("opus-4.7")) {
+         return true;
+     }
+     return false;
+diff --git usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/providers/amazon-bedrock.js usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/providers/amazon-bedrock.js
+index 1331598..b9359fc 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/providers/amazon-bedrock.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/providers/amazon-bedrock.js
+@@ -287,6 +287,8 @@ function handleContentBlockStop(event, blocks, output, stream) {
+ function supportsAdaptiveThinking(modelId) {
+     return (modelId.includes("opus-4-6") ||
+         modelId.includes("opus-4.6") ||
++        modelId.includes("opus-4-7") ||
++        modelId.includes("opus-4.7") ||
+         modelId.includes("sonnet-4-6") ||
+         modelId.includes("sonnet-4.6"));
+ }
+@@ -300,7 +302,13 @@ function mapThinkingLevelToEffort(level, modelId) {
+         case "high":
+             return "high";
+         case "xhigh":
+-            return modelId.includes("opus-4-6") || modelId.includes("opus-4.6") ? "max" : "high";
++            if (modelId.includes("opus-4-6") || modelId.includes("opus-4.6")) {
++                return "max";
++            }
++            if (modelId.includes("opus-4-7") || modelId.includes("opus-4.7")) {
++                return "xhigh";
++            }
++            return "high";
+         default:
+             return "high";
+     }
+diff --git usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/providers/anthropic.js usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/providers/anthropic.js
+index d4fc29b..a05a062 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/providers/anthropic.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/providers/anthropic.js
+@@ -352,9 +352,10 @@ export const streamAnthropic = (model, context, options) => {
+  * Check if a model supports adaptive thinking (Opus 4.6 and Sonnet 4.6)
+  */
+ function supportsAdaptiveThinking(modelId) {
+-    // Opus 4.6 and Sonnet 4.6 model IDs (with or without date suffix)
+     return (modelId.includes("opus-4-6") ||
+         modelId.includes("opus-4.6") ||
++        modelId.includes("opus-4-7") ||
++        modelId.includes("opus-4.7") ||
+         modelId.includes("sonnet-4-6") ||
+         modelId.includes("sonnet-4.6"));
+ }
+@@ -373,7 +374,13 @@ function mapThinkingLevelToEffort(level, modelId) {
+         case "high":
+             return "high";
+         case "xhigh":
+-            return modelId.includes("opus-4-6") || modelId.includes("opus-4.6") ? "max" : "high";
++            if (modelId.includes("opus-4-6") || modelId.includes("opus-4.6")) {
++                return "max";
++            }
++            if (modelId.includes("opus-4-7") || modelId.includes("opus-4.7")) {
++                return "xhigh";
++            }
++            return "high";
+         default:
+             return "high";
+     }
+-- 
+2.53.0
+

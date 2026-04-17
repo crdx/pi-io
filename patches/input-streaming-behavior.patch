@@ -1,0 +1,47 @@
+From d4993cd83f632cd6cd449cd6b8d2ff0d11ecb1bb Mon Sep 17 00:00:00 2001
+From: crdx <pub@crdx.org>
+Date: Tue, 24 Mar 2026 18:18:48 +0000
+Subject: [PATCH] expose streamingBehavior on InputEvent
+
+---
+ .../@mariozechner/pi-coding-agent/dist/core/agent-session.js  | 2 +-
+ .../pi-coding-agent/dist/core/extensions/runner.js            | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/core/agent-session.js b/usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/core/agent-session.js
+index b3d3fa6..d9834a8 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/core/agent-session.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/core/agent-session.js
+@@ -644,7 +644,7 @@ export class AgentSession {
+         let currentText = text;
+         let currentImages = options?.images;
+         if (this._extensionRunner?.hasHandlers("input")) {
+-            const inputResult = await this._extensionRunner.emitInput(currentText, currentImages, options?.source ?? "interactive");
++            const inputResult = await this._extensionRunner.emitInput(currentText, currentImages, options?.source ?? "interactive", options?.streamingBehavior);
+             if (inputResult.action === "handled") {
+                 return;
+             }
+diff --git a/usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/core/extensions/runner.js b/usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/core/extensions/runner.js
+index a543cd4..dcaa83f 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/core/extensions/runner.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/core/extensions/runner.js
+@@ -673,14 +673,14 @@ export class ExtensionRunner {
+         return { skillPaths, promptPaths, themePaths };
+     }
+     /** Emit input event. Transforms chain, "handled" short-circuits. */
+-    async emitInput(text, images, source) {
++    async emitInput(text, images, source, streamingBehavior) {
+         const ctx = this.createContext();
+         let currentText = text;
+         let currentImages = images;
+         for (const ext of this.extensions) {
+             for (const handler of ext.handlers.get("input") ?? []) {
+                 try {
+-                    const event = { type: "input", text: currentText, images: currentImages, source };
++                    const event = { type: "input", text: currentText, images: currentImages, source, streamingBehavior };
+                     const result = (await handler(event, ctx));
+                     if (result?.action === "handled")
+                         return result;
+-- 
+2.53.0
+

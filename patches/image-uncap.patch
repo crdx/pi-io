@@ -1,0 +1,25 @@
+From 941a7beb1aaccf2a0f5b64fe031b2ed80f7dc7d0 Mon Sep 17 00:00:00 2001
+From: crdx <pub@crdx.org>
+Date: Mon, 23 Mar 2026 19:34:41 +0000
+Subject: [PATCH 1/2] uncap image width
+
+---
+ .../dist/modes/interactive/components/tool-execution.js         | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/components/tool-execution.js b/usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/components/tool-execution.js
+index b5f4ba4..d8cd2f3 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/components/tool-execution.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/components/tool-execution.js
+@@ -443,7 +443,7 @@ export class ToolExecutionComponent extends Container {
+                     const spacer = new Spacer(1);
+                     this.addChild(spacer);
+                     this.imageSpacers.push(spacer);
+-                    const imageComponent = new Image(imageData, imageMimeType, { fallbackColor: (s) => theme.fg("toolOutput", s) }, { maxWidthCells: 60 });
++                    const imageComponent = new Image(imageData, imageMimeType, { fallbackColor: (s) => theme.fg("toolOutput", s) }, { maxWidthCells: 9999 });
+                     this.imageComponents.push(imageComponent);
+                     this.addChild(imageComponent);
+                 }
+-- 
+2.53.0
+

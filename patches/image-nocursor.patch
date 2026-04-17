@@ -1,0 +1,76 @@
+From 103d40397d99f83ce353f6e0ab0dd246c63e7799 Mon Sep 17 00:00:00 2001
+From: crdx <pub@crdx.org>
+Date: Tue, 24 Mar 2026 02:56:51 +0000
+Subject: [PATCH] use kitty C=1 to suppress cursor movement for image placement
+
+---
+ .../pi-tui/dist/components/image.js           | 27 +++++++++++++------
+ .../pi-tui/dist/terminal-image.js             |  6 +++--
+ 2 files changed, 23 insertions(+), 10 deletions(-)
+
+diff --git a/usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-tui/dist/components/image.js b/usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-tui/dist/components/image.js
+index 292505a..686404e 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-tui/dist/components/image.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-tui/dist/components/image.js
+@@ -42,15 +42,26 @@ export class Image {
+                     this.imageId = result.imageId;
+                 }
+                 // Return `rows` lines so TUI accounts for image height
+-                // First (rows-1) lines are empty (TUI clears them)
+-                // Last line: move cursor back up, then output image sequence
+-                lines = [];
+-                for (let i = 0; i < result.rows - 1; i++) {
+-                    lines.push("");
++                if (result.sequenceFirst) {
++                    // Kitty C=1 mode: sequence on first line, empty lines after.
++                    // No cursor-up needed; kitty does not move the cursor (C=1),
++                    // and the TUI advances through the empty lines naturally.
++                    lines = [result.sequence];
++                    for (let i = 1; i < result.rows; i++) {
++                        lines.push("");
++                    }
++                }
++                else {
++                    // Legacy cursor-up approach (iTerm2 etc.):
++                    // First (rows-1) lines are empty, last line moves cursor
++                    // back up then outputs the image sequence.
++                    lines = [];
++                    for (let i = 0; i < result.rows - 1; i++) {
++                        lines.push("");
++                    }
++                    const moveUp = result.rows > 1 ? `\x1b[${result.rows - 1}A` : "";
++                    lines.push(moveUp + result.sequence);
+                 }
+-                // Move cursor up to first row, then output image
+-                const moveUp = result.rows > 1 ? `\x1b[${result.rows - 1}A` : "";
+-                lines.push(moveUp + result.sequence);
+             }
+             else {
+                 const fallback = imageFallback(this.mimeType, this.dimensions, this.options.filename);
+diff --git a/usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-tui/dist/terminal-image.js b/usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-tui/dist/terminal-image.js
+index eb64da9..5b2e4e6 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-tui/dist/terminal-image.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-tui/dist/terminal-image.js
+@@ -69,6 +69,8 @@ export function encodeKitty(base64Data, options = {}) {
+         params.push(`r=${options.rows}`);
+     if (options.imageId)
+         params.push(`i=${options.imageId}`);
++    if (options.suppressCursorMovement)
++        params.push("C=1");
+     if (base64Data.length <= CHUNK_SIZE) {
+         return `\x1b_G${params.join(",")};${base64Data}\x1b\\`;
+     }
+@@ -263,8 +265,8 @@ export function renderImage(base64Data, imageDimensions, options = {}) {
+     const rows = calculateImageRows(imageDimensions, maxWidth, getCellDimensions());
+     if (caps.images === "kitty") {
+         // Only use imageId if explicitly provided - static images don't need IDs
+-        const sequence = encodeKitty(base64Data, { columns: maxWidth, rows, imageId: options.imageId });
+-        return { sequence, rows, imageId: options.imageId };
++        const sequence = encodeKitty(base64Data, { columns: maxWidth, rows, imageId: options.imageId, suppressCursorMovement: true });
++        return { sequence, rows, imageId: options.imageId, sequenceFirst: true };
+     }
+     if (caps.images === "iterm2") {
+         const sequence = encodeITerm2(base64Data, {
+-- 
+2.53.0
+

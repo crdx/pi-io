@@ -1,0 +1,38 @@
+From f8c9090754a220f5cf38c4a5ea53ba8f6f10bde7 Mon Sep 17 00:00:00 2001
+From: crdx <pub@crdx.org>
+Date: Fri, 20 Mar 2026 23:58:36 +0000
+Subject: [PATCH] re-export supportsXhigh from pi-ai
+
+---
+ .../node_modules/@mariozechner/pi-coding-agent/dist/index.d.ts  | 1 +
+ .../node_modules/@mariozechner/pi-coding-agent/dist/index.js    | 2 ++
+ 2 files changed, 3 insertions(+)
+
+diff --git a/usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/index.d.ts b/usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/index.d.ts
+index a91a2fb..3b40c5a 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/index.d.ts
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/index.d.ts
+@@ -21,6 +21,7 @@ export { main } from "./main.js";
+ export { InteractiveMode, type InteractiveModeOptions, type PrintModeOptions, runPrintMode, runRpcMode, } from "./modes/index.js";
+ export { ArminComponent, AssistantMessageComponent, BashExecutionComponent, BorderedLoader, BranchSummaryMessageComponent, CompactionSummaryMessageComponent, CustomEditor, CustomMessageComponent, DynamicBorder, ExtensionEditorComponent, ExtensionInputComponent, ExtensionSelectorComponent, FooterComponent, keyHint, keyText, LoginDialogComponent, ModelSelectorComponent, OAuthSelectorComponent, type RenderDiffOptions, rawKeyHint, renderDiff, SessionSelectorComponent, type SettingsCallbacks, type SettingsConfig, SettingsSelectorComponent, ShowImagesSelectorComponent, SkillInvocationMessageComponent, ThemeSelectorComponent, ThinkingSelectorComponent, ToolExecutionComponent, type ToolExecutionOptions, TreeSelectorComponent, truncateToVisualLines, UserMessageComponent, UserMessageSelectorComponent, type VisualTruncateResult, } from "./modes/interactive/components/index.js";
+ export { getLanguageFromPath, getMarkdownTheme, getSelectListTheme, getSettingsListTheme, highlightCode, initTheme, Theme, type ThemeColor, } from "./modes/interactive/theme/theme.js";
++export { supportsXhigh } from "@mariozechner/pi-ai";
+ export { copyToClipboard } from "./utils/clipboard.js";
+ export { parseFrontmatter, stripFrontmatter } from "./utils/frontmatter.js";
+ export { getShellConfig } from "./utils/shell.js";
+diff --git a/usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/index.js b/usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/index.js
+index 1f5c2bd..e08d93c 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/index.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/index.js
+@@ -34,6 +34,8 @@ export { InteractiveMode, runPrintMode, runRpcMode, } from "./modes/index.js";
+ export { ArminComponent, AssistantMessageComponent, BashExecutionComponent, BorderedLoader, BranchSummaryMessageComponent, CompactionSummaryMessageComponent, CustomEditor, CustomMessageComponent, DynamicBorder, ExtensionEditorComponent, ExtensionInputComponent, ExtensionSelectorComponent, FooterComponent, keyHint, keyText, LoginDialogComponent, ModelSelectorComponent, OAuthSelectorComponent, rawKeyHint, renderDiff, SessionSelectorComponent, SettingsSelectorComponent, ShowImagesSelectorComponent, SkillInvocationMessageComponent, ThemeSelectorComponent, ThinkingSelectorComponent, ToolExecutionComponent, TreeSelectorComponent, truncateToVisualLines, UserMessageComponent, UserMessageSelectorComponent, } from "./modes/interactive/components/index.js";
+ // Theme utilities for custom tools and extensions
+ export { getLanguageFromPath, getMarkdownTheme, getSelectListTheme, getSettingsListTheme, highlightCode, initTheme, Theme, } from "./modes/interactive/theme/theme.js";
++// Model utilities (re-exported from pi-ai)
++export { supportsXhigh } from "@mariozechner/pi-ai";
+ // Clipboard utilities
+ export { copyToClipboard } from "./utils/clipboard.js";
+ export { parseFrontmatter, stripFrontmatter } from "./utils/frontmatter.js";
+-- 
+2.53.0
+

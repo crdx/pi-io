@@ -1,0 +1,25 @@
+From b4af3c766158aa11eb7141370f77d70cbc78bdda Mon Sep 17 00:00:00 2001
+From: anon <anon@system>
+Date: Tue, 14 Apr 2026 22:05:32 +0100
+Subject: [PATCH] Keep custom footer and header during reload
+
+---
+ .../pi-coding-agent/dist/modes/interactive/interactive-mode.js  | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/interactive-mode.js usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/interactive-mode.js
+index 55b0429..a64743e 100644
+--- usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/interactive-mode.js
++++ usr/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/interactive-mode.js
+@@ -1094,8 +1094,6 @@ export class InteractiveMode {
+         }
+         this.ui.hideOverlay();
+         this.clearExtensionTerminalInputListeners();
+-        this.setExtensionFooter(undefined);
+-        this.setExtensionHeader(undefined);
+         this.clearExtensionWidgets();
+         this.footerDataProvider.clearExtensionStatuses();
+         this.footer.invalidate();
+-- 
+2.53.0
+

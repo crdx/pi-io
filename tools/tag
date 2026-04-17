@@ -32,8 +32,11 @@ def main():
     next_num = last_num + 1
     tag = '%s%d' % (prefix, next_num)
     body = run('tools/release-notes', tag)
+    message = 'Version %s' % tag
+    if body:
+        message = '%s\n\n%s' % (message, body)
     print('tagging %s' % tag)
-    subprocess.run(['git', 'tag', '-a', tag, '-m', body], check=True)
+    subprocess.run(['git', 'tag', '-a', tag, '-m', message], check=True)
 
 if __name__ == '__main__':
     main()

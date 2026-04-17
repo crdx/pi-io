@@ -26,6 +26,7 @@
 		"dist",
 		"docs",
 		"examples",
+		"build-info.json",
 		"CHANGELOG.md"
 	],
 	"scripts": {

@@ -166,7 +166,23 @@ const pkg = JSON.parse(readFileSync(getPackageJsonPath(), "utf-8"));
 
 export const APP_NAME: string = pkg.piConfig?.name || "pi";
 export const CONFIG_DIR_NAME: string = pkg.piConfig?.configDir || ".pi";
-export const VERSION: string = pkg.version;
+
+function loadVersion(): string {
+	const base: string = pkg.version;
+	try {
+		const infoPath = join(getPackageDir(), "build-info.json");
+		const info = JSON.parse(readFileSync(infoPath, "utf-8"));
+		const parts: string[] = [info.tag ?? base];
+		if (info.date) {
+			parts.push(`(${info.date})`);
+		}
+		return parts.join(" ");
+	} catch {
+		return base;
+	}
+}
+
+export const VERSION: string = loadVersion();
 
 // e.g., PI_CODING_AGENT_DIR or TAU_CODING_AGENT_DIR
 export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;

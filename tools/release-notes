@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+
+TAG="${1:?usage: release-notes <tag>}"
+
+BODY=$(awk -v tag="$TAG" '
+    $0 ~ "^## " tag " " { found=1; next }
+    /^## / { found=0 }
+    found
+' CHANGELOG.md | sed -e '/./,$!d' -e :a -e '/^\s*$/{ $d; N; ba; }' | cat -s)
+
+SUBJECT="Version $TAG"
+
+if [ -z "$BODY" ]; then
+    echo "$SUBJECT"
+else
+    printf '%s\n\n%s\n' "$SUBJECT" "$BODY"
+fi

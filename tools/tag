@@ -31,7 +31,7 @@ def main():
 
     next_num = last_num + 1
     tag = '%s%d' % (prefix, next_num)
-    body = run('tools/changelog-body', tag)
+    body = run('tools/release-notes', tag)
     print('tagging %s' % tag)
     subprocess.run(['git', 'tag', '-a', tag, '-m', body], check=True)
 

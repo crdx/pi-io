@@ -1392,8 +1392,6 @@ export class InteractiveMode {
 		}
 		this.ui.hideOverlay();
 		this.clearExtensionTerminalInputListeners();
-		this.setExtensionFooter(undefined);
-		this.setExtensionHeader(undefined);
 		this.clearExtensionWidgets();
 		this.footerDataProvider.clearExtensionStatuses();
 		this.footer.invalidate();

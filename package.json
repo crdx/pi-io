@@ -3,27 +3,16 @@
 	"private": true,
 	"type": "module",
 	"workspaces": [
-		"packages/*",
-		"packages/coding-agent/examples/extensions/with-deps",
-		"packages/coding-agent/examples/extensions/custom-provider-anthropic",
-		"packages/coding-agent/examples/extensions/custom-provider-gitlab-duo",
-		"packages/coding-agent/examples/extensions/custom-provider-qwen-cli"
+		"packages/*"
 	],
-	"scripts": {
-		"clean": "npm run clean --workspaces",
-		"build": "cd packages/tui && npm run build && cd ../ai && npm run build && cd ../agent && npm run build && cd ../coding-agent && npm run build",
-		"dev": "concurrently --names \"ai,agent,coding-agent,tui\" --prefix-colors \"cyan,yellow,red,magenta\" \"cd packages/ai && npm run dev\" \"cd packages/agent && npm run dev\" \"cd packages/coding-agent && npm run dev\" \"cd packages/tui && npm run dev\"",
-		"check": "biome check --write --error-on-warnings . && tsgo --noEmit",
-		"test": "npm run test --workspaces --if-present"
-	},
+	"scripts": {},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.5",
 		"@types/node": "^22.10.5",
 		"@typescript/native-preview": "7.0.0-dev.20260120.1",
 		"concurrently": "^9.2.1",
 		"tsx": "^4.20.3",
-		"typescript": "^5.9.2",
-		"shx": "^0.4.0"
+		"typescript": "^5.9.2"
 	},
 	"engines": {
 		"node": ">=20.0.0"

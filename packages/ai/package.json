@@ -62,15 +62,7 @@
 		"dist",
 		"README.md"
 	],
-	"scripts": {
-		"clean": "shx rm -rf dist",
-		"generate-models": "npx tsx scripts/generate-models.ts",
-		"build": "npm run generate-models && tsgo -p tsconfig.build.json",
-		"dev": "tsgo -p tsconfig.build.json --watch --preserveWatchOutput",
-		"dev:tsc": "tsgo -p tsconfig.build.json --watch --preserveWatchOutput",
-		"test": "vitest --run",
-		"prepublishOnly": "npm run clean && npm run build"
-	},
+	"scripts": {},
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.73.0",
 		"@aws-sdk/client-bedrock-runtime": "^3.983.0",

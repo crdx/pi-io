@@ -540,22 +540,18 @@ export class SettingsManager {
 
 	setDefaultProvider(provider: string): void {
 		this.globalSettings.defaultProvider = provider;
-		this.markModified("defaultProvider");
-		this.save();
+		this.settings = deepMergeSettings(this.globalSettings, this.projectSettings);
 	}
 
 	setDefaultModel(modelId: string): void {
 		this.globalSettings.defaultModel = modelId;
-		this.markModified("defaultModel");
-		this.save();
+		this.settings = deepMergeSettings(this.globalSettings, this.projectSettings);
 	}
 
 	setDefaultModelAndProvider(provider: string, modelId: string): void {
 		this.globalSettings.defaultProvider = provider;
 		this.globalSettings.defaultModel = modelId;
-		this.markModified("defaultProvider");
-		this.markModified("defaultModel");
-		this.save();
+		this.settings = deepMergeSettings(this.globalSettings, this.projectSettings);
 	}
 
 	getSteeringMode(): "all" | "one-at-a-time" {
@@ -594,8 +590,7 @@ export class SettingsManager {
 
 	setDefaultThinkingLevel(level: "off" | "minimal" | "low" | "medium" | "high" | "xhigh"): void {
 		this.globalSettings.defaultThinkingLevel = level;
-		this.markModified("defaultThinkingLevel");
-		this.save();
+		this.settings = deepMergeSettings(this.globalSettings, this.projectSettings);
 	}
 
 	getTransport(): TransportSetting {
@@ -676,8 +671,7 @@ export class SettingsManager {
 
 	setHideThinkingBlock(hide: boolean): void {
 		this.globalSettings.hideThinkingBlock = hide;
-		this.markModified("hideThinkingBlock");
-		this.save();
+		this.settings = deepMergeSettings(this.globalSettings, this.projectSettings);
 	}
 
 	getShellPath(): string | undefined {

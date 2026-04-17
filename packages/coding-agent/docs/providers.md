@@ -94,15 +94,20 @@ The file is created with `0600` permissions (user read/write only). Auth file cr
 The `key` field supports three formats:
 
 - **Shell command:** `"!command"` executes and uses stdout (cached for process lifetime)
+
   ```json
   { "type": "api_key", "key": "!security find-generic-password -ws 'anthropic'" }
   { "type": "api_key", "key": "!op read 'op://vault/item/credential'" }
   ```
+
 - **Environment variable:** Uses the value of the named variable
+
   ```json
   { "type": "api_key", "key": "MY_ANTHROPIC_KEY" }
   ```
+
 - **Literal value:** Used directly
+
   ```json
   { "type": "api_key", "key": "sk-ant-..." }
   ```
@@ -183,7 +188,7 @@ Or set `GOOGLE_APPLICATION_CREDENTIALS` to a service account key file.
 
 **Via models.json:** Add Ollama, LM Studio, vLLM, or any provider that speaks a supported API (OpenAI Completions, OpenAI Responses, Anthropic Messages, Google Generative AI). See [models.md](models.md).
 
-**Via extensions:** For providers that need custom API implementations or OAuth flows, create an extension. See [custom-provider.md](custom-provider.md) and [examples/extensions/custom-provider-gitlab-duo](../examples/extensions/custom-provider-gitlab-duo/).
+**Via extensions:** For providers that need custom API implementations or OAuth flows, create an extension. See [custom-provider.md](custom-provider.md).
 
 ## Resolution Order
 

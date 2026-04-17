@@ -22,7 +22,6 @@ cp permission-gate.ts ~/.pi/agent/extensions/
 | `protected-paths.ts` | Blocks writes to protected paths (.env, .git/, node_modules/) |
 | `confirm-destructive.ts` | Confirms before destructive session actions (clear, switch, fork) |
 | `dirty-repo-guard.ts` | Prevents session changes with uncommitted git changes |
-| `sandbox/` | OS-level sandboxing using `@anthropic-ai/sandbox-runtime` with per-project config |
 
 ### Custom Tools
 
@@ -114,19 +113,10 @@ cp permission-gate.ts ~/.pi/agent/extensions/
 | `session-name.ts` | Name sessions for the session selector via `setSessionName` |
 | `bookmark.ts` | Bookmark entries with labels for `/tree` navigation via `setLabel` |
 
-### Custom Providers
-
-| Extension | Description |
-|-----------|-------------|
-| `custom-provider-anthropic/` | Custom Anthropic provider with OAuth support and custom streaming implementation |
-| `custom-provider-gitlab-duo/` | GitLab Duo provider using pi-ai's built-in Anthropic/OpenAI streaming via proxy |
-| `custom-provider-qwen-cli/` | Qwen CLI provider with OAuth device flow and OpenAI-compatible models |
-
 ### External Dependencies
 
 | Extension | Description |
 |-----------|-------------|
-| `with-deps/` | Extension with its own package.json and dependencies (demonstrates jiti module resolution) |
 | `file-trigger.ts` | Watches a trigger file and injects contents into conversation |
 
 ## Writing Extensions
@@ -175,6 +165,7 @@ export default function (pi: ExtensionAPI) {
 ## Key Patterns
 
 **Use StringEnum for string parameters** (required for Google API compatibility):
+
 ```typescript
 import { StringEnum } from "@mariozechner/pi-ai";
 
@@ -186,6 +177,7 @@ action: Type.Union([Type.Literal("list"), Type.Literal("add")])
 ```
 
 **State persistence via details:**
+
 ```typescript
 // Store state in tool result details for proper forking support
 return {

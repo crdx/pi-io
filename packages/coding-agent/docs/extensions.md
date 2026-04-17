@@ -2109,9 +2109,6 @@ All examples in [examples/extensions/](../examples/extensions/).
 | `snake.ts` | Snake game | `registerCommand`, `ui.custom`, keyboard handling |
 | `space-invaders.ts` | Space Invaders game | `registerCommand`, `ui.custom` |
 | `doom-overlay/` | Doom in overlay | `ui.custom` with overlay |
-| **Providers** |||
-| `custom-provider-anthropic/` | Custom Anthropic proxy | `registerProvider` |
-| `custom-provider-gitlab-duo/` | GitLab Duo integration | `registerProvider` with OAuth |
 | **Messages & Communication** |||
 | `message-renderer.ts` | Custom message rendering | `registerMessageRenderer`, `sendMessage` |
 | `event-bus.ts` | Inter-extension events | `pi.events` |
@@ -2122,4 +2119,3 @@ All examples in [examples/extensions/](../examples/extensions/).
 | `antigravity-image-gen.ts` | Image generation tool | `registerTool`, Google Antigravity |
 | `inline-bash.ts` | Inline bash in tool calls | `on("tool_call")` |
 | `bash-spawn-hook.ts` | Adjust bash command, cwd, and env before execution | `createBashTool`, `spawnHook` |
-| `with-deps/` | Extension with npm dependencies | Package structure with `package.json` |

@@ -170,7 +170,7 @@ export const CONFIG_DIR_NAME: string = pkg.piConfig?.configDir || ".pi";
 function loadVersion(): string {
 	const base: string = pkg.version;
 	try {
-		const infoPath = join(getPackageDir(), "build-info.json");
+		const infoPath = join(getPackageDir(), "meta.json");
 		const info = JSON.parse(readFileSync(infoPath, "utf-8"));
 		const parts: string[] = [info.tag ?? base];
 		if (info.date) {

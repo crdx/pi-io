@@ -29,11 +29,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
 
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       - name: Install dependencies
         run: npm ci
 
       - name: Build
-        run: npm run build
+        run: just build
+
+      - name: Write build info
+        run: |
+          echo '{"tag":"${{ github.ref_name }}","date":"'"$(date -u +'%d %b %Y')"'"}' \
+            > packages/coding-agent/meta.json
 
       - name: Pack coding-agent
         working-directory: packages/coding-agent

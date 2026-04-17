@@ -60,8 +60,8 @@ export class ToolExecutionComponent extends Container {
 
 		// Always create both. contentBox is used for tools with renderer-based call/result composition.
 		// contentText is reserved for generic fallback rendering when no tool definition exists.
-		this.contentBox = new Box(1, 1, (text: string) => theme.bg("toolPendingBg", text));
-		this.contentText = new Text("", 1, 1, (text: string) => theme.bg("toolPendingBg", text));
+		this.contentBox = new Box(2, 1, (text: string) => theme.bg("toolPendingBg", text));
+		this.contentText = new Text("", 2, 1, (text: string) => theme.bg("toolPendingBg", text));
 
 		if (this.hasRendererDefinition()) {
 			this.addChild(this.contentBox);
@@ -304,7 +304,7 @@ export class ToolExecutionComponent extends Container {
 						imageData,
 						imageMimeType,
 						{ fallbackColor: (s: string) => theme.fg("toolOutput", s) },
-						{ maxWidthCells: 60 },
+						{ maxWidthCells: 9999 },
 					);
 					this.imageComponents.push(imageComponent);
 					this.addChild(imageComponent);

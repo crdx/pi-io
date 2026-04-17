@@ -43,6 +43,19 @@ jobs:
           echo '{"tag":"${{ github.ref_name }}","date":"'"$(date -u +'%d %b %Y')"'"}' \
             > packages/coding-agent/meta.json
 
+      - name: Bundle sibling packages
+        run: |
+          # npm workspaces resolve sibling deps as symlinks, but npm pack
+          # skips symlinks so bundleDependencies end up empty. Pack each
+          # sibling into a tarball and install them into coding-agent as
+          # real node_modules entries.
+          mkdir -p /tmp/siblings
+          for dir in ai tui agent; do
+            (cd "packages/$dir" && npm pack --pack-destination /tmp/siblings)
+          done
+          cd packages/coding-agent
+          npm install --no-save /tmp/siblings/*.tgz
+
       - name: Pack coding-agent
         working-directory: packages/coding-agent
         run: npm pack

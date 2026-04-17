@@ -68,15 +68,7 @@ jobs:
       - name: Extract changelog
         id: changelog
         run: |
-          TAG="${{ github.ref_name }}"
-          BODY=$(awk -v tag="$TAG" '
-            $0 ~ "^## " tag " " { found=1; next }
-            /^## / { found=0 }
-            found
-          ' CHANGELOG.md | sed -e '/./,$!d' -e :a -e '/^\s*$/{ $d; N; ba; }')
-          if [ -z "$BODY" ]; then
-            BODY="Release $TAG"
-          fi
+          BODY=$(tools/changelog-body "${{ github.ref_name }}")
           {
             echo "body<<EOF"
             echo "$BODY"

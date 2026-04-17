@@ -2304,23 +2304,24 @@ export class InteractiveMode {
 					let errorMessage: string | undefined;
 					if (this.streamingMessage.stopReason === "aborted") {
 						const retryAttempt = this.session.retryAttempt;
-						errorMessage =
-							retryAttempt > 0
-								? `Aborted after ${retryAttempt} retry attempt${retryAttempt > 1 ? "s" : ""}`
-								: "Operation aborted";
-						this.streamingMessage.errorMessage = errorMessage;
+						if (retryAttempt > 0) {
+							errorMessage = `Aborted after ${retryAttempt} retry attempt${retryAttempt > 1 ? "s" : ""}`;
+							this.streamingMessage.errorMessage = errorMessage;
+						}
 					}
 					this.streamingComponent.updateContent(this.streamingMessage);
 
 					if (this.streamingMessage.stopReason === "aborted" || this.streamingMessage.stopReason === "error") {
 						if (!errorMessage) {
-							errorMessage = this.streamingMessage.errorMessage || "Error";
+							errorMessage = this.streamingMessage.errorMessage || (this.streamingMessage.stopReason === "error" ? "Error" : undefined);
 						}
-						for (const [, component] of this.pendingTools.entries()) {
-							component.updateResult({
-								content: [{ type: "text", text: errorMessage }],
-								isError: true,
-							});
+						if (errorMessage) {
+							for (const [, component] of this.pendingTools.entries()) {
+								component.updateResult({
+									content: [{ type: "text", text: errorMessage }],
+									isError: true,
+								});
+							}
 						}
 						this.pendingTools.clear();
 					} else {
@@ -2656,17 +2657,18 @@ export class InteractiveMode {
 						this.chatContainer.addChild(component);
 
 						if (message.stopReason === "aborted" || message.stopReason === "error") {
-							let errorMessage: string;
+							let errorMessage: string | undefined;
 							if (message.stopReason === "aborted") {
 								const retryAttempt = this.session.retryAttempt;
-								errorMessage =
-									retryAttempt > 0
-										? `Aborted after ${retryAttempt} retry attempt${retryAttempt > 1 ? "s" : ""}`
-										: "Operation aborted";
+								if (retryAttempt > 0) {
+									errorMessage = `Aborted after ${retryAttempt} retry attempt${retryAttempt > 1 ? "s" : ""}`;
+								}
 							} else {
 								errorMessage = message.errorMessage || "Error";
 							}
-							component.updateResult({ content: [{ type: "text", text: errorMessage }], isError: true });
+							if (errorMessage) {
+								component.updateResult({ content: [{ type: "text", text: errorMessage }], isError: true });
+							}
 						} else {
 							this.pendingTools.set(content.id, component);
 						}

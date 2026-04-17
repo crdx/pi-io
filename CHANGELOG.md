@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.62.0-crdx.4 — 17 Apr 2026
+
+- Move biome and tsx from npm devDependencies to mise
+- Clean up root package.json (rename to "pi", remove empty scripts and version)
+- Fix release workflow referencing old changelog-body script name
+
 ## v0.62.0-crdx.3 — 17 Apr 2026
 
 - Rename changelog-body tool to release-notes

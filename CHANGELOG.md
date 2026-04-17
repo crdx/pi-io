@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.62.0-crdx.5 — 17 Apr 2026
+
+- Update models
+- Replace null checks with optional chaining to satisfy linter
+- Rename `Procfile.dev` to `Procfile`, tidy the just recipes, and fix release tag note generation
+
 ## v0.62.0-crdx.4 — 17 Apr 2026
 
 - Move biome and tsx from npm devDependencies to mise

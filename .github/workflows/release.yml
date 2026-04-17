@@ -68,7 +68,7 @@ jobs:
       - name: Extract changelog
         id: changelog
         run: |
-          BODY=$(tools/changelog-body "${{ github.ref_name }}")
+          BODY=$(tools/release-notes "${{ github.ref_name }}")
           {
             echo "body<<EOF"
             echo "$BODY"

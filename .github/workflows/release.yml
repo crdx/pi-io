@@ -1,0 +1,46 @@
+# Built tarball is consumed by env/pi/bin/install in https://github.com/crdx/system.
+# See that repo's AGENTS.md for the full picture.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*-crdx.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Pack coding-agent
+        working-directory: packages/coding-agent
+        run: npm pack
+
+      - name: Create release with tarball
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          files: packages/coding-agent/mariozechner-pi-coding-agent-*.tgz

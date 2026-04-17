@@ -93,6 +93,11 @@
 		"url": "git+https://github.com/badlogic/pi-mono.git",
 		"directory": "packages/coding-agent"
 	},
+	"bundleDependencies": [
+		"@mariozechner/pi-tui",
+		"@mariozechner/pi-ai",
+		"@mariozechner/pi-agent-core"
+	],
 	"engines": {
 		"node": ">=20.6.0"
 	}

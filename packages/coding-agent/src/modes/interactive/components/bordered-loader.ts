@@ -35,8 +35,15 @@ export class BorderedLoader extends Container {
 			this.addChild(new Spacer(1));
 			this.addChild(new Text(keyHint("tui.select.cancel", "cancel"), 1, 0));
 		}
-		this.addChild(new Spacer(1));
 		this.addChild(new DynamicBorder(borderColor));
+	}
+
+	override render(width: number): string[] {
+		const lines = super.render(width);
+		if (lines.length > 1 && lines[1] === '') {
+			lines.splice(1, 1);
+		}
+		return lines;
 	}
 
 	get signal(): AbortSignal {

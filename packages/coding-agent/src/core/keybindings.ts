@@ -305,4 +305,4 @@ export class KeybindingsManager extends TuiKeybindingsManager {
 	}
 }
 
-export type { Keybinding, KeyId, KeybindingsConfig };
+export type { Keybinding, KeybindingsConfig, KeyId };

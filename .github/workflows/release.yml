@@ -63,8 +63,12 @@ jobs:
           npm install --no-save /tmp/pi-siblings/*.tgz
           npm pack --pack-destination /tmp/pi-release
 
+          VERSION=$(jq -r .version /tmp/pi-stage/package.json)
+          mv /tmp/pi-release/mariozechner-pi-coding-agent-*.tgz "/tmp/pi-release/pi-${VERSION}.tgz"
+
       - name: Create release with tarball
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
-          files: /tmp/pi-release/mariozechner-pi-coding-agent-*.tgz
+          body: "Release ${{ github.ref_name }}"
+          files: /tmp/pi-release/pi-*.tgz

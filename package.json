@@ -1,22 +1,18 @@
 {
-	"name": "pi-monorepo",
+	"name": "pi",
 	"private": true,
 	"type": "module",
 	"workspaces": [
 		"packages/*"
 	],
-	"scripts": {},
 	"devDependencies": {
-		"@biomejs/biome": "2.3.5",
 		"@types/node": "^22.10.5",
 		"@typescript/native-preview": "7.0.0-dev.20260120.1",
-		"tsx": "^4.20.3",
 		"typescript": "^5.9.2"
 	},
 	"engines": {
 		"node": ">=20.0.0"
 	},
-	"version": "0.0.3",
 	"dependencies": {
 		"@mariozechner/jiti": "^2.6.5",
 		"@mariozechner/pi-coding-agent": "^0.30.2",

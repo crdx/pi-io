@@ -40,7 +40,7 @@ export class BorderedLoader extends Container {
 
 	override render(width: number): string[] {
 		const lines = super.render(width);
-		if (lines.length > 1 && lines[1] === '') {
+		if (lines.length > 1 && lines[1] === "") {
 			lines.splice(1, 1);
 		}
 		return lines;

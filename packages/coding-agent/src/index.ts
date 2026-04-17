@@ -1,5 +1,7 @@
 // Core session management
 
+// Model utilities (re-exported from pi-ai)
+export { supportsXhigh } from "@mariozechner/pi-ai";
 // Config paths
 export { getAgentDir, VERSION } from "./config.js";
 export {
@@ -341,8 +343,6 @@ export {
 	Theme,
 	type ThemeColor,
 } from "./modes/interactive/theme/theme.js";
-// Model utilities (re-exported from pi-ai)
-export { supportsXhigh } from "@mariozechner/pi-ai";
 // Clipboard utilities
 export { copyToClipboard } from "./utils/clipboard.js";
 export { parseFrontmatter, stripFrontmatter } from "./utils/frontmatter.js";

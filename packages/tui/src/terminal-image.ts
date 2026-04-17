@@ -358,7 +358,12 @@ export function renderImage(
 
 	if (caps.images === "kitty") {
 		// Only use imageId if explicitly provided - static images don't need IDs
-		const sequence = encodeKitty(base64Data, { columns: maxWidth, rows, imageId: options.imageId, suppressCursorMovement: true });
+		const sequence = encodeKitty(base64Data, {
+			columns: maxWidth,
+			rows,
+			imageId: options.imageId,
+			suppressCursorMovement: true,
+		});
 		return { sequence, rows, imageId: options.imageId, sequenceFirst: true };
 	}
 

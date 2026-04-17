@@ -2311,7 +2311,9 @@ export class InteractiveMode {
 
 					if (this.streamingMessage.stopReason === "aborted" || this.streamingMessage.stopReason === "error") {
 						if (!errorMessage) {
-							errorMessage = this.streamingMessage.errorMessage || (this.streamingMessage.stopReason === "error" ? "Error" : undefined);
+							errorMessage =
+								this.streamingMessage.errorMessage ||
+								(this.streamingMessage.stopReason === "error" ? "Error" : undefined);
 						}
 						if (errorMessage) {
 							for (const [, component] of this.pendingTools.entries()) {

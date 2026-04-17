@@ -31,12 +31,9 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 		toolSnippets,
 		promptGuidelines,
 		appendSystemPrompt,
-		cwd,
 		contextFiles: providedContextFiles,
 		skills: providedSkills,
 	} = options;
-	const resolvedCwd = cwd ?? process.cwd();
-	const promptCwd = resolvedCwd.replace(/\\/g, "/");
 
 	const appendSection = appendSystemPrompt ? `\n\n${appendSystemPrompt}` : "";
 

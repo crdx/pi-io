@@ -18,19 +18,17 @@ build:
 
 # watch all packages for changes
 dev:
-    npx concurrently \
-        --names "tui,ai,agent,coding-agent" \
-        --prefix-colors "magenta,cyan,yellow,red" \
-        "{{ TSGO }} -p packages/tui/tsconfig.build.json --watch --preserveWatchOutput" \
-        "{{ TSGO }} -p packages/ai/tsconfig.build.json --watch --preserveWatchOutput" \
-        "{{ TSGO }} -p packages/agent/tsconfig.build.json --watch --preserveWatchOutput" \
-        "{{ TSGO }} -p packages/coding-agent/tsconfig.build.json --watch --preserveWatchOutput"
+    hivemind Procfile.dev
 
 export PI_CODING_AGENT_DIR := env("HOME") / ".system/config/pi/agent"
 
+# commit staged changes
+commit MESSAGE:
+    git commit -m "{{ MESSAGE }}"
+
 # run pi (pass args after --)
-run *ARGS:
-    node packages/coding-agent/dist/cli.js --no-extensions -e ~/.system/config/pi/agent/extensions {{ ARGS }}
+run *ARGS: build
+    PI_DEV=1 node packages/coding-agent/dist/cli.js --no-extensions -e ~/.system/config/pi/agent/extensions {{ ARGS }}
 
 # typecheck and lint
 check:
@@ -51,6 +49,19 @@ clean:
 # refresh model list from upstream APIs
 generate-models:
     npx tsx packages/ai/scripts/generate-models.ts
+
+# list release tags
+list-tags:
+    git tag -l 'v*-crdx.*' --sort=-creatordate
+
+# create a release tag without pushing
+tag:
+    tools/deploy --no-push
+
+# push commits and tags
+push:
+    git push
+    git push --tags
 
 # tag and push a release
 deploy:

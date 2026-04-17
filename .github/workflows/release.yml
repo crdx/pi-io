@@ -43,25 +43,28 @@ jobs:
           echo '{"tag":"${{ github.ref_name }}","date":"'"$(date -u +'%d %b %Y')"'"}' \
             > packages/coding-agent/meta.json
 
-      - name: Bundle sibling packages
+      - name: Assemble standalone tarball
         run: |
           # npm workspaces resolve sibling deps as symlinks, but npm pack
-          # skips symlinks so bundleDependencies end up empty. Pack each
-          # sibling into a tarball and install them into coding-agent as
-          # real node_modules entries.
-          mkdir -p /tmp/siblings
-          for dir in ai tui agent; do
-            (cd "packages/$dir" && npm pack --pack-destination /tmp/siblings)
-          done
-          cd packages/coding-agent
-          npm install --no-save /tmp/siblings/*.tgz
+          # skips symlinks, so bundleDependencies stays empty if we pack from
+          # inside the workspace. Stage the package outside the monorepo,
+          # install the sibling tarballs there, then pack the staged copy.
+          rm -rf /tmp/pi-release /tmp/pi-siblings /tmp/pi-stage
+          mkdir -p /tmp/pi-release /tmp/pi-siblings /tmp/pi-stage
 
-      - name: Pack coding-agent
-        working-directory: packages/coding-agent
-        run: npm pack
+          for dir in agent ai tui; do
+            (cd "packages/$dir" && npm pack --pack-destination /tmp/pi-siblings)
+          done
+
+          (cd packages/coding-agent && npm pack --pack-destination /tmp/pi-stage)
+          tar xzf /tmp/pi-stage/mariozechner-pi-coding-agent-*.tgz -C /tmp/pi-stage --strip-components=1
+
+          cd /tmp/pi-stage
+          npm install --no-save /tmp/pi-siblings/*.tgz
+          npm pack --pack-destination /tmp/pi-release
 
       - name: Create release with tarball
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
-          files: packages/coding-agent/mariozechner-pi-coding-agent-*.tgz
+          files: /tmp/pi-release/mariozechner-pi-coding-agent-*.tgz

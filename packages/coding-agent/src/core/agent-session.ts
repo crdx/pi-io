@@ -901,6 +901,7 @@ export class AgentSession {
 				currentText,
 				currentImages,
 				options?.source ?? "interactive",
+				options?.streamingBehavior,
 			);
 			if (inputResult.action === "handled") {
 				return;

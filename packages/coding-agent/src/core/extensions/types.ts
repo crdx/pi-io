@@ -660,6 +660,8 @@ export interface InputEvent {
 	images?: ImageContent[];
 	/** Where the input came from */
 	source: InputSource;
+	/** How the message will be delivered during streaming */
+	streamingBehavior?: "steer" | "followUp";
 }
 
 /** Result from input event handler */

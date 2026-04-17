@@ -34,9 +34,5 @@ def main():
     print('tagging %s' % tag)
     subprocess.run(['git', 'tag', tag], check=True)
 
-    if '--no-push' not in sys.argv:
-        subprocess.run(['git', 'push'], check=True)
-        subprocess.run(['git', 'push', 'origin', tag], check=True)
-
 if __name__ == '__main__':
     main()

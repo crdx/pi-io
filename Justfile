@@ -52,20 +52,16 @@ generate-models:
 
 # list release tags
 list-tags:
-    git tag -l 'v*-crdx.*' --sort=-creatordate
+    git tag -l --sort=-creatordate
 
 # create a release tag without pushing
 tag:
-    tools/deploy --no-push
+    tools/tag
 
 # push commits and tags
 push:
     git push
     git push --tags
-
-# tag and push a release
-deploy:
-    tools/deploy
 
 [private]
 _copy-assets:

@@ -18,29 +18,22 @@ build:
 
 # watch all packages for changes
 dev:
-    hivemind Procfile.dev
+    hivemind Procfile
 
 export PI_CODING_AGENT_DIR := env("HOME") / ".system/config/pi/agent"
 
 # commit staged changes
-commit MESSAGE:
-    git commit -m "{{ MESSAGE }}"
+commit message:
+    git commit -m "{{ message }}"
 
 # run pi (pass args after --)
-run *ARGS: build
-    PI_DEV=1 node packages/coding-agent/dist/cli.js --no-extensions -e ~/.system/config/pi/agent/extensions {{ ARGS }}
+pi *args: build
+    PI_DEV=1 node packages/coding-agent/dist/cli.js --no-extensions -e ~/.system/config/pi/agent/extensions {{ args }}
 
 # typecheck and lint
 check:
     biome check --write --error-on-warnings .
     {{ TSGO }} --noEmit
-
-# run all tests
-test:
-    cd packages/tui && node --test --import tsx test/*.test.ts
-    cd packages/ai && npx vitest --run
-    cd packages/agent && npx vitest --run
-    cd packages/coding-agent && npx vitest --run
 
 # remove all build output
 clean:

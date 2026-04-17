@@ -32,7 +32,7 @@ run *ARGS: build
 
 # typecheck and lint
 check:
-    npx biome check --write --error-on-warnings .
+    biome check --write --error-on-warnings .
     {{ TSGO }} --noEmit
 
 # run all tests
@@ -48,7 +48,7 @@ clean:
 
 # refresh model list from upstream APIs
 generate-models:
-    npx tsx packages/ai/scripts/generate-models.ts
+    tsx packages/ai/scripts/generate-models.ts
 
 # list release tags
 list-tags:

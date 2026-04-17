@@ -1,4 +1,6 @@
 [tools]
+"aqua:biomejs/biome" = "latest"
 hivemind = "latest"
 node = "latest"
 npm = "latest"
+"npm:tsx" = "latest"

@@ -492,7 +492,7 @@ export class InteractiveMode {
 			this.builtInHeader = new Text("", 0, 0);
 			if (process.env.PI_DEV) {
 				this.headerContainer.addChild(new Spacer(1));
-				this.headerContainer.addChild(new Text(theme.fg("warning", "⚠ Running in development mode"), 0, 0));
+				this.headerContainer.addChild(new Text(theme.fg("warning", " ⚠ Running in development mode"), 0, 0));
 			}
 			this.headerContainer.addChild(this.builtInHeader);
 			if (this.changelogMarkdown) {

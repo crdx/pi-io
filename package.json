@@ -8,6 +8,7 @@
 	"devDependencies": {
 		"@types/node": "^22.10.5",
 		"@typescript/native-preview": "7.0.0-dev.20260120.1",
+		"tsx": "^4.20.3",
 		"typescript": "^5.9.2"
 	},
 	"engines": {

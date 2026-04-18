@@ -32,11 +32,10 @@ pi *args: build
 
 # run all tests
 test:
-    npx vitest run --reporter=dot \
-        --project packages/tui \
-        --project packages/ai \
-        --project packages/agent \
-        --project packages/coding-agent
+    cd packages/tui && node --test --import tsx test/*.test.ts
+    cd packages/ai && npx vitest run --reporter=dot
+    cd packages/agent && npx vitest run --reporter=dot
+    cd packages/coding-agent && npx vitest run --reporter=dot
 
 # typecheck and lint
 check:

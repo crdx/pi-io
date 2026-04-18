@@ -30,6 +30,14 @@ commit message:
 pi *args: build
     PI_DEV=1 node packages/coding-agent/dist/cli.js --no-extensions -e ~/.system/config/pi/agent/extensions {{ args }}
 
+# run all tests
+test:
+    npx vitest run --reporter=dot \
+        --project packages/tui \
+        --project packages/ai \
+        --project packages/agent \
+        --project packages/coding-agent
+
 # typecheck and lint
 check:
     biome check --write --error-on-warnings .

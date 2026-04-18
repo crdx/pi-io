@@ -58,16 +58,15 @@ describe("Coding Agent Tools", () => {
 
 		it("should truncate files exceeding line limit", async () => {
 			const testFile = join(testDir, "large.txt");
-			const lines = Array.from({ length: 2500 }, (_, i) => `Line ${i + 1}`);
+			// Use short lines ("x") so the 50KB byte limit is not hit before the 10000 line limit
+			const lines = Array.from({ length: 12000 }, () => "x");
 			writeFileSync(testFile, lines.join("\n"));
 
 			const result = await readTool.execute("test-call-3", { path: testFile });
 			const output = getTextOutput(result);
 
-			expect(output).toContain("Line 1");
-			expect(output).toContain("Line 2000");
-			expect(output).not.toContain("Line 2001");
-			expect(output).toContain("[Showing lines 1-2000 of 2500. Use offset=2001 to continue.]");
+			// 12000 lines of "x" truncated to 10000
+			expect(output).toContain("[Showing lines 1-10000 of 12000. Use offset=10001 to continue.]");
 		});
 
 		it("should truncate when byte limit exceeded", async () => {
@@ -143,7 +142,8 @@ describe("Coding Agent Tools", () => {
 
 		it("should include truncation details when truncated", async () => {
 			const testFile = join(testDir, "large-file.txt");
-			const lines = Array.from({ length: 2500 }, (_, i) => `Line ${i + 1}`);
+			// Use short lines ("x") so the 50KB byte limit is not hit before the 10000 line limit
+			const lines = Array.from({ length: 12000 }, () => "x");
 			writeFileSync(testFile, lines.join("\n"));
 
 			const result = await readTool.execute("test-call-9", { path: testFile });
@@ -152,8 +152,8 @@ describe("Coding Agent Tools", () => {
 			expect(result.details?.truncation).toBeDefined();
 			expect(result.details?.truncation?.truncated).toBe(true);
 			expect(result.details?.truncation?.truncatedBy).toBe("lines");
-			expect(result.details?.truncation?.totalLines).toBe(2500);
-			expect(result.details?.truncation?.outputLines).toBe(2000);
+			expect(result.details?.truncation?.totalLines).toBe(12000);
+			expect(result.details?.truncation?.outputLines).toBe(10000);
 		});
 
 		it("should detect image MIME type from file magic (not extension)", async () => {

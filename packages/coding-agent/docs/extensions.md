@@ -1568,7 +1568,7 @@ import {
   truncateLine,      // Truncate a single line to maxBytes with ellipsis
   formatSize,        // Human-readable size (e.g., "50KB", "1.5MB")
   DEFAULT_MAX_BYTES, // 50KB
-  DEFAULT_MAX_LINES, // 2000
+  DEFAULT_MAX_LINES, // 10000
 } from "@mariozechner/pi-coding-agent";
 
 async execute(toolCallId, params, signal, onUpdate, ctx) {

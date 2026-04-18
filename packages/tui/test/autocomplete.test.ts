@@ -70,7 +70,6 @@ describe("CombinedAutocompleteProvider", () => {
 
 			const result = provider.getForceFileSuggestions(lines, cursorLine, cursorCol);
 
-			console.log("Result:", result);
 			// This might return null if /A doesn't match anything, which is fine
 			// We're mainly testing that the prefix extraction works
 			if (result) {
@@ -86,7 +85,6 @@ describe("CombinedAutocompleteProvider", () => {
 
 			const result = provider.getForceFileSuggestions(lines, cursorLine, cursorCol);
 
-			console.log("Result:", result);
 			assert.strictEqual(result, null, "Should not trigger for slash commands");
 		});
 
@@ -98,7 +96,6 @@ describe("CombinedAutocompleteProvider", () => {
 
 			const result = provider.getForceFileSuggestions(lines, cursorLine, cursorCol);
 
-			console.log("Result:", result);
 			assert.notEqual(result, null, "Should trigger for absolute paths in command arguments");
 			if (result) {
 				assert.strictEqual(result.prefix, "/", "Prefix should be '/'");

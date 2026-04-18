@@ -43,14 +43,17 @@ describe("SettingsManager", () => {
 			currentSettings.enabledModels = ["claude-opus-4-5", "gpt-5.2-codex"];
 			writeFileSync(settingsPath, JSON.stringify(currentSettings, null, 2));
 
-			// User changes thinking level via Shift+Tab
+			// User changes thinking level via Shift+Tab (in-memory only, not persisted)
 			manager.setDefaultThinkingLevel("high");
-			await manager.flush();
 
-			// Verify enabledModels is preserved
+			// Verify in-memory value is correct
+			expect(manager.getDefaultThinkingLevel()).toBe("high");
+
+			// Verify file is unchanged (thinking level is not persisted)
+			await manager.flush();
 			const savedSettings = JSON.parse(readFileSync(settingsPath, "utf-8"));
 			expect(savedSettings.enabledModels).toEqual(["claude-opus-4-5", "gpt-5.2-codex"]);
-			expect(savedSettings.defaultThinkingLevel).toBe("high");
+			expect(savedSettings.defaultThinkingLevel).toBeUndefined();
 			expect(savedSettings.theme).toBe("dark");
 			expect(savedSettings.defaultModel).toBe("claude-sonnet");
 		});
@@ -99,13 +102,16 @@ describe("SettingsManager", () => {
 			currentSettings.defaultThinkingLevel = "low";
 			writeFileSync(settingsPath, JSON.stringify(currentSettings, null, 2));
 
-			// But then changes it via UI to "high"
+			// But then changes it via UI to "high" (in-memory only)
 			manager.setDefaultThinkingLevel("high");
-			await manager.flush();
 
-			// In-memory change should win
+			// In-memory value should reflect the change
+			expect(manager.getDefaultThinkingLevel()).toBe("high");
+
+			// File should retain the externally-set value (thinking level is not persisted)
+			await manager.flush();
 			const savedSettings = JSON.parse(readFileSync(settingsPath, "utf-8"));
-			expect(savedSettings.defaultThinkingLevel).toBe("high");
+			expect(savedSettings.defaultThinkingLevel).toBe("low");
 		});
 	});
 

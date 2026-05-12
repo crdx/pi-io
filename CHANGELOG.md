@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.62.0-crdx.7] - 2026-05-12
+
+- Use bracketed version headings in changelog (follow "Keep a Changelog" v1.1.0)
+- Support additional skills directory (`.agents/local-skills`)
+
 ## [0.62.0-crdx.6] - 2026-04-18
 
 - Backport upstream fixes:

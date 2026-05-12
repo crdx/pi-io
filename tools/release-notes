@@ -2,9 +2,10 @@
 set -euo pipefail
 
 TAG="${1:?usage: release-notes <tag>}"
+VERSION="${TAG#v}"
 
-awk -v tag="$TAG" '
-    $0 ~ "^## " tag " " { found=1; next }
+awk -v version="$VERSION" '
+    $0 ~ "^## \\[" version "\\]" { found=1; next }
     /^## / { found=0 }
     found
 ' CHANGELOG.md | sed -e '/./,$!d' -e :a -e '/^\s*$/{ $d; N; ba; }' | cat -s

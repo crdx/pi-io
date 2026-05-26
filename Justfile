@@ -1,6 +1,8 @@
 set quiet := true
 set shell := ["bash", "-cu", "-o", "pipefail"]
 
+mod release 'release.just'
+
 TSGO := "npx tsgo"
 
 [private]
@@ -49,19 +51,6 @@ clean:
 # refresh model list from upstream APIs
 generate-models:
     tsx packages/ai/scripts/generate-models.ts
-
-# list release tags
-list-tags:
-    git tag -l --sort=-creatordate
-
-# create a release tag without pushing
-tag:
-    tools/tag
-
-# push commits and tags
-push:
-    git push
-    git push --tags
 
 [private]
 _copy-assets:

@@ -328,8 +328,12 @@ function collectAncestorAgentsSkillDirs(startDir: string): string[] {
 
 	let dir = resolvedStartDir;
 	while (true) {
-		skillDirs.push(join(dir, ".agents", "skills"));
-		skillDirs.push(join(dir, ".agents", "local-skills"));
+		for (const name of ["skills", "local-skills"]) {
+			const skillDir = join(dir, ".agents", name);
+			if (existsSync(skillDir)) {
+				skillDirs.push(skillDir);
+			}
+		}
 		if (gitRepoRoot && dir === gitRepoRoot) {
 			break;
 		}

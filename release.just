@@ -34,7 +34,8 @@ notes tag:
             break
         if found:
             lines.append(line)
-    print('\n'.join(lines).strip())
+    text = re.sub(r'\n{3,}', '\n\n', '\n'.join(lines).strip())
+    print(text)
 
 # push commits and a specific tag
 push tag:

@@ -1,17 +1,14 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import type { AssistantMessage, Usage } from "@mariozechner/pi-ai";
-import { getModel } from "@mariozechner/pi-ai";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
 	type CompactionSettings,
 	calculateContextTokens,
-	compact,
 	DEFAULT_COMPACTION_SETTINGS,
 	findCutPoint,
 	getLastAssistantUsage,
-	prepareCompaction,
 	shouldCompact,
 } from "../src/core/compaction/index.js";
 import {

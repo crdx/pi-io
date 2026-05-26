@@ -1,6 +1,3 @@
-# Built tarball is consumed by env/pi/bin/install in https://github.com/crdx/system.
-# See that repo's AGENTS.md for the full picture.
-
 name: Release
 
 on:
@@ -12,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

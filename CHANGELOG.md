@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.62.0-crdx.8] - 2026-05-26
+
+- Check skill directories exist before loading
+
 ## [0.62.0-crdx.7] - 2026-05-12
 
 - Use bracketed version headings in changelog (follow "Keep a Changelog" v1.1.0)

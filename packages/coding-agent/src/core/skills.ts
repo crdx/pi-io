@@ -430,17 +430,19 @@ export function loadSkills(options: LoadSkillsOptions = {}): LoadSkillsResult {
 
 			const existing = skillMap.get(skill.name);
 			if (existing) {
-				collisionDiagnostics.push({
-					type: "collision",
-					message: `name "${skill.name}" collision`,
-					path: skill.filePath,
-					collision: {
-						resourceType: "skill",
-						name: skill.name,
-						winnerPath: existing.filePath,
-						loserPath: skill.filePath,
-					},
-				});
+				if (skill.sourceInfo.scope !== "user") {
+					collisionDiagnostics.push({
+						type: "collision",
+						message: `name "${skill.name}" collision`,
+						path: skill.filePath,
+						collision: {
+							resourceType: "skill",
+							name: skill.name,
+							winnerPath: existing.filePath,
+							loserPath: skill.filePath,
+						},
+					});
+				}
 			} else {
 				skillMap.set(skill.name, skill);
 				realPathSet.add(realPath);

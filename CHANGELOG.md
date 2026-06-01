@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.62.0-crdx.9] - 2026-06-01
+
+### Changed
+
+- Allow project skills to shadow global skills without triggering collision warnings
+
+### Fixed
+
+- Pin vitest to avoid npm resolution failures
+
 ## [0.62.0-crdx.8] - 2026-05-26
 
 ### Fixed

@@ -1,7 +1,8 @@
-name: Release
+name: Build
 
 on:
   push:
+    branches: [wip]
     tags:
       - 'v*-crdx.*'
 
@@ -9,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -37,8 +38,17 @@ jobs:
 
       - name: Write build info
         run: |
-          echo '{"tag":"${{ github.ref_name }}","date":"'"$(date -u +'%d %b %Y')"'"}' \
-            > packages/coding-agent/meta.json
+          TAG=${{ github.ref_type == 'tag' && github.ref_name || '"wip"' }}
+          cat > packages/coding-agent/meta.json <<EOF
+          {
+            "tag": "$TAG",
+            "sha": "${{ github.sha }}",
+            "date": "$(date -u +'%d %b %Y')",
+            "buildDate": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
+            "node": "$(node --version)",
+            "commitUrl": "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+          }
+          EOF
 
       - name: Assemble standalone tarball
         run: |
@@ -63,6 +73,7 @@ jobs:
           mv /tmp/pi-release/mariozechner-pi-coding-agent-*.tgz /tmp/pi-release/pi.tgz
 
       - name: Extract changelog
+        if: github.ref_type == 'tag'
         id: changelog
         run: |
           BODY=$(just release::notes "${{ github.ref_name }}")
@@ -72,9 +83,26 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create release with tarball
+      - name: Create release
+        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
           body: ${{ steps.changelog.outputs.body }}
+          files: /tmp/pi-release/pi.tgz
+
+      - name: Move wip tag
+        if: github.ref_type == 'branch'
+        run: |
+          git tag -f wip "${{ github.sha }}"
+          git push --force origin refs/tags/wip:refs/tags/wip
+
+      - name: Update wip release
+        if: github.ref_type == 'branch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: wip
+          name: wip
+          body: "Development build from ${{ github.sha }}"
+          prerelease: true
           files: /tmp/pi-release/pi.tgz

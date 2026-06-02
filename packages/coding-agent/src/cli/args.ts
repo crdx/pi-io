@@ -39,6 +39,7 @@ export interface Args {
 	themes?: string[];
 	noThemes?: boolean;
 	listModels?: string | true;
+	buildInfo?: boolean;
 	offline?: boolean;
 	verbose?: boolean;
 	messages: string[];
@@ -153,6 +154,8 @@ export function parseArgs(args: string[], extensionFlags?: Map<string, { type: "
 			} else {
 				result.listModels = true;
 			}
+		} else if (arg === "--build-info") {
+			result.buildInfo = true;
 		} else if (arg === "--verbose") {
 			result.verbose = true;
 		} else if (arg === "--offline") {
@@ -228,6 +231,7 @@ ${chalk.bold("Options:")}
   --offline                      Disable startup network operations (same as PI_OFFLINE=1)
   --help, -h                     Show this help
   --version, -v                  Show version number
+  --build-info                   Show detailed build information
 
 Extensions can register additional flags (e.g., --plan from plan-mode extension).
 

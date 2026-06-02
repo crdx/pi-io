@@ -14,7 +14,7 @@ import { processFileArguments } from "./cli/file-processor.js";
 import { buildInitialMessage } from "./cli/initial-message.js";
 import { listModels } from "./cli/list-models.js";
 import { selectSession } from "./cli/session-picker.js";
-import { APP_NAME, getAgentDir, getModelsPath, VERSION } from "./config.js";
+import { APP_NAME, getAgentDir, getModelsPath, loadBuildInfo, VERSION } from "./config.js";
 import { AuthStorage } from "./core/auth-storage.js";
 import { exportFromFile } from "./core/export-html/index.js";
 import type { LoadExtensionsResult } from "./core/extensions/index.js";
@@ -706,6 +706,20 @@ export async function main(args: string[]) {
 
 	if (parsed.version) {
 		console.log(VERSION);
+		process.exit(0);
+	}
+
+	if (parsed.buildInfo) {
+		const info = loadBuildInfo();
+		if (info) {
+			console.log(`tag:  ${info.tag}`);
+			if (info.sha) console.log(`sha:  ${info.sha}`);
+			if (info.buildDate) console.log(`date: ${info.buildDate}`);
+			if (info.node) console.log(`node: ${info.node}`);
+			if (info.commitUrl) console.log(`commit: ${info.commitUrl}`);
+		} else {
+			console.log("No build info available (local development build)");
+		}
 		process.exit(0);
 	}
 

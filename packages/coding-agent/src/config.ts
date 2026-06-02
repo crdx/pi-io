@@ -184,6 +184,24 @@ function loadVersion(): string {
 
 export const VERSION: string = loadVersion();
 
+export interface BuildInfo {
+	tag: string;
+	sha?: string;
+	date?: string;
+	buildDate?: string;
+	node?: string;
+	commitUrl?: string;
+}
+
+export function loadBuildInfo(): BuildInfo | null {
+	try {
+		const infoPath = join(getPackageDir(), "meta.json");
+		return JSON.parse(readFileSync(infoPath, "utf-8"));
+	} catch {
+		return null;
+	}
+}
+
 // e.g., PI_CODING_AGENT_DIR or TAU_CODING_AGENT_DIR
 export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;
 

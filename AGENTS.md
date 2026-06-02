@@ -27,3 +27,11 @@ Build order follows dependency chain: tui → ai → agent → coding-agent.
 ## Build
 
 `just build` compiles all packages with tsgo. `just dev` watches with hivemind. `just check` runs biome + typecheck. `just test` runs all test suites.
+
+## Testing the CLI
+
+```sh
+just build
+node packages/coding-agent/dist/cli.js --build-info
+node packages/coding-agent/dist/cli.js --help
+```

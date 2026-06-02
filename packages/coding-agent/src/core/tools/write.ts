@@ -7,6 +7,7 @@ import { keyHint } from "../../modes/interactive/components/keybinding-hints.js"
 import { getLanguageFromPath, highlightCode } from "../../modes/interactive/theme/theme.js";
 import type { ToolDefinition, ToolRenderResultOptions } from "../extensions/types.js";
 import { withFileMutationQueue } from "./file-mutation-queue.js";
+import { type FileReadTracker, Freshness } from "./file-read-tracker.js";
 import { resolveToCwd } from "./path-utils.js";
 import { invalidArgText, normalizeDisplayText, replaceTabs, shortenPath, str } from "./render-utils.js";
 import { wrapToolDefinition } from "./tool-definition-wrapper.js";
@@ -37,6 +38,8 @@ const defaultWriteOperations: WriteOperations = {
 export interface WriteToolOptions {
 	/** Custom operations for file writing. Default: local filesystem */
 	operations?: WriteOperations;
+	/** Shared tracker for detecting externally modified files. When set, refuses writes to files modified since last read. */
+	readTracker?: FileReadTracker;
 }
 
 type WriteHighlightCache = {
@@ -183,6 +186,7 @@ export function createWriteToolDefinition(
 	options?: WriteToolOptions,
 ): ToolDefinition<typeof writeSchema, undefined> {
 	const ops = options?.operations ?? defaultWriteOperations;
+	const readTracker = options?.readTracker;
 	return {
 		name: "write",
 		label: "write",
@@ -217,11 +221,26 @@ export function createWriteToolDefinition(
 							signal?.addEventListener("abort", onAbort, { once: true });
 							(async () => {
 								try {
+									if (readTracker) {
+										const freshness = await readTracker.check(absolutePath);
+										if (freshness === Freshness.Stale) {
+											signal?.removeEventListener("abort", onAbort);
+											reject(
+												new Error(
+													`File ${path} has been modified externally since it was last read. Re-read the file before writing to ensure your changes are based on the current contents.`,
+												),
+											);
+											return;
+										}
+									}
 									// Create parent directories if needed.
 									await ops.mkdir(dir);
 									if (aborted) return;
 									// Write the file contents.
 									await ops.writeFile(absolutePath, content);
+									if (readTracker) {
+										await readTracker.update(absolutePath);
+									}
 									if (aborted) return;
 									signal?.removeEventListener("abort", onAbort);
 									resolve({

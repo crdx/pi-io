@@ -18,6 +18,7 @@ import {
 	stripBom,
 } from "./edit-diff.js";
 import { withFileMutationQueue } from "./file-mutation-queue.js";
+import { type FileReadTracker, Freshness } from "./file-read-tracker.js";
 import { resolveToCwd } from "./path-utils.js";
 import { invalidArgText, shortenPath, str } from "./render-utils.js";
 import { wrapToolDefinition } from "./tool-definition-wrapper.js";
@@ -64,6 +65,8 @@ const defaultEditOperations: EditOperations = {
 export interface EditToolOptions {
 	/** Custom operations for file editing. Default: local filesystem */
 	operations?: EditOperations;
+	/** Shared tracker for detecting externally modified files. When set, refuses edits to files modified since last read. */
+	readTracker?: FileReadTracker;
 }
 
 function formatEditCall(
@@ -77,12 +80,8 @@ function formatEditCall(
 	const pathDisplay = path === null ? invalidArg : path ? theme.fg("accent", path) : theme.fg("toolOutput", "...");
 	let text = `${theme.fg("toolTitle", theme.bold("edit"))} ${pathDisplay}`;
 
-	if (state.preview) {
-		if ("error" in state.preview) {
-			text += `\n\n${theme.fg("error", state.preview.error)}`;
-		} else if (state.preview.diff) {
-			text += `\n\n${renderDiff(state.preview.diff, { filePath: rawPath ?? undefined })}`;
-		}
+	if (state.preview && !("error" in state.preview) && state.preview.diff) {
+		text += `\n\n${renderDiff(state.preview.diff, { filePath: rawPath ?? undefined })}`;
 	}
 
 	return text;
@@ -120,6 +119,7 @@ export function createEditToolDefinition(
 	options?: EditToolOptions,
 ): ToolDefinition<typeof editSchema, EditToolDetails | undefined, EditRenderState> {
 	const ops = options?.operations ?? defaultEditOperations;
+	const readTracker = options?.readTracker;
 	return {
 		name: "edit",
 		label: "edit",
@@ -165,6 +165,27 @@ export function createEditToolDefinition(
 						// Perform the edit operation.
 						(async () => {
 							try {
+								// Check staleness before access so that a tracked-then-deleted file
+								// gets the "modified externally" error rather than a generic "not found".
+								if (readTracker) {
+									const freshness = await readTracker.check(absolutePath);
+									if (freshness === Freshness.Stale || freshness === Freshness.Untracked) {
+										if (signal) {
+											signal.removeEventListener("abort", onAbort);
+										}
+										const reason =
+											freshness === Freshness.Stale
+												? "has been modified externally since it was last read"
+												: "has not been read yet (or the session was restarted)";
+										reject(
+											new Error(
+												`File ${path} ${reason}. Re-read the file before editing to ensure your changes are based on the current contents.`,
+											),
+										);
+										return;
+									}
+								}
+
 								// Check if file exists.
 								try {
 									await ops.access(absolutePath);
@@ -258,6 +279,11 @@ export function createEditToolDefinition(
 
 								const finalContent = bom + restoreLineEndings(newContent, originalEnding);
 								await ops.writeFile(absolutePath, finalContent);
+
+								// Update the tracker so subsequent edits don't see our own write as external.
+								if (readTracker) {
+									await readTracker.update(absolutePath);
+								}
 
 								// Check if aborted after writing.
 								if (aborted) {

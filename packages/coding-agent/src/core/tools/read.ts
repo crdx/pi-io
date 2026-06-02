@@ -258,6 +258,9 @@ export function createReadToolDefinition(
 							resolve({ content, details });
 						} catch (error: any) {
 							signal?.removeEventListener("abort", onAbort);
+							if (readTracker && error?.code === "ENOENT") {
+								readTracker.delete(absolutePath);
+							}
 							if (!aborted) reject(error);
 						}
 					})();

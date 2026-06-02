@@ -24,6 +24,10 @@ export class FileReadTracker {
 		}
 	}
 
+	delete(absolutePath: string): void {
+		this.mtimes.delete(absolutePath);
+	}
+
 	async update(absolutePath: string): Promise<void> {
 		try {
 			const fileStat = await stat(absolutePath);

@@ -730,7 +730,7 @@ export async function main(args: string[]) {
 			if (info.sha) console.log(`sha1: ${info.sha}`);
 			if (info.buildDate) console.log(`date: ${formatBuildDate(info.buildDate)}`);
 			if (info.node) console.log(`node: ${info.node}`);
-			if (info.commitUrl) console.log(`commit: ${info.commitUrl}`);
+			if (info.commitUrl) console.log(`link: ${info.commitUrl}`);
 		} else {
 			console.log("No build info available (local development build)");
 		}

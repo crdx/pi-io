@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.62.0-crdx.10] - 2026-06-03
+
+### Added
+
+- Add `--build-info` flag for debugging
+- Force agent to re-read files before edit/write if stale
+
 ## [0.62.0-crdx.9] - 2026-06-01
 
 ### Changed

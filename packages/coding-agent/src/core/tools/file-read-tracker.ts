@@ -19,7 +19,10 @@ export class FileReadTracker {
 		try {
 			const fileStat = await stat(absolutePath);
 			return fileStat.mtimeMs === recorded ? Freshness.Fresh : Freshness.Stale;
-		} catch {
+		} catch (error: any) {
+			if (error?.code === "ENOENT") {
+				return Freshness.Untracked;
+			}
 			return Freshness.Stale;
 		}
 	}

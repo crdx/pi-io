@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [wip]
+    branches: [dev]
     tags:
       - 'v*-crdx.*'
 
@@ -36,12 +36,20 @@ jobs:
       - name: Build
         run: just build
 
+      - name: Compute tag
+        id: tag
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=dev-$(date -u +'%Y%m%d%H%M%S')" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Write build info
         run: |
-          TAG=${{ github.ref_type == 'tag' && github.ref_name || '"wip"' }}
           cat > packages/coding-agent/meta.json <<EOF
           {
-            "tag": "$TAG",
+            "tag": "${{ steps.tag.outputs.name }}",
             "sha": "${{ github.sha }}",
             "date": "$(date -u +'%d %b %Y')",
             "buildDate": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
@@ -91,18 +99,28 @@ jobs:
           body: ${{ steps.changelog.outputs.body }}
           files: /tmp/pi-release/pi.tgz
 
-      - name: Move wip tag
+      - name: Create dev tag and release
         if: github.ref_type == 'branch'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git tag -f wip "${{ github.sha }}"
-          git push --force origin refs/tags/wip:refs/tags/wip
+          DEV_TAG="${{ steps.tag.outputs.name }}"
+          git tag "$DEV_TAG" "${{ github.sha }}"
+          git push origin "refs/tags/$DEV_TAG"
+          gh release create "$DEV_TAG" /tmp/pi-release/pi.tgz \
+            --title "$DEV_TAG" \
+            --notes "Development build from ${{ github.sha }}" \
+            --prerelease
 
-      - name: Update wip release
+      - name: Prune old dev releases
         if: github.ref_type == 'branch'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: wip
-          name: wip
-          body: "Development build from ${{ github.sha }}"
-          prerelease: true
-          files: /tmp/pi-release/pi.tgz
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --json tagName --jq '.[].tagName' \
+            | grep '^dev-' \
+            | sort -r \
+            | tail -n +4 \
+            | while read -r TAG; do
+                gh release delete "$TAG" --yes --cleanup-tag
+              done

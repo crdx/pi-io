@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -48,38 +48,6 @@ This is a test skill.
 		// Skills should be discovered and exposed on the session
 		expect(session.resourceLoader.getSkills().skills.length).toBeGreaterThan(0);
 		expect(session.resourceLoader.getSkills().skills.some((s) => s.name === "test-skill")).toBe(true);
-	});
-
-	it("should mark expanded skill files as read for later edits", async () => {
-		const { session } = await createAgentSession({
-			cwd: tempDir,
-			agentDir: tempDir,
-			sessionManager: SessionManager.inMemory(),
-		});
-		const skillFile = join(skillsDir, "SKILL.md");
-
-		const expandedSkill = (
-			session as unknown as { _expandSkillCommand: (text: string) => string }
-		)._expandSkillCommand("/skill:test-skill");
-
-		expect(expandedSkill).toContain("This is a test skill.");
-
-		const editToolDefinition = session.getToolDefinition("edit");
-		expect(editToolDefinition).toBeDefined();
-
-		await editToolDefinition!.execute(
-			"edit-expanded-skill",
-			{
-				path: skillFile,
-				oldText: "This is a test skill.",
-				newText: "This is an updated test skill.",
-			},
-			undefined,
-			undefined,
-			undefined as any,
-		);
-
-		expect(readFileSync(skillFile, "utf-8")).toContain("This is an updated test skill.");
 	});
 
 	it("should have empty skills when resource loader returns none (--no-skills)", async () => {

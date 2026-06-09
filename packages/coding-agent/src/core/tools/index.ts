@@ -22,7 +22,6 @@ export {
 	editToolDefinition,
 } from "./edit.js";
 export { withFileMutationQueue } from "./file-mutation-queue.js";
-export { FileReadTracker, Freshness } from "./file-read-tracker.js";
 export {
 	createFindTool,
 	createFindToolDefinition,
@@ -93,7 +92,6 @@ import {
 	createBashToolDefinition,
 } from "./bash.js";
 import { createEditTool, createEditToolDefinition, editTool, editToolDefinition } from "./edit.js";
-import { FileReadTracker } from "./file-read-tracker.js";
 import { createFindTool, createFindToolDefinition, findTool, findToolDefinition } from "./find.js";
 import { createGrepTool, createGrepToolDefinition, grepTool, grepToolDefinition } from "./grep.js";
 import { createLsTool, createLsToolDefinition, lsTool, lsToolDefinition } from "./ls.js";
@@ -137,16 +135,14 @@ export type ToolName = keyof typeof allTools;
 export interface ToolsOptions {
 	read?: ReadToolOptions;
 	bash?: BashToolOptions;
-	readTracker?: FileReadTracker;
 }
 
 export function createCodingToolDefinitions(cwd: string, options?: ToolsOptions): ToolDef[] {
-	const readTracker = new FileReadTracker();
 	return [
-		createReadToolDefinition(cwd, { ...options?.read, readTracker }),
+		createReadToolDefinition(cwd, options?.read),
 		createBashToolDefinition(cwd, options?.bash),
-		createEditToolDefinition(cwd, { readTracker }),
-		createWriteToolDefinition(cwd, { readTracker }),
+		createEditToolDefinition(cwd),
+		createWriteToolDefinition(cwd),
 	];
 }
 
@@ -160,12 +156,11 @@ export function createReadOnlyToolDefinitions(cwd: string, options?: ToolsOption
 }
 
 export function createAllToolDefinitions(cwd: string, options?: ToolsOptions): Record<ToolName, ToolDef> {
-	const readTracker = options?.readTracker ?? new FileReadTracker();
 	return {
-		read: createReadToolDefinition(cwd, { ...options?.read, readTracker }),
+		read: createReadToolDefinition(cwd, options?.read),
 		bash: createBashToolDefinition(cwd, options?.bash),
-		edit: createEditToolDefinition(cwd, { readTracker }),
-		write: createWriteToolDefinition(cwd, { readTracker }),
+		edit: createEditToolDefinition(cwd),
+		write: createWriteToolDefinition(cwd),
 		grep: createGrepToolDefinition(cwd),
 		find: createFindToolDefinition(cwd),
 		ls: createLsToolDefinition(cwd),
@@ -173,12 +168,11 @@ export function createAllToolDefinitions(cwd: string, options?: ToolsOptions): R
 }
 
 export function createCodingTools(cwd: string, options?: ToolsOptions): Tool[] {
-	const readTracker = new FileReadTracker();
 	return [
-		createReadTool(cwd, { ...options?.read, readTracker }),
+		createReadTool(cwd, options?.read),
 		createBashTool(cwd, options?.bash),
-		createEditTool(cwd, { readTracker }),
-		createWriteTool(cwd, { readTracker }),
+		createEditTool(cwd),
+		createWriteTool(cwd),
 	];
 }
 
@@ -187,12 +181,11 @@ export function createReadOnlyTools(cwd: string, options?: ToolsOptions): Tool[]
 }
 
 export function createAllTools(cwd: string, options?: ToolsOptions): Record<ToolName, Tool> {
-	const readTracker = new FileReadTracker();
 	return {
-		read: createReadTool(cwd, { ...options?.read, readTracker }),
+		read: createReadTool(cwd, options?.read),
 		bash: createBashTool(cwd, options?.bash),
-		edit: createEditTool(cwd, { readTracker }),
-		write: createWriteTool(cwd, { readTracker }),
+		edit: createEditTool(cwd),
+		write: createWriteTool(cwd),
 		grep: createGrepTool(cwd),
 		find: createFindTool(cwd),
 		ls: createLsTool(cwd),

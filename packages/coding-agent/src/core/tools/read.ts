@@ -3,13 +3,12 @@ import type { ImageContent, TextContent } from "@mariozechner/pi-ai";
 import { Text } from "@mariozechner/pi-tui";
 import { type Static, Type } from "@sinclair/typebox";
 import { constants } from "fs";
-import { access as fsAccess, readFile as fsReadFile, stat as fsStat } from "fs/promises";
+import { access as fsAccess, readFile as fsReadFile } from "fs/promises";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.js";
 import { getLanguageFromPath, highlightCode } from "../../modes/interactive/theme/theme.js";
 import { formatDimensionNote, resizeImage } from "../../utils/image-resize.js";
 import { detectSupportedImageMimeTypeFromFile } from "../../utils/mime.js";
 import type { ToolDefinition, ToolRenderResultOptions } from "../extensions/types.js";
-import type { FileReadTracker } from "./file-read-tracker.js";
 import { resolveReadPath } from "./path-utils.js";
 import { getTextOutput, invalidArgText, replaceTabs, shortenPath, str } from "./render-utils.js";
 import { wrapToolDefinition } from "./tool-definition-wrapper.js";
@@ -51,8 +50,6 @@ export interface ReadToolOptions {
 	autoResizeImages?: boolean;
 	/** Custom operations for file reading. Default: local filesystem */
 	operations?: ReadOperations;
-	/** Shared tracker for detecting externally modified files. */
-	readTracker?: FileReadTracker;
 }
 
 function formatReadCall(
@@ -120,7 +117,6 @@ export function createReadToolDefinition(
 ): ToolDefinition<typeof readSchema, ReadToolDetails | undefined> {
 	const autoResizeImages = options?.autoResizeImages ?? true;
 	const ops = options?.operations ?? defaultReadOperations;
-	const readTracker = options?.readTracker;
 	return {
 		name: "read",
 		label: "read",
@@ -154,16 +150,6 @@ export function createReadToolDefinition(
 							// Check if file exists and is readable.
 							await ops.access(absolutePath);
 							if (aborted) return;
-							let readMtimeMs: number | undefined;
-							if (readTracker) {
-								try {
-									const fileStat = await fsStat(absolutePath);
-									readMtimeMs = fileStat.mtimeMs;
-								} catch {}
-							}
-							if (aborted) {
-								return;
-							}
 							const mimeType = ops.detectImageMimeType ? await ops.detectImageMimeType(absolutePath) : undefined;
 							let content: (TextContent | ImageContent)[];
 							let details: ReadToolDetails | undefined;
@@ -251,16 +237,10 @@ export function createReadToolDefinition(
 							}
 
 							if (aborted) return;
-							if (readTracker && readMtimeMs) {
-								readTracker.record(absolutePath, readMtimeMs);
-							}
 							signal?.removeEventListener("abort", onAbort);
 							resolve({ content, details });
 						} catch (error: any) {
 							signal?.removeEventListener("abort", onAbort);
-							if (readTracker && error?.code === "ENOENT") {
-								readTracker.delete(absolutePath);
-							}
 							if (!aborted) reject(error);
 						}
 					})();

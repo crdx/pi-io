@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.62.0-crdx.11] - 2026-06-10
+
+### Changed
+
+- Move file read tracker into an extension
+
 ## [0.62.0-crdx.10] - 2026-06-03
 
 ### Added

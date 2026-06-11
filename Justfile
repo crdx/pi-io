@@ -50,7 +50,7 @@ clean:
 
 # refresh model list from upstream APIs
 generate-models:
-    tsx packages/ai/scripts/generate-models.ts
+    npx tsx packages/ai/scripts/generate-models.ts
 
 [private]
 _copy-assets:

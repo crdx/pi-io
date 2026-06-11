@@ -448,7 +448,7 @@ export const streamAnthropic: StreamFunction<"anthropic-messages", AnthropicOpti
 };
 
 /**
- * Check if a model supports adaptive thinking (Opus 4.6 and Sonnet 4.6)
+ * Check if a model supports adaptive thinking (Opus 4.6+ and Sonnet 4.6)
  */
 function supportsAdaptiveThinking(modelId: string): boolean {
 	return (
@@ -456,6 +456,8 @@ function supportsAdaptiveThinking(modelId: string): boolean {
 		modelId.includes("opus-4.6") ||
 		modelId.includes("opus-4-7") ||
 		modelId.includes("opus-4.7") ||
+		modelId.includes("opus-4-8") ||
+		modelId.includes("opus-4.8") ||
 		modelId.includes("sonnet-4-6") ||
 		modelId.includes("sonnet-4.6")
 	);
@@ -479,13 +481,30 @@ function mapThinkingLevelToEffort(level: SimpleStreamOptions["reasoning"], model
 			if (modelId.includes("opus-4-6") || modelId.includes("opus-4.6")) {
 				return "max";
 			}
-			if (modelId.includes("opus-4-7") || modelId.includes("opus-4.7")) {
+			if (
+				modelId.includes("opus-4-7") ||
+				modelId.includes("opus-4.7") ||
+				modelId.includes("opus-4-8") ||
+				modelId.includes("opus-4.8")
+			) {
 				return "xhigh";
 			}
 			return "high";
 		default:
 			return "high";
 	}
+}
+
+/**
+ * Check if a model supports the temperature parameter. Opus 4.7+ reject it.
+ */
+function supportsTemperature(modelId: string): boolean {
+	return !(
+		modelId.includes("opus-4-7") ||
+		modelId.includes("opus-4.7") ||
+		modelId.includes("opus-4-8") ||
+		modelId.includes("opus-4.8")
+	);
 }
 
 export const streamSimpleAnthropic: StreamFunction<"anthropic-messages", SimpleStreamOptions> = (
@@ -659,8 +678,9 @@ function buildParams(
 		];
 	}
 
-	// Temperature is incompatible with extended thinking (adaptive or budget-based).
-	if (options?.temperature !== undefined && !options?.thinkingEnabled) {
+	// Temperature is incompatible with extended thinking (adaptive or budget-based), and some
+	// models (Opus 4.7+) reject it outright.
+	if (options?.temperature !== undefined && !options?.thinkingEnabled && supportsTemperature(model.id)) {
 		params.temperature = options.temperature;
 	}
 

@@ -1,11 +1,11 @@
 # pi-mono fork
 
-This is a fork of [badlogic/pi-mono](https://github.com/badlogic/pi-mono) (upstream), maintained at [crdx/pi-io](https://github.com/crdx/pi-io). Forked at v0.62.0.
+This is a fork of [earendil-works/pi](https://github.com/earendil-works/pi) (upstream, formerly `badlogic/pi-mono`), maintained at [crdx/pi-io](https://github.com/crdx/pi-io). Forked at v0.62.0.
 
 ## Remotes
 
 - `origin` — `git@github.com:crdx/pi-io.git` (this fork)
-- `upstream` — `https://github.com/badlogic/pi-mono/` (original repo)
+- `upstream` — `https://github.com/earendil-works/pi/` (original repo, formerly `badlogic/pi-mono`)
 
 ## Versioning
 

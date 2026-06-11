@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.62.0-crdx.12] - 2026-06-11
+
+### Added
+
+- Enable adaptive summarised thinking for Opus 4.8
+- Add `build-pkg` and `test-pkg` recipes
+
+### Changed
+
+- Refresh the model registry daily via CI
+- Repoint upstream references to the renamed `earendil-works/pi` repository
+- Pin GitHub Actions to fixed versions
+- Keep only the latest dev build
+
+### Fixed
+
+- Prepend `find` and `grep` invocations with `--` so dashed paths are handled correctly
+
 ## [0.62.0-crdx.11] - 2026-06-10
 
 ### Changed

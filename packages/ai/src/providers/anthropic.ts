@@ -7,6 +7,16 @@ import type {
 } from "@anthropic-ai/sdk/resources/messages.js";
 import { getEnvApiKey } from "../env-api-keys.js";
 import { calculateCost } from "../models.js";
+import {
+	type AnthropicEffort,
+	mapThinkingLevelToEffort,
+	supportsAdaptiveThinking,
+	supportsTemperature,
+} from "./anthropic-thinking.js";
+
+// Re-exported to preserve the public `./anthropic` package subpath surface.
+export type { AnthropicEffort };
+
 import type {
 	Api,
 	AssistantMessage,
@@ -152,8 +162,6 @@ function convertContentBlocks(content: (TextContent | ImageContent)[]):
 
 	return blocks;
 }
-
-export type AnthropicEffort = "low" | "medium" | "high" | "xhigh" | "max";
 
 export interface AnthropicOptions extends StreamOptions {
 	/**
@@ -446,65 +454,6 @@ export const streamAnthropic: StreamFunction<"anthropic-messages", AnthropicOpti
 
 	return stream;
 };
-
-/**
- * Check if a model supports adaptive thinking (Opus 4.6+ and Sonnet 4.6).
- *
- * Keep in sync with the duplicate in providers/amazon-bedrock.ts.
- */
-function supportsAdaptiveThinking(modelId: string): boolean {
-	return (
-		modelId.includes("opus-4-6") ||
-		modelId.includes("opus-4.6") ||
-		modelId.includes("opus-4-7") ||
-		modelId.includes("opus-4.7") ||
-		modelId.includes("opus-4-8") ||
-		modelId.includes("opus-4.8") ||
-		modelId.includes("sonnet-4-6") ||
-		modelId.includes("sonnet-4.6")
-	);
-}
-
-/**
- * Map ThinkingLevel to Anthropic effort levels for adaptive thinking.
- * Note: effort "max" is only valid on Opus 4.6.
- */
-function mapThinkingLevelToEffort(level: SimpleStreamOptions["reasoning"], modelId: string): AnthropicEffort {
-	switch (level) {
-		case "minimal":
-			return "low";
-		case "low":
-			return "low";
-		case "medium":
-			return "medium";
-		case "high":
-			return "high";
-		case "xhigh":
-			if (modelId.includes("opus-4-6") || modelId.includes("opus-4.6")) {
-				return "max";
-			}
-			if (
-				modelId.includes("opus-4-7") ||
-				modelId.includes("opus-4.7") ||
-				modelId.includes("opus-4-8") ||
-				modelId.includes("opus-4.8")
-			) {
-				return "xhigh";
-			}
-			return "high";
-		default:
-			return "high";
-	}
-}
-
-function supportsTemperature(modelId: string): boolean {
-	return !(
-		modelId.includes("opus-4-7") ||
-		modelId.includes("opus-4.7") ||
-		modelId.includes("opus-4-8") ||
-		modelId.includes("opus-4.8")
-	);
-}
 
 export const streamSimpleAnthropic: StreamFunction<"anthropic-messages", SimpleStreamOptions> = (
 	model: Model<"anthropic-messages">,

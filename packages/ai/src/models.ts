@@ -1,4 +1,5 @@
 import { MODELS } from "./models.generated.js";
+import { supportsXhigh as anthropicSupportsXhigh } from "./providers/anthropic-thinking.js";
 import type { Api, KnownProvider, Model, Usage } from "./types.js";
 
 const modelRegistry: Map<string, Map<string, Model<Api>>> = new Map();
@@ -50,25 +51,14 @@ export function calculateCost<TApi extends Api>(model: Model<TApi>, usage: Usage
  *
  * Supported today:
  * - GPT-5.2 / GPT-5.3 / GPT-5.4 model families
- * - Opus 4.6 models (xhigh maps to adaptive effort "max" on Anthropic-compatible providers)
+ * - Anthropic models per providers/anthropic-thinking.ts (Opus 4.6/4.7/4.8)
  */
 export function supportsXhigh<TApi extends Api>(model: Model<TApi>): boolean {
 	if (model.id.includes("gpt-5.2") || model.id.includes("gpt-5.3") || model.id.includes("gpt-5.4")) {
 		return true;
 	}
 
-	if (
-		model.id.includes("opus-4-6") ||
-		model.id.includes("opus-4.6") ||
-		model.id.includes("opus-4-7") ||
-		model.id.includes("opus-4.7") ||
-		model.id.includes("opus-4-8") ||
-		model.id.includes("opus-4.8")
-	) {
-		return true;
-	}
-
-	return false;
+	return anthropicSupportsXhigh(model.id);
 }
 
 /**

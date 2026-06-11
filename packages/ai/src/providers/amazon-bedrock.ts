@@ -42,6 +42,7 @@ import type {
 import { AssistantMessageEventStream } from "../utils/event-stream.js";
 import { parseStreamingJson } from "../utils/json-parse.js";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode.js";
+import { mapThinkingLevelToEffort, supportsAdaptiveThinking } from "./anthropic-thinking.js";
 import { adjustMaxTokensForThinking, buildBaseOptions, clampReasoning } from "./simple-options.js";
 import { transformMessages } from "./transform-messages.js";
 
@@ -388,54 +389,6 @@ function handleContentBlockStop(
 			delete (block as Block).partialJson;
 			stream.push({ type: "toolcall_end", contentIndex: index, toolCall: block, partial: output });
 			break;
-	}
-}
-
-/**
- * Check if the model supports adaptive thinking (Opus 4.6+ and Sonnet 4.6).
- *
- * Keep in sync with the duplicate in providers/anthropic.ts.
- */
-function supportsAdaptiveThinking(modelId: string): boolean {
-	return (
-		modelId.includes("opus-4-6") ||
-		modelId.includes("opus-4.6") ||
-		modelId.includes("opus-4-7") ||
-		modelId.includes("opus-4.7") ||
-		modelId.includes("opus-4-8") ||
-		modelId.includes("opus-4.8") ||
-		modelId.includes("sonnet-4-6") ||
-		modelId.includes("sonnet-4.6")
-	);
-}
-
-function mapThinkingLevelToEffort(
-	level: SimpleStreamOptions["reasoning"],
-	modelId: string,
-): "low" | "medium" | "high" | "xhigh" | "max" {
-	switch (level) {
-		case "minimal":
-		case "low":
-			return "low";
-		case "medium":
-			return "medium";
-		case "high":
-			return "high";
-		case "xhigh":
-			if (modelId.includes("opus-4-6") || modelId.includes("opus-4.6")) {
-				return "max";
-			}
-			if (
-				modelId.includes("opus-4-7") ||
-				modelId.includes("opus-4.7") ||
-				modelId.includes("opus-4-8") ||
-				modelId.includes("opus-4.8")
-			) {
-				return "xhigh";
-			}
-			return "high";
-		default:
-			return "high";
 	}
 }
 

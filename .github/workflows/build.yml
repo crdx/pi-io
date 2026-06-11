@@ -117,7 +117,7 @@ jobs:
           gh release list --json tagName --jq '.[].tagName' \
             | grep '^dev-' \
             | sort -r \
-            | tail -n +4 \
+            | tail -n +2 \
             | while read -r TAG; do
                 gh release delete "$TAG" --yes --cleanup-tag
               done

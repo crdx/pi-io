@@ -392,7 +392,9 @@ function handleContentBlockStop(
 }
 
 /**
- * Check if the model supports adaptive thinking (Opus 4.6 and Sonnet 4.6).
+ * Check if the model supports adaptive thinking (Opus 4.6+ and Sonnet 4.6).
+ *
+ * Keep in sync with the duplicate in providers/anthropic.ts.
  */
 function supportsAdaptiveThinking(modelId: string): boolean {
 	return (
@@ -400,6 +402,8 @@ function supportsAdaptiveThinking(modelId: string): boolean {
 		modelId.includes("opus-4.6") ||
 		modelId.includes("opus-4-7") ||
 		modelId.includes("opus-4.7") ||
+		modelId.includes("opus-4-8") ||
+		modelId.includes("opus-4.8") ||
 		modelId.includes("sonnet-4-6") ||
 		modelId.includes("sonnet-4.6")
 	);
@@ -421,7 +425,12 @@ function mapThinkingLevelToEffort(
 			if (modelId.includes("opus-4-6") || modelId.includes("opus-4.6")) {
 				return "max";
 			}
-			if (modelId.includes("opus-4-7") || modelId.includes("opus-4.7")) {
+			if (
+				modelId.includes("opus-4-7") ||
+				modelId.includes("opus-4.7") ||
+				modelId.includes("opus-4-8") ||
+				modelId.includes("opus-4.8")
+			) {
 				return "xhigh";
 			}
 			return "high";

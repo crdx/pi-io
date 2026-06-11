@@ -448,7 +448,9 @@ export const streamAnthropic: StreamFunction<"anthropic-messages", AnthropicOpti
 };
 
 /**
- * Check if a model supports adaptive thinking (Opus 4.6+ and Sonnet 4.6)
+ * Check if a model supports adaptive thinking (Opus 4.6+ and Sonnet 4.6).
+ *
+ * Keep in sync with the duplicate in providers/amazon-bedrock.ts.
  */
 function supportsAdaptiveThinking(modelId: string): boolean {
 	return (

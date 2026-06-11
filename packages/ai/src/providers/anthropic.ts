@@ -688,8 +688,11 @@ function buildParams(
 	if (model.reasoning) {
 		if (options?.thinkingEnabled) {
 			if (supportsAdaptiveThinking(model.id)) {
-				// Adaptive thinking: Claude decides when and how much to think
-				params.thinking = { type: "adaptive" };
+				// Adaptive thinking: Claude decides when and how much to think.
+				// display "summarized" is required because Opus 4.7+ default to "omitted",
+				// which returns thinking blocks with an empty thinking field (signature only).
+				// The SDK type does not yet carry `display`, so it is attached via cast.
+				params.thinking = { type: "adaptive", display: "summarized" } as typeof params.thinking;
 				if (options.effort) {
 					params.output_config = { effort: options.effort as "low" | "medium" | "high" | "max" };
 				}

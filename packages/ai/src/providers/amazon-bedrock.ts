@@ -723,7 +723,9 @@ function buildAdditionalModelRequestFields(
 	if (model.id.includes("anthropic.claude") || model.id.includes("anthropic/claude")) {
 		const result: Record<string, any> = supportsAdaptiveThinking(model.id)
 			? {
-					thinking: { type: "adaptive" },
+					// display "summarized" is required because Opus 4.7+ default to "omitted",
+					// which returns thinking blocks with an empty thinking field (signature only).
+					thinking: { type: "adaptive", display: "summarized" },
 					output_config: { effort: mapThinkingLevelToEffort(options.reasoning, model.id) },
 				}
 			: (() => {

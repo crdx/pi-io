@@ -18,6 +18,10 @@ build:
     chmod +x packages/coding-agent/dist/cli.js
     just _copy-assets
 
+# build a single package (tui, ai, agent, coding-agent); assumes deps already built
+build-pkg pkg:
+    {{ TSGO }} -p packages/{{ pkg }}/tsconfig.build.json
+
 # watch all packages for changes
 dev:
     hivemind Procfile

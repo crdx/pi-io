@@ -39,6 +39,10 @@ test:
     cd packages/agent && npx vitest run --reporter=dot
     cd packages/coding-agent && npx vitest run --reporter=dot
 
+# run tests for a single vitest package (ai, agent, coding-agent)
+test-pkg pkg:
+    cd packages/{{ pkg }} && npx vitest run --reporter=dot
+
 # typecheck and lint
 check:
     biome check --write --error-on-warnings .

@@ -4,8 +4,7 @@ import { basename, join } from "path";
 import { APP_NAME, getExportTemplateDir } from "../../config.js";
 import { getResolvedThemeColors, getThemeExportColors } from "../../modes/interactive/theme/theme.js";
 import type { ToolDefinition } from "../extensions/types.js";
-import type { SessionEntry } from "../session-manager.js";
-import { SessionManager } from "../session-manager.js";
+import type { SessionEntry, SessionManager } from "../session-manager.js";
 
 /**
  * Interface for rendering custom tools to HTML.
@@ -273,39 +272,6 @@ export async function exportSessionToHtml(
 	if (!outputPath) {
 		const sessionBasename = basename(sessionFile, ".jsonl");
 		outputPath = `${APP_NAME}-session-${sessionBasename}.html`;
-	}
-
-	writeFileSync(outputPath, html, "utf8");
-	return outputPath;
-}
-
-/**
- * Export session file to HTML (standalone, without AgentState).
- * Used by CLI for exporting arbitrary session files.
- */
-export async function exportFromFile(inputPath: string, options?: ExportOptions | string): Promise<string> {
-	const opts: ExportOptions = typeof options === "string" ? { outputPath: options } : options || {};
-
-	if (!existsSync(inputPath)) {
-		throw new Error(`File not found: ${inputPath}`);
-	}
-
-	const sm = SessionManager.open(inputPath);
-
-	const sessionData: SessionData = {
-		header: sm.getHeader(),
-		entries: sm.getEntries(),
-		leafId: sm.getLeafId(),
-		systemPrompt: undefined,
-		tools: undefined,
-	};
-
-	const html = generateHtml(sessionData, opts.themeName);
-
-	let outputPath = opts.outputPath;
-	if (!outputPath) {
-		const inputBasename = basename(inputPath, ".jsonl");
-		outputPath = `${APP_NAME}-session-${inputBasename}.html`;
 	}
 
 	writeFileSync(outputPath, html, "utf8");

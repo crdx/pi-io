@@ -14,7 +14,6 @@ import type {
 	Usage,
 } from "../types.js";
 import { AssistantMessageEventStream } from "../utils/event-stream.js";
-import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "./github-copilot-headers.js";
 import { convertResponsesMessages, convertResponsesTools, processResponsesStream } from "./openai-responses-shared.js";
 import { buildBaseOptions, clampReasoning } from "./simple-options.js";
 
@@ -90,7 +89,7 @@ export const streamOpenAIResponses: StreamFunction<"openai-responses", OpenAIRes
 			const apiKey = options?.apiKey || getEnvApiKey(model.provider) || "";
 			const cacheRetention = resolveCacheRetention(options?.cacheRetention);
 			const cacheSessionId = cacheRetention === "none" ? undefined : options?.sessionId;
-			const client = createClient(model, context, apiKey, options?.headers, cacheSessionId);
+			const client = createClient(model, apiKey, options?.headers, cacheSessionId);
 			let params = buildParams(model, context, options);
 			const nextParams = await options?.onPayload?.(params, model);
 			if (nextParams !== undefined) {
@@ -154,7 +153,6 @@ export const streamSimpleOpenAIResponses: StreamFunction<"openai-responses", Sim
 
 function createClient(
 	model: Model<"openai-responses">,
-	context: Context,
 	apiKey?: string,
 	optionsHeaders?: Record<string, string>,
 	sessionId?: string,
@@ -169,14 +167,6 @@ function createClient(
 	}
 
 	const headers = { ...model.headers };
-	if (model.provider === "github-copilot") {
-		const hasImages = hasCopilotVisionInput(context.messages);
-		const copilotHeaders = buildCopilotDynamicHeaders({
-			messages: context.messages,
-			hasImages,
-		});
-		Object.assign(headers, copilotHeaders);
-	}
 
 	if (sessionId && model.provider === "openai" && model.baseUrl.includes("api.openai.com")) {
 		headers.session_id = sessionId;

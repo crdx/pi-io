@@ -137,23 +137,19 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = new ModelRegistry(authStorage, modelsJsonPath);
-			const googleModels = getModelsForProvider(registry, "google");
+			const openaiModels = getModelsForProvider(registry, "openai");
 
-			// Google models should still have their original baseUrl
-			expect(googleModels.length).toBeGreaterThan(0);
-			expect(googleModels[0].baseUrl).not.toBe("https://my-proxy.example.com/v1");
+			// OpenAI models should still have their original baseUrl
+			expect(openaiModels.length).toBeGreaterThan(0);
+			expect(openaiModels[0].baseUrl).not.toBe("https://my-proxy.example.com/v1");
 		});
 
 		test("can mix baseUrl override and models merge", () => {
 			writeRawModelsJson({
 				// baseUrl-only for anthropic
 				anthropic: overrideConfig("https://anthropic-proxy.example.com/v1"),
-				// Add custom model for google (merged with built-ins)
-				google: providerConfig(
-					"https://google-proxy.example.com/v1",
-					[{ id: "gemini-custom" }],
-					"google-generative-ai",
-				),
+				// Add custom model for openai (merged with built-ins)
+				openai: providerConfig("https://openai-proxy.example.com/v1", [{ id: "gpt-custom" }], "openai-responses"),
 			});
 
 			const registry = new ModelRegistry(authStorage, modelsJsonPath);
@@ -163,10 +159,10 @@ describe("ModelRegistry", () => {
 			expect(anthropicModels.length).toBeGreaterThan(1);
 			expect(anthropicModels[0].baseUrl).toBe("https://anthropic-proxy.example.com/v1");
 
-			// Google: built-ins plus custom model
-			const googleModels = getModelsForProvider(registry, "google");
-			expect(googleModels.length).toBeGreaterThan(1);
-			expect(googleModels.some((m) => m.id === "gemini-custom")).toBe(true);
+			// OpenAI: built-ins plus custom model
+			const openaiModels = getModelsForProvider(registry, "openai");
+			expect(openaiModels.length).toBeGreaterThan(1);
+			expect(openaiModels.some((m) => m.id === "gpt-custom")).toBe(true);
 		});
 
 		test("refresh() picks up baseUrl override changes", () => {
@@ -225,7 +221,7 @@ describe("ModelRegistry", () => {
 
 			const registry = new ModelRegistry(authStorage, modelsJsonPath);
 
-			expect(getModelsForProvider(registry, "google").length).toBeGreaterThan(0);
+			expect(getModelsForProvider(registry, "openrouter").length).toBeGreaterThan(0);
 			expect(getModelsForProvider(registry, "openai").length).toBeGreaterThan(0);
 		});
 
@@ -497,7 +493,7 @@ describe("ModelRegistry", () => {
 					modelOverrides: {
 						"anthropic/claude-sonnet-4": {
 							compat: {
-								openRouterRouting: { only: ["amazon-bedrock"] },
+								openRouterRouting: { only: ["openai"] },
 							},
 						},
 					},
@@ -509,7 +505,7 @@ describe("ModelRegistry", () => {
 
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
 			const compat = sonnet?.compat as OpenAICompletionsCompat | undefined;
-			expect(compat?.openRouterRouting).toEqual({ only: ["amazon-bedrock"] });
+			expect(compat?.openRouterRouting).toEqual({ only: ["openai"] });
 		});
 
 		test("model override deep merges compat settings", () => {
@@ -539,7 +535,7 @@ describe("ModelRegistry", () => {
 				openrouter: {
 					modelOverrides: {
 						"anthropic/claude-sonnet-4": {
-							compat: { openRouterRouting: { only: ["amazon-bedrock"] } },
+							compat: { openRouterRouting: { only: ["openai"] } },
 						},
 						"anthropic/claude-opus-4": {
 							compat: { openRouterRouting: { only: ["anthropic"] } },
@@ -556,7 +552,7 @@ describe("ModelRegistry", () => {
 
 			const sonnetCompat = sonnet?.compat as OpenAICompletionsCompat | undefined;
 			const opusCompat = opus?.compat as OpenAICompletionsCompat | undefined;
-			expect(sonnetCompat?.openRouterRouting).toEqual({ only: ["amazon-bedrock"] });
+			expect(sonnetCompat?.openRouterRouting).toEqual({ only: ["openai"] });
 			expect(opusCompat?.openRouterRouting).toEqual({ only: ["anthropic"] });
 		});
 

@@ -69,8 +69,8 @@ pi.registerProvider("openai", {
 });
 
 // Both baseUrl and headers
-pi.registerProvider("google", {
-  baseUrl: "https://ai-gateway.corp.com/google",
+pi.registerProvider("openai", {
+  baseUrl: "https://ai-gateway.corp.com/openai",
   headers: {
     "X-Corp-Auth": "CORP_AUTH_TOKEN"  // env var or literal
   }
@@ -144,18 +144,12 @@ Calls made after the initial extension load phase are applied immediately, so no
 
 The `api` field determines which streaming implementation is used:
 
-| API | Use for |
-|-----|---------|
-| `anthropic-messages` | Anthropic Claude API and compatibles |
-| `openai-completions` | OpenAI Chat Completions API and compatibles |
-| `openai-responses` | OpenAI Responses API |
-| `azure-openai-responses` | Azure OpenAI Responses API |
-| `openai-codex-responses` | OpenAI Codex Responses API |
-| `mistral-conversations` | Mistral SDK Conversations/Chat streaming |
-| `google-generative-ai` | Google Generative AI API |
-| `google-gemini-cli` | Google Cloud Code Assist API |
-| `google-vertex` | Google Vertex AI API |
-| `bedrock-converse-stream` | Amazon Bedrock Converse API |
+| API                      | Use for                                     |
+|--------------------------|---------------------------------------------|
+| `anthropic-messages`     | Anthropic Claude API and compatibles        |
+| `openai-completions`     | OpenAI Chat Completions API and compatibles |
+| `openai-responses`       | OpenAI Responses API                        |
+| `openai-codex-responses` | OpenAI Codex Responses API                  |
 
 Most OpenAI-compatible providers work with `openai-completions`. Use `compat` for quirks:
 
@@ -181,10 +175,6 @@ models: [{
 ```
 
 Use `qwen-chat-template` instead for local Qwen-compatible servers that read `chat_template_kwargs.enable_thinking`.
-
-> Migration note: Mistral moved from `openai-completions` to `mistral-conversations`.
-> Use `mistral-conversations` for native Mistral models.
-> If you intentionally route Mistral-compatible/custom endpoints through `openai-completions`, set `compat` flags explicitly as needed.
 
 ### Auth Header
 
@@ -298,12 +288,10 @@ interface OAuthCredentials {
 For providers with non-standard APIs, implement `streamSimple`. Study the existing provider implementations before writing your own:
 
 **Reference implementations:**
+
 - [anthropic.ts](https://github.com/earendil-works/pi/blob/main/packages/ai/src/providers/anthropic.ts) - Anthropic Messages API
-- [mistral.ts](https://github.com/earendil-works/pi/blob/main/packages/ai/src/providers/mistral.ts) - Mistral Conversations API
 - [openai-completions.ts](https://github.com/earendil-works/pi/blob/main/packages/ai/src/providers/openai-completions.ts) - OpenAI Chat Completions
 - [openai-responses.ts](https://github.com/earendil-works/pi/blob/main/packages/ai/src/providers/openai-responses.ts) - OpenAI Responses API
-- [google.ts](https://github.com/earendil-works/pi/blob/main/packages/ai/src/providers/google.ts) - Google Generative AI
-- [amazon-bedrock.ts](https://github.com/earendil-works/pi/blob/main/packages/ai/src/providers/amazon-bedrock.ts) - AWS Bedrock
 
 ### Stream Pattern
 
@@ -477,19 +465,19 @@ pi.registerProvider("my-provider", {
 
 Test your provider against the same test suites used by built-in providers. Copy and adapt these test files from [packages/ai/test/](https://github.com/earendil-works/pi/tree/main/packages/ai/test):
 
-| Test | Purpose |
-|------|---------|
-| `stream.test.ts` | Basic streaming, text output |
-| `tokens.test.ts` | Token counting and usage |
-| `abort.test.ts` | AbortSignal handling |
-| `empty.test.ts` | Empty/minimal responses |
-| `context-overflow.test.ts` | Context window limits |
-| `image-limits.test.ts` | Image input handling |
-| `unicode-surrogate.test.ts` | Unicode edge cases |
-| `tool-call-without-result.test.ts` | Tool call edge cases |
-| `image-tool-result.test.ts` | Images in tool results |
-| `total-tokens.test.ts` | Total token calculation |
-| `cross-provider-handoff.test.ts` | Context handoff between providers |
+| Test                               | Purpose                           |
+|------------------------------------|-----------------------------------|
+| `stream.test.ts`                   | Basic streaming, text output      |
+| `tokens.test.ts`                   | Token counting and usage          |
+| `abort.test.ts`                    | AbortSignal handling              |
+| `empty.test.ts`                    | Empty/minimal responses           |
+| `context-overflow.test.ts`         | Context window limits             |
+| `image-limits.test.ts`             | Image input handling              |
+| `unicode-surrogate.test.ts`        | Unicode edge cases                |
+| `tool-call-without-result.test.ts` | Tool call edge cases              |
+| `image-tool-result.test.ts`        | Images in tool results            |
+| `total-tokens.test.ts`             | Total token calculation           |
+| `cross-provider-handoff.test.ts`   | Context handoff between providers |
 
 Run tests with your provider/model pairs to verify compatibility.
 

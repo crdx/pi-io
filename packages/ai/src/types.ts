@@ -2,44 +2,22 @@ import type { AssistantMessageEventStream } from "./utils/event-stream.js";
 
 export type { AssistantMessageEventStream } from "./utils/event-stream.js";
 
-export type KnownApi =
-	| "openai-completions"
-	| "mistral-conversations"
-	| "openai-responses"
-	| "azure-openai-responses"
-	| "openai-codex-responses"
-	| "anthropic-messages"
-	| "bedrock-converse-stream"
-	| "google-generative-ai"
-	| "google-gemini-cli"
-	| "google-vertex";
+export type KnownApi = "openai-completions" | "openai-responses" | "openai-codex-responses" | "anthropic-messages";
 
 export type Api = KnownApi | (string & {});
 
 export type KnownProvider =
-	| "amazon-bedrock"
 	| "anthropic"
-	| "google"
-	| "google-gemini-cli"
-	| "google-antigravity"
-	| "google-vertex"
 	| "openai"
-	| "azure-openai-responses"
 	| "openai-codex"
-	| "github-copilot"
 	| "xai"
 	| "groq"
 	| "cerebras"
 	| "openrouter"
-	| "vercel-ai-gateway"
 	| "zai"
-	| "mistral"
-	| "minimax"
-	| "minimax-cn"
 	| "huggingface"
 	| "opencode"
-	| "opencode-go"
-	| "kimi-coding";
+	| "opencode-go";
 export type Provider = KnownProvider | string;
 
 export type ThinkingLevel = "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -86,7 +64,7 @@ export interface StreamOptions {
 	/**
 	 * Optional custom HTTP headers to include in API requests.
 	 * Merged with provider defaults; can override default headers.
-	 * Not supported by all providers (e.g., AWS Bedrock uses SDK auth).
+	 * Not supported by all providers.
 	 */
 	headers?: Record<string, string>;
 	/**
@@ -292,7 +270,7 @@ export interface OpenAIResponsesCompat {
  * @see https://openrouter.ai/docs/provider-routing
  */
 export interface OpenRouterRouting {
-	/** List of provider slugs to exclusively use for this request (e.g., ["amazon-bedrock", "anthropic"]). */
+	/** List of provider slugs to exclusively use for this request (e.g., ["openai", "anthropic"]). */
 	only?: string[];
 	/** List of provider slugs to try in order (e.g., ["anthropic", "openai"]). */
 	order?: string[];
@@ -304,7 +282,7 @@ export interface OpenRouterRouting {
  * @see https://vercel.com/docs/ai-gateway/models-and-providers/provider-options
  */
 export interface VercelGatewayRouting {
-	/** List of provider slugs to exclusively use for this request (e.g., ["bedrock", "anthropic"]). */
+	/** List of provider slugs to exclusively use for this request (e.g., ["openai", "anthropic"]). */
 	only?: string[];
 	/** List of provider slugs to try in order (e.g., ["anthropic", "openai"]). */
 	order?: string[];

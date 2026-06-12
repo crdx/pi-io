@@ -76,7 +76,7 @@ export interface AgentOptions {
 
 	/**
 	 * Resolves an API key dynamically for each LLM call.
-	 * Useful for expiring tokens (e.g., GitHub Copilot OAuth).
+	 * Useful for expiring OAuth tokens.
 	 */
 	getApiKey?: (provider: string) => Promise<string | undefined> | string | undefined;
 
@@ -116,7 +116,7 @@ export interface AgentOptions {
 export class Agent {
 	private _state: AgentState = {
 		systemPrompt: "",
-		model: getModel("google", "gemini-2.5-flash-lite"),
+		model: getModel("anthropic", "claude-opus-4-6"),
 		thinkingLevel: "off",
 		tools: [],
 		messages: [],

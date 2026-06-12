@@ -39,7 +39,6 @@ import { AssistantMessageEventStream } from "../utils/event-stream.js";
 import { parseStreamingJson } from "../utils/json-parse.js";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode.js";
 
-import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "./github-copilot-headers.js";
 import { adjustMaxTokensForThinking, buildBaseOptions } from "./simple-options.js";
 import { transformMessages } from "./transform-messages.js";
 
@@ -241,22 +240,7 @@ export const streamAnthropic: StreamFunction<"anthropic-messages", AnthropicOpti
 			} else {
 				const apiKey = options?.apiKey ?? getEnvApiKey(model.provider) ?? "";
 
-				let copilotDynamicHeaders: Record<string, string> | undefined;
-				if (model.provider === "github-copilot") {
-					const hasImages = hasCopilotVisionInput(context.messages);
-					copilotDynamicHeaders = buildCopilotDynamicHeaders({
-						messages: context.messages,
-						hasImages,
-					});
-				}
-
-				const created = createClient(
-					model,
-					apiKey,
-					options?.interleavedThinking ?? true,
-					options?.headers,
-					copilotDynamicHeaders,
-				);
+				const created = createClient(model, apiKey, options?.interleavedThinking ?? true, options?.headers);
 				client = created.client;
 				isOAuth = created.isOAuthToken;
 			}
@@ -505,38 +489,10 @@ function createClient(
 	apiKey: string,
 	interleavedThinking: boolean,
 	optionsHeaders?: Record<string, string>,
-	dynamicHeaders?: Record<string, string>,
 ): { client: Anthropic; isOAuthToken: boolean } {
 	// Adaptive thinking models (Opus 4.6, Sonnet 4.6) have interleaved thinking built-in.
 	// The beta header is deprecated on Opus 4.6 and redundant on Sonnet 4.6, so skip it.
 	const needsInterleavedBeta = interleavedThinking && !supportsAdaptiveThinking(model.id);
-
-	// Copilot: Bearer auth, selective betas (no fine-grained-tool-streaming)
-	if (model.provider === "github-copilot") {
-		const betaFeatures: string[] = [];
-		if (needsInterleavedBeta) {
-			betaFeatures.push("interleaved-thinking-2025-05-14");
-		}
-
-		const client = new Anthropic({
-			apiKey: null,
-			authToken: apiKey,
-			baseURL: model.baseUrl,
-			dangerouslyAllowBrowser: true,
-			defaultHeaders: mergeHeaders(
-				{
-					accept: "application/json",
-					"anthropic-dangerous-direct-browser-access": "true",
-					...(betaFeatures.length > 0 ? { "anthropic-beta": betaFeatures.join(",") } : {}),
-				},
-				model.headers,
-				dynamicHeaders,
-				optionsHeaders,
-			),
-		});
-
-		return { client, isOAuthToken: false };
-	}
 
 	const betaFeatures = ["fine-grained-tool-streaming-2025-05-14"];
 	if (needsInterleavedBeta) {

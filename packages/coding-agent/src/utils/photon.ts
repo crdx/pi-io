@@ -1,16 +1,11 @@
 /**
  * Photon image processing wrapper.
  *
- * This module provides a unified interface to @silvia-odwyer/photon-node that works in:
- * 1. Node.js (development, npm run build)
- * 2. Bun compiled binaries (standalone distribution)
+ * This module provides a unified interface to @silvia-odwyer/photon-node for Node.js.
  *
- * The challenge: photon-node's CJS entry uses fs.readFileSync(__dirname + '/photon_rs_bg.wasm')
- * which bakes the build machine's absolute path into Bun compiled binaries.
- *
- * Solution:
- * 1. Patch fs.readFileSync to redirect missing photon_rs_bg.wasm reads
- * 2. Copy photon_rs_bg.wasm next to the executable in build:binary
+ * photon-node's CJS entry uses fs.readFileSync(__dirname + '/photon_rs_bg.wasm'), which can
+ * fail to resolve the wasm in some packaging layouts. To stay robust, patch fs.readFileSync
+ * to redirect missing photon_rs_bg.wasm reads to a set of fallback locations.
  */
 
 import type { PathOrFileDescriptor } from "fs";

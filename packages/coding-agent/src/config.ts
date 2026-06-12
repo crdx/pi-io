@@ -10,27 +10,13 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-/**
- * Detect if we're running as a Bun compiled binary.
- * Bun binaries have import.meta.url containing "$bunfs", "~BUN", or "%7EBUN" (Bun's virtual filesystem path)
- */
-export const isBunBinary =
-	import.meta.url.includes("$bunfs") || import.meta.url.includes("~BUN") || import.meta.url.includes("%7EBUN");
-
-/** Detect if Bun is the runtime (compiled binary or bun run) */
-export const isBunRuntime = !!process.versions.bun;
-
 // =============================================================================
 // Install Method Detection
 // =============================================================================
 
-export type InstallMethod = "bun-binary" | "npm" | "pnpm" | "yarn" | "bun" | "unknown";
+export type InstallMethod = "npm" | "pnpm" | "yarn" | "unknown";
 
 export function detectInstallMethod(): InstallMethod {
-	if (isBunBinary) {
-		return "bun-binary";
-	}
-
 	const resolvedPath = `${__dirname}\0${process.execPath || ""}`.toLowerCase();
 
 	if (resolvedPath.includes("/pnpm/") || resolvedPath.includes("/.pnpm/") || resolvedPath.includes("\\pnpm\\")) {
@@ -38,9 +24,6 @@ export function detectInstallMethod(): InstallMethod {
 	}
 	if (resolvedPath.includes("/yarn/") || resolvedPath.includes("/.yarn/") || resolvedPath.includes("\\yarn\\")) {
 		return "yarn";
-	}
-	if (isBunRuntime) {
-		return "bun";
 	}
 	if (resolvedPath.includes("/npm/") || resolvedPath.includes("/node_modules/") || resolvedPath.includes("\\npm\\")) {
 		return "npm";
@@ -52,14 +35,10 @@ export function detectInstallMethod(): InstallMethod {
 export function getUpdateInstruction(packageName: string): string {
 	const method = detectInstallMethod();
 	switch (method) {
-		case "bun-binary":
-			return `Download from: https://github.com/crdx/pi-io/releases/latest`;
 		case "pnpm":
 			return `Run: pnpm install -g ${packageName}`;
 		case "yarn":
 			return `Run: yarn global add ${packageName}`;
-		case "bun":
-			return `Run: bun install -g ${packageName}`;
 		case "npm":
 			return `Run: npm install -g ${packageName}`;
 		default:
@@ -73,7 +52,6 @@ export function getUpdateInstruction(packageName: string): string {
 
 /**
  * Get the base directory for resolving package assets (themes, package.json, README.md, CHANGELOG.md).
- * - For Bun binary: returns the directory containing the executable
  * - For Node.js (dist/): returns __dirname (the dist/ directory)
  * - For tsx (src/): returns parent directory (the package root)
  */
@@ -86,10 +64,6 @@ export function getPackageDir(): string {
 		return envDir;
 	}
 
-	if (isBunBinary) {
-		// Bun binary: process.execPath points to the compiled executable
-		return dirname(process.execPath);
-	}
 	// Node.js: walk up from __dirname until we find package.json
 	let dir = __dirname;
 	while (dir !== dirname(dir)) {
@@ -104,14 +78,10 @@ export function getPackageDir(): string {
 
 /**
  * Get path to built-in themes directory (shipped with package)
- * - For Bun binary: theme/ next to executable
  * - For Node.js (dist/): dist/modes/interactive/theme/
  * - For tsx (src/): src/modes/interactive/theme/
  */
 export function getThemesDir(): string {
-	if (isBunBinary) {
-		return join(dirname(process.execPath), "theme");
-	}
 	// Theme is in modes/interactive/theme/ relative to src/ or dist/
 	const packageDir = getPackageDir();
 	const srcOrDist = existsSync(join(packageDir, "src")) ? "src" : "dist";
@@ -120,14 +90,10 @@ export function getThemesDir(): string {
 
 /**
  * Get path to HTML export template directory (shipped with package)
- * - For Bun binary: export-html/ next to executable
  * - For Node.js (dist/): dist/core/export-html/
  * - For tsx (src/): src/core/export-html/
  */
 export function getExportTemplateDir(): string {
-	if (isBunBinary) {
-		return join(dirname(process.execPath), "export-html");
-	}
 	const packageDir = getPackageDir();
 	const srcOrDist = existsSync(join(packageDir, "src")) ? "src" : "dist";
 	return join(packageDir, srcOrDist, "core", "export-html");
@@ -151,11 +117,6 @@ export function getDocsPath(): string {
 /** Get path to examples directory */
 export function getExamplesPath(): string {
 	return resolve(join(getPackageDir(), "examples"));
-}
-
-/** Get path to CHANGELOG.md */
-export function getChangelogPath(): string {
-	return resolve(join(getPackageDir(), "CHANGELOG.md"));
 }
 
 // =============================================================================
@@ -204,14 +165,6 @@ export function loadBuildInfo(): BuildInfo | null {
 
 // e.g., PI_CODING_AGENT_DIR or TAU_CODING_AGENT_DIR
 export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;
-
-const DEFAULT_SHARE_VIEWER_URL = "https://pi.dev/session/";
-
-/** Get the share viewer URL for a gist ID */
-export function getShareViewerUrl(gistId: string): string {
-	const baseUrl = process.env.PI_SHARE_VIEWER_URL || DEFAULT_SHARE_VIEWER_URL;
-	return `${baseUrl}#${gistId}`;
-}
 
 // =============================================================================
 // User Config Paths (~/.pi/agent/*)

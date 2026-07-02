@@ -12,6 +12,7 @@ import {
 	mapThinkingLevelToEffort,
 	supportsAdaptiveThinking,
 	supportsTemperature,
+	supportsThinkingDisabled,
 } from "./anthropic-thinking.js";
 
 // Re-exported to preserve the public `./anthropic` package subpath surface.
@@ -654,7 +655,7 @@ function buildParams(
 					budget_tokens: options.thinkingBudgetTokens || 1024,
 				};
 			}
-		} else if (options?.thinkingEnabled === false) {
+		} else if (options?.thinkingEnabled === false && supportsThinkingDisabled(model.id)) {
 			params.thinking = { type: "disabled" };
 		}
 	}

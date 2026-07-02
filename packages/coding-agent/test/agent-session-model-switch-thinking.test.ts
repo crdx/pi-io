@@ -9,7 +9,7 @@ import { SettingsManager } from "../src/core/settings-manager.js";
 import { createTestResourceLoader } from "./utilities.js";
 
 const reasoningModel = getModel("anthropic", "claude-sonnet-4-5")!;
-const nonReasoningModel = getModel("anthropic", "claude-3-5-haiku-latest")!;
+const nonReasoningModel = getModel("anthropic", "claude-3-haiku-20240307")!;
 
 function createSession({
 	thinkingLevel = "high",

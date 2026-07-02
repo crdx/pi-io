@@ -11,12 +11,14 @@ const ADAPTIVE_THINKING_MODELS = [
 	"opus-4.8",
 	"sonnet-4-6",
 	"sonnet-4.6",
+	"fable-5",
 ];
 
 const XHIGH_MAX_MODELS = ["opus-4-6", "opus-4.6"];
-const XHIGH_EFFORT_MODELS = ["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8"];
+const XHIGH_EFFORT_MODELS = ["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8", "fable-5"];
 const XHIGH_MODELS = [...XHIGH_MAX_MODELS, ...XHIGH_EFFORT_MODELS];
 const NO_TEMPERATURE_MODELS = ["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8"];
+const NO_THINKING_DISABLED_MODELS = ["fable-5"];
 
 function matchesAny(modelId: string, fragments: string[]): boolean {
 	return fragments.some((fragment) => modelId.includes(fragment));
@@ -32,6 +34,10 @@ export function supportsXhigh(modelId: string): boolean {
 
 export function supportsTemperature(modelId: string): boolean {
 	return !matchesAny(modelId, NO_TEMPERATURE_MODELS);
+}
+
+export function supportsThinkingDisabled(modelId: string): boolean {
+	return !matchesAny(modelId, NO_THINKING_DISABLED_MODELS);
 }
 
 export function mapThinkingLevelToEffort(level: SimpleStreamOptions["reasoning"], modelId: string): AnthropicEffort {

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.62.0-crdx.14] - 2026-07-02
+
+### Added
+
+- Add support for Fable 5 with adaptive thinking
+
 ## [0.62.0-crdx.13] - 2026-07-02
 
 ### Changed

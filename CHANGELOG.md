@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.62.0-crdx.15] - 2026-07-15
+
+### Changed
+
+- Refresh the model registry
+
 ## [0.62.0-crdx.14] - 2026-07-02
 
 ### Added

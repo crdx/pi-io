@@ -32,10 +32,10 @@ notes tag:
             continue
         if found and line.startswith('## '):
             break
-        if found:
+        if found and not line.startswith('### '):
             lines.append(line)
-    text = re.sub(r'\n{3,}', '\n\n', '\n'.join(lines).strip())
-    print(text)
+    text = re.sub(r'\n\s*\n(?=- )', '\n', ''.join(lines).strip())
+    print(re.sub(r'\n{3,}', '\n\n', text))
 
 # push commits and a specific tag
 push tag:

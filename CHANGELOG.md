@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.62.0-crdx.17] - 2026-07-24
+
+### Added
+
+- Add GPT-5.6 Luna, Sol, and Terra
+- Support request-wide pricing tiers
+
+### Fixed
+
+- Run tests against package source
+
 ## [0.62.0-crdx.16] - 2026-07-24
 
 ### Added

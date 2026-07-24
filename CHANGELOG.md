@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.62.0-crdx.16] - 2026-07-24
+
+### Added
+
+- Enable adaptive thinking for Opus 5
+
+### Changed
+
+- Refresh the model registry
+- Trim the model registry to only a couple of providers
+
+### Fixed
+
+- Preserve call order in the file mutation queue (fixes a flaky test, too)
+- Fix stale model references
+
 ## [0.62.0-crdx.15] - 2026-07-15
 
 ### Changed

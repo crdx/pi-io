@@ -77,7 +77,12 @@ export function calculateCost<TApi extends Api>(model: Model<TApi>, usage: Usage
  * - Anthropic models per providers/anthropic-thinking.ts (Opus 4.6/4.7/4.8)
  */
 export function supportsXhigh<TApi extends Api>(model: Model<TApi>): boolean {
-	if (model.id.includes("gpt-5.2") || model.id.includes("gpt-5.3") || model.id.includes("gpt-5.4")) {
+	if (
+		model.id.includes("gpt-5.2") ||
+		model.id.includes("gpt-5.3") ||
+		model.id.includes("gpt-5.4") ||
+		model.id.includes("gpt-5.6")
+	) {
 		return true;
 	}
 

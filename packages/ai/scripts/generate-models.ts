@@ -1585,6 +1585,19 @@ export const MODELS = {
 			output += `\t\t\t\toutput: ${model.cost.output},\n`;
 			output += `\t\t\t\tcacheRead: ${model.cost.cacheRead},\n`;
 			output += `\t\t\t\tcacheWrite: ${model.cost.cacheWrite},\n`;
+			if (model.cost.tiers?.length) {
+				output += `\t\t\t\ttiers: [\n`;
+				for (const tier of model.cost.tiers) {
+					output += `\t\t\t\t\t{\n`;
+					output += `\t\t\t\t\t\tinputTokensAbove: ${tier.inputTokensAbove},\n`;
+					output += `\t\t\t\t\t\tinput: ${tier.input},\n`;
+					output += `\t\t\t\t\t\toutput: ${tier.output},\n`;
+					output += `\t\t\t\t\t\tcacheRead: ${tier.cacheRead},\n`;
+					output += `\t\t\t\t\t\tcacheWrite: ${tier.cacheWrite},\n`;
+					output += `\t\t\t\t\t},\n`;
+				}
+				output += `\t\t\t\t],\n`;
+			}
 			output += `\t\t\t},\n`;
 			output += `\t\t\tcontextWindow: ${model.contextWindow},\n`;
 			output += `\t\t\tmaxTokens: ${model.maxTokens},\n`;

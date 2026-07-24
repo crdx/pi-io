@@ -1,6 +1,6 @@
 import { MODELS } from "./models.generated.js";
 import { supportsXhigh as anthropicSupportsXhigh } from "./providers/anthropic-thinking.js";
-import type { Api, KnownProvider, Model, Usage } from "./types.js";
+import type { Api, KnownProvider, Model, ModelCost, ModelCostRates, Usage } from "./types.js";
 
 const modelRegistry: Map<string, Map<string, Model<Api>>> = new Map();
 
@@ -43,11 +43,28 @@ export function getModels(provider: KnownProvider): Model<Api>[] {
 	return models ? Array.from(models.values()) : [];
 }
 
+/**
+ * Pick the pricing rates for a request. Tiers apply request-wide: the tier with the highest
+ * threshold below the request's total input usage wins, falling back to the base rates.
+ */
+function resolveCostRates(cost: ModelCost, inputTokens: number): ModelCostRates {
+	let rates: ModelCostRates = cost;
+	let matchedThreshold = -1;
+	for (const tier of cost.tiers ?? []) {
+		if (inputTokens > tier.inputTokensAbove && tier.inputTokensAbove > matchedThreshold) {
+			rates = tier;
+			matchedThreshold = tier.inputTokensAbove;
+		}
+	}
+	return rates;
+}
+
 export function calculateCost<TApi extends Api>(model: Model<TApi>, usage: Usage): Usage["cost"] {
-	usage.cost.input = (model.cost.input / 1000000) * usage.input;
-	usage.cost.output = (model.cost.output / 1000000) * usage.output;
-	usage.cost.cacheRead = (model.cost.cacheRead / 1000000) * usage.cacheRead;
-	usage.cost.cacheWrite = (model.cost.cacheWrite / 1000000) * usage.cacheWrite;
+	const rates = resolveCostRates(model.cost, usage.input + usage.cacheRead + usage.cacheWrite);
+	usage.cost.input = (rates.input / 1000000) * usage.input;
+	usage.cost.output = (rates.output / 1000000) * usage.output;
+	usage.cost.cacheRead = (rates.cacheRead / 1000000) * usage.cacheRead;
+	usage.cost.cacheWrite = (rates.cacheWrite / 1000000) * usage.cacheWrite;
 	usage.cost.total = usage.cost.input + usage.cost.output + usage.cost.cacheRead + usage.cost.cacheWrite;
 	return usage.cost;
 }

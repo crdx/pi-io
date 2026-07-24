@@ -82,6 +82,14 @@ const OpenAICompatSchema = Type.Union([OpenAICompletionsCompatSchema, OpenAIResp
 
 // Schema for custom model definition
 // Most fields are optional with sensible defaults for local models (Ollama, LM Studio, etc.)
+const CostTierSchema = Type.Object({
+	inputTokensAbove: Type.Number(),
+	input: Type.Number(),
+	output: Type.Number(),
+	cacheRead: Type.Number(),
+	cacheWrite: Type.Number(),
+});
+
 const ModelDefinitionSchema = Type.Object({
 	id: Type.String({ minLength: 1 }),
 	name: Type.Optional(Type.String({ minLength: 1 })),
@@ -95,6 +103,7 @@ const ModelDefinitionSchema = Type.Object({
 			output: Type.Number(),
 			cacheRead: Type.Number(),
 			cacheWrite: Type.Number(),
+			tiers: Type.Optional(Type.Array(CostTierSchema)),
 		}),
 	),
 	contextWindow: Type.Optional(Type.Number()),
@@ -114,6 +123,7 @@ const ModelOverrideSchema = Type.Object({
 			output: Type.Optional(Type.Number()),
 			cacheRead: Type.Optional(Type.Number()),
 			cacheWrite: Type.Optional(Type.Number()),
+			tiers: Type.Optional(Type.Array(CostTierSchema)),
 		}),
 	),
 	contextWindow: Type.Optional(Type.Number()),
@@ -217,6 +227,7 @@ function applyModelOverride(model: Model<Api>, override: ModelOverride): Model<A
 			output: override.cost.output ?? model.cost.output,
 			cacheRead: override.cost.cacheRead ?? model.cost.cacheRead,
 			cacheWrite: override.cost.cacheWrite ?? model.cost.cacheWrite,
+			...((override.cost.tiers ?? model.cost.tiers) ? { tiers: override.cost.tiers ?? model.cost.tiers } : {}),
 		};
 	}
 

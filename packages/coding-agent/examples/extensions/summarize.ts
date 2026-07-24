@@ -160,14 +160,14 @@ export default function (pi: ExtensionAPI) {
 				ctx.ui.notify("Preparing summary...", "info");
 			}
 
-			const model = getModel("openai", "gpt-5.2");
+			const model = getModel("anthropic", "claude-sonnet-4-6");
 			if (!model && ctx.hasUI) {
-				ctx.ui.notify("Model openai/gpt-5.2 not found", "warning");
+				ctx.ui.notify("Model anthropic/claude-sonnet-4-6 not found", "warning");
 			}
 
 			const apiKey = model ? await ctx.modelRegistry.getApiKey(model) : undefined;
 			if (!apiKey && ctx.hasUI) {
-				ctx.ui.notify("No API key for openai/gpt-5.2", "warning");
+				ctx.ui.notify("No API key for anthropic/claude-sonnet-4-6", "warning");
 			}
 
 			if (!model || !apiKey) {

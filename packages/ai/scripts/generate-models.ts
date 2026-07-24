@@ -46,6 +46,8 @@ interface AiGatewayModel {
 	};
 }
 
+const KEEP_PROVIDERS = new Set<string>(["anthropic", "openai-codex"]);
+
 const COPILOT_STATIC_HEADERS = {
 	"User-Agent": "GitHubCopilotChat/0.35.0",
 	"Editor-Version": "vscode/1.107.0",
@@ -643,8 +645,8 @@ async function generateModels() {
 	// OpenRouter: xAI and other providers (excluding Anthropic, Google, OpenAI)
 	// AI Gateway: OpenAI-compatible catalog with tool-capable models
 	const modelsDevModels = await loadModelsDevData();
-	const openRouterModels = await fetchOpenRouterModels();
-	const aiGatewayModels = await fetchAiGatewayModels();
+	const openRouterModels = KEEP_PROVIDERS.has("openrouter") ? await fetchOpenRouterModels() : [];
+	const aiGatewayModels = KEEP_PROVIDERS.has("vercel-ai-gateway") ? await fetchAiGatewayModels() : [];
 
 	// Combine models (models.dev has priority)
 	const allModels = [...modelsDevModels, ...openRouterModels, ...aiGatewayModels].filter(
@@ -1528,9 +1530,11 @@ async function generateModels() {
 		}));
 	allModels.push(...azureOpenAiModels);
 
+	const keptModels = allModels.filter((model) => KEEP_PROVIDERS.has(model.provider));
+
 	// Group by provider and deduplicate by model ID
 	const providers: Record<string, Record<string, Model<any>>> = {};
-	for (const model of allModels) {
+	for (const model of keptModels) {
 		if (!providers[model.provider]) {
 			providers[model.provider] = {};
 		}
@@ -1598,8 +1602,8 @@ export const MODELS = {
 	console.log("Generated src/models.generated.ts");
 
 	// Print statistics
-	const totalModels = allModels.length;
-	const reasoningModels = allModels.filter(m => m.reasoning).length;
+	const totalModels = keptModels.length;
+	const reasoningModels = keptModels.filter(m => m.reasoning).length;
 
 	console.log(`\nModel Statistics:`);
 	console.log(`  Total tool-capable models: ${totalModels}`);

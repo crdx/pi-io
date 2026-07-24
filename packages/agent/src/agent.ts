@@ -116,7 +116,7 @@ export interface AgentOptions {
 export class Agent {
 	private _state: AgentState = {
 		systemPrompt: "",
-		model: getModel("google", "gemini-2.5-flash-lite"),
+		model: getModel("anthropic", "claude-haiku-4-5"),
 		thinkingLevel: "off",
 		tools: [],
 		messages: [],

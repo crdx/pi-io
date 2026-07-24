@@ -36,15 +36,15 @@ commit message:
 pi *args: build
     PI_DEV=1 node packages/coding-agent/dist/cli.js --no-extensions -e ~/.system/config/pi/agent/extensions {{ args }}
 
-# run all tests
-test:
+# run all tests (builds first: some tests spawn the built CLI)
+test: build
     cd packages/tui && node --test --import tsx test/*.test.ts
     cd packages/ai && npx vitest run --reporter=dot
     cd packages/agent && npx vitest run --reporter=dot
     cd packages/coding-agent && npx vitest run --reporter=dot
 
 # run tests for a single vitest package (ai, agent, coding-agent)
-test-pkg pkg:
+test-pkg pkg: build
     cd packages/{{ pkg }} && npx vitest run --reporter=dot
 
 # typecheck and lint

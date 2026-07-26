@@ -9,15 +9,62 @@ import { SelectList, type SelectListLayoutOptions, type SelectListTheme } from "
 
 const baseSegmenter = getSegmenter();
 
-/** Regex matching paste markers like `[paste #1 +123 lines]` or `[paste #2 1234 chars]`. */
-const PASTE_MARKER_REGEX = /\[paste #(\d+)( (\+\d+ lines|\d+ chars))?\]/g;
+/**
+ * A paste the editor is holding on the user's behalf, shown in the text as an
+ * atomic marker. Text pastes expand back inline on submit; images are lifted
+ * out as attachments and their marker removed.
+ */
+export interface PasteImage {
+	/** base64 encoded image data */
+	data: string;
+	mimeType: string;
+}
+
+export type PasteContent = { kind: "text"; text: string } | ({ kind: "image" } & PasteImage);
+
+/** The marker word used for each paste kind, e.g. `[paste #1 ...]`, `[image #2 ...]`. */
+const MARKER_WORD: Record<PasteContent["kind"], string> = {
+	text: "paste",
+	image: "image",
+};
+
+const MARKER_WORDS = Object.values(MARKER_WORD).join("|");
+
+/** Regex matching markers like `[paste #1 +123 lines]`, `[paste #2 1234 chars]` or `[image #3 128 KB]`. */
+const MARKER_REGEX = new RegExp(`\\[(?:${MARKER_WORDS}) #(\\d+)(?: [^\\]]*)?\\]`, "g");
 
 /** Non-global version for single-segment testing. */
-const PASTE_MARKER_SINGLE = /^\[paste #(\d+)( (\+\d+ lines|\d+ chars))?\]$/;
+const MARKER_SINGLE = new RegExp(`^\\[(?:${MARKER_WORDS}) #(\\d+)(?: [^\\]]*)?\\]$`);
 
 /** Check if a segment is a paste marker (i.e. was merged by segmentWithMarkers). */
 function isPasteMarker(segment: string): boolean {
-	return segment.length >= 10 && PASTE_MARKER_SINGLE.test(segment);
+	return segment.length >= 10 && MARKER_SINGLE.test(segment);
+}
+
+/** The marker text for a paste, e.g. `[paste #1 +123 lines]` or `[image #2 128 KB]`. */
+function markerFor(id: number, content: PasteContent): string {
+	if (content.kind === "image") {
+		return `[image #${id} ${formatByteSize(approximateBase64Bytes(content.data))}]`;
+	}
+	const lines = content.text.split("\n");
+	return lines.length > 10 ? `[paste #${id} +${lines.length} lines]` : `[paste #${id} ${content.text.length} chars]`;
+}
+
+/** Matches a single paste's marker regardless of its label, for replacement or removal. */
+function markerRegexFor(id: number): RegExp {
+	return new RegExp(`\\[(?:${MARKER_WORDS}) #${id}(?: [^\\]]*)?\\]`, "g");
+}
+
+/** Decoded byte count of a base64 payload, without decoding it. */
+function approximateBase64Bytes(data: string): number {
+	const padding = data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0;
+	return Math.max(0, Math.floor((data.length * 3) / 4) - padding);
+}
+
+function formatByteSize(bytes: number): string {
+	if (bytes < 1024) return `${bytes} bytes`;
+	if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 /**
@@ -29,13 +76,13 @@ function isPasteMarker(segment: string): boolean {
  */
 function segmentWithMarkers(text: string, validIds: Set<number>): Iterable<Intl.SegmentData> {
 	// Fast path: no paste markers in the text or no valid IDs.
-	if (validIds.size === 0 || !text.includes("[paste #")) {
+	if (validIds.size === 0 || !text.includes("#")) {
 		return baseSegmenter.segment(text);
 	}
 
 	// Find all marker spans with valid IDs.
 	const markers: Array<{ start: number; end: number }> = [];
-	for (const m of text.matchAll(PASTE_MARKER_REGEX)) {
+	for (const m of text.matchAll(MARKER_REGEX)) {
 		const id = Number.parseInt(m[1]!, 10);
 		if (!validIds.has(id)) continue;
 		markers.push({ start: m.index, end: m.index + m[0].length });
@@ -242,8 +289,8 @@ export class Editor implements Component, Focusable {
 	private autocompletePrefix: string = "";
 	private autocompleteMaxVisible: number = 5;
 
-	// Paste tracking for large pastes
-	private pastes: Map<number, string> = new Map();
+	// Paste tracking for large pastes and attachments
+	private pastes: Map<number, PasteContent> = new Map();
 	private pasteCounter: number = 0;
 
 	// Bracketed paste mode buffering
@@ -267,7 +314,7 @@ export class Editor implements Component, Focusable {
 	// Undo support
 	private undoStack = new UndoStack<EditorState>();
 
-	public onSubmit?: (text: string) => void;
+	public onSubmit?: (text: string, images?: PasteImage[]) => void;
 	public onChange?: (text: string) => void;
 	public disableSubmit: boolean = false;
 
@@ -902,13 +949,35 @@ export class Editor implements Component, Focusable {
 		return this.state.lines.join("\n");
 	}
 
-	private expandPasteMarkers(text: string): string {
+	/**
+	 * Expand text pastes back inline, leaving image markers alone so they survive
+	 * a round trip through an external editor and stay attached.
+	 */
+	private expandTextPastes(text: string): string {
 		let result = text;
-		for (const [pasteId, pasteContent] of this.pastes) {
-			const markerRegex = new RegExp(`\\[paste #${pasteId}( (\\+\\d+ lines|\\d+ chars))?\\]`, "g");
-			result = result.replace(markerRegex, () => pasteContent);
+		for (const [pasteId, content] of this.pastes) {
+			if (content.kind !== "text") continue;
+			result = result.replace(markerRegexFor(pasteId), () => content.text);
 		}
 		return result;
+	}
+
+	/**
+	 * Resolve every marker still present in the text into what actually gets sent:
+	 * text pastes expand inline, images are lifted out as attachments and their
+	 * markers removed. A marker the user deleted takes its payload with it, since
+	 * only markers still in the text are resolved.
+	 */
+	private resolvePastes(text: string): { text: string; images: PasteImage[] } {
+		const images: PasteImage[] = [];
+		const resolved = text.replace(MARKER_REGEX, (marker, id: string) => {
+			const content = this.pastes.get(Number.parseInt(id, 10));
+			if (!content) return marker;
+			if (content.kind === "text") return content.text;
+			images.push({ data: content.data, mimeType: content.mimeType });
+			return "";
+		});
+		return { text: resolved, images };
 	}
 
 	/**
@@ -916,7 +985,7 @@ export class Editor implements Component, Focusable {
 	 * Use this when you need the full content (e.g., for external editor).
 	 */
 	getExpandedText(): string {
-		return this.expandPasteMarkers(this.state.lines.join("\n"));
+		return this.expandTextPastes(this.state.lines.join("\n"));
 	}
 
 	getLines(): string[] {
@@ -1070,6 +1139,28 @@ export class Editor implements Component, Focusable {
 		}
 	}
 
+	/**
+	 * Hold a paste on the user's behalf and drop an atomic marker in its place.
+	 * Shared by every paste kind, so images and oversized text behave alike.
+	 */
+	private storePaste(content: PasteContent): void {
+		this.pasteCounter++;
+		this.pastes.set(this.pasteCounter, content);
+		this.insertTextAtCursorInternal(markerFor(this.pasteCounter, content));
+	}
+
+	/**
+	 * Attach an image as a paste. The caller supplies the bytes, since reading the
+	 * clipboard is a terminal round-trip the editor has no business doing.
+	 */
+	pasteImage(image: PasteImage): void {
+		this.historyIndex = -1;
+		this.lastAction = null;
+		this.pushUndoSnapshot();
+		this.storePaste({ kind: "image", ...image });
+		this.tui.requestRender();
+	}
+
 	private handlePaste(pastedText: string): void {
 		this.historyIndex = -1; // Exit history browsing mode
 		this.lastAction = null;
@@ -1101,17 +1192,7 @@ export class Editor implements Component, Focusable {
 		// Check if this is a large paste (> 10 lines or > 1000 characters)
 		const totalChars = filteredText.length;
 		if (pastedLines.length > 10 || totalChars > 1000) {
-			// Store the paste and insert a marker
-			this.pasteCounter++;
-			const pasteId = this.pasteCounter;
-			this.pastes.set(pasteId, filteredText);
-
-			// Insert marker like "[paste #1 +123 lines]" or "[paste #1 1234 chars]"
-			const marker =
-				pastedLines.length > 10
-					? `[paste #${pasteId} +${pastedLines.length} lines]`
-					: `[paste #${pasteId} ${totalChars} chars]`;
-			this.insertTextAtCursorInternal(marker);
+			this.storePaste({ kind: "text", text: filteredText });
 			return;
 		}
 
@@ -1161,7 +1242,8 @@ export class Editor implements Component, Focusable {
 	}
 
 	private submitValue(): void {
-		const result = this.expandPasteMarkers(this.state.lines.join("\n")).trim();
+		const { text, images } = this.resolvePastes(this.state.lines.join("\n"));
+		const result = text.trim();
 
 		this.state = { lines: [""], cursorLine: 0, cursorCol: 0 };
 		this.pastes.clear();
@@ -1172,7 +1254,7 @@ export class Editor implements Component, Focusable {
 		this.lastAction = null;
 
 		if (this.onChange) this.onChange("");
-		if (this.onSubmit) this.onSubmit(result);
+		if (this.onSubmit) this.onSubmit(result, images);
 	}
 
 	private handleBackspace(): void {

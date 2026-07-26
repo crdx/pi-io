@@ -3437,4 +3437,79 @@ describe("Editor component", () => {
 			assert.strictEqual(submitted, pastedText);
 		});
 	});
+
+	describe("image pastes", () => {
+		const png = { data: "aGVsbG8gd29ybGQ=", mimeType: "image/png" };
+
+		it("inserts a marker sized in bytes rather than lines", () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+
+			editor.pasteImage(png);
+
+			assert.match(editor.getText(), /^\[image #1 11 bytes\]$/);
+		});
+
+		it("keeps the marker out of the expanded text but attaches the image on submit", () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+			let submitted: { text: string; images?: { data: string; mimeType: string }[] } | null = null;
+			editor.onSubmit = (text, images) => {
+				submitted = { text, images };
+			};
+
+			editor.handleInput("look at ");
+			editor.pasteImage(png);
+			editor.handleInput("\r");
+
+			assert.deepStrictEqual(submitted, { text: "look at", images: [png] });
+		});
+
+		it("attaches any number of images in document order", () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+			const second = { data: "Zm9vYmFy", mimeType: "image/jpeg" };
+			let images: { data: string; mimeType: string }[] | undefined;
+			editor.onSubmit = (_text, submittedImages) => {
+				images = submittedImages;
+			};
+
+			editor.pasteImage(png);
+			editor.pasteImage(second);
+			editor.handleInput("\r");
+
+			assert.deepStrictEqual(images, [png, second]);
+		});
+
+		it("drops the image when its marker is deleted", () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+			let images: { data: string; mimeType: string }[] | undefined;
+			editor.onSubmit = (_text, submittedImages) => {
+				images = submittedImages;
+			};
+
+			editor.pasteImage(png);
+			// The marker is one atomic segment, so a single backspace removes all of it.
+			editor.handleInput("\x7f");
+			assert.strictEqual(editor.getText(), "");
+
+			editor.handleInput("hello");
+			editor.handleInput("\r");
+
+			assert.deepStrictEqual(images, []);
+		});
+
+		it("leaves image markers intact in expanded text so they survive a round trip", () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+
+			editor.pasteImage(png);
+
+			assert.strictEqual(editor.getExpandedText(), "[image #1 11 bytes]");
+		});
+
+		it("sizes large images in KB", () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+
+			editor.pasteImage({ data: "A".repeat(8192), mimeType: "image/png" });
+
+			assert.match(editor.getText(), /^\[image #1 6 KB\]$/);
+		});
+	});
 });

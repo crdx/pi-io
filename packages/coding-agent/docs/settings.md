@@ -47,31 +47,6 @@ Edit directly or use `/settings` for common options.
 | `autocompleteMaxVisible` | number  | `5`         | Max visible items in autocomplete dropdown (3-20)                                               |
 | `showHardwareCursor`     | boolean | `false`     | Show terminal cursor                                                                            |
 
-### Compaction
-
-| Setting                       | Type    | Default | Description                            |
-|-------------------------------|---------|---------|----------------------------------------|
-| `compaction.enabled`          | boolean | `true`  | Enable auto-compaction                 |
-| `compaction.reserveTokens`    | number  | `16384` | Tokens reserved for LLM response       |
-| `compaction.keepRecentTokens` | number  | `20000` | Recent tokens to keep (not summarized) |
-
-```json
-{
-  "compaction": {
-    "enabled": true,
-    "reserveTokens": 16384,
-    "keepRecentTokens": 20000
-  }
-}
-```
-
-### Branch Summary
-
-| Setting                       | Type    | Default | Description                                                                    |
-|-------------------------------|---------|---------|--------------------------------------------------------------------------------|
-| `branchSummary.reserveTokens` | number  | `16384` | Tokens reserved for branch summarization                                       |
-| `branchSummary.skipPrompt`    | boolean | `false` | Skip "Summarize branch?" prompt on `/tree` navigation (defaults to no summary) |
-
 ### Retry
 
 | Setting             | Type    | Default | Description                                     |
@@ -196,11 +171,6 @@ See [packages.md](packages.md) for package management details.
   "defaultModel": "claude-sonnet-4-20250514",
   "defaultThinkingLevel": "medium",
   "theme": "dark",
-  "compaction": {
-    "enabled": true,
-    "reserveTokens": 16384,
-    "keepRecentTokens": 20000
-  },
   "retry": {
     "enabled": true,
     "maxRetries": 3
@@ -218,17 +188,17 @@ Project settings (`.pi/settings.json`) override global settings. Nested objects 
 // ~/.pi/agent/settings.json (global)
 {
   "theme": "dark",
-  "compaction": { "enabled": true, "reserveTokens": 16384 }
+  "retry": { "enabled": true, "maxRetries": 3 }
 }
 
 // .pi/settings.json (project)
 {
-  "compaction": { "reserveTokens": 8192 }
+  "retry": { "maxRetries": 5 }
 }
 
 // Result
 {
   "theme": "dark",
-  "compaction": { "enabled": true, "reserveTokens": 8192 }
+  "retry": { "enabled": true, "maxRetries": 5 }
 }
 ```

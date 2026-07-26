@@ -25,29 +25,13 @@ export {
 	InMemoryAuthStorageBackend,
 	type OAuthCredential,
 } from "./core/auth-storage.js";
-// Compaction
+// Context token accounting
 export {
-	type BranchPreparation,
-	type BranchSummaryResult,
-	type CollectEntriesResult,
-	type CompactionResult,
-	type CutPointResult,
 	calculateContextTokens,
-	collectEntriesForBranchSummary,
-	compact,
-	DEFAULT_COMPACTION_SETTINGS,
+	estimateContextTokens,
 	estimateTokens,
-	type FileOperations,
-	findCutPoint,
-	findTurnStartIndex,
-	type GenerateBranchSummaryOptions,
-	generateBranchSummary,
-	generateSummary,
 	getLastAssistantUsage,
-	prepareBranchEntries,
-	serializeConversation,
-	shouldCompact,
-} from "./core/compaction/index.js";
+} from "./core/context-tokens.js";
 export { createEventBus, type EventBus, type EventBusController } from "./core/event-bus.js";
 // Extension system
 export type {
@@ -60,7 +44,6 @@ export type {
 	BeforeAgentStartEvent,
 	BeforeProviderRequestEvent,
 	BeforeProviderRequestEventResult,
-	CompactOptions,
 	ContextEvent,
 	ContextUsage,
 	CustomToolCallEvent,
@@ -100,11 +83,9 @@ export type {
 	RegisteredCommand,
 	RegisteredTool,
 	ResolvedCommand,
-	SessionBeforeCompactEvent,
 	SessionBeforeForkEvent,
 	SessionBeforeSwitchEvent,
 	SessionBeforeTreeEvent,
-	SessionCompactEvent,
 	SessionForkEvent,
 	SessionShutdownEvent,
 	SessionStartEvent,
@@ -158,14 +139,11 @@ export { DefaultPackageManager } from "./core/package-manager.js";
 export type { ResourceCollision, ResourceDiagnostic, ResourceLoader } from "./core/resource-loader.js";
 export { DefaultResourceLoader } from "./core/resource-loader.js";
 export {
-	type BranchSummaryEntry,
 	buildSessionContext,
-	type CompactionEntry,
 	CURRENT_SESSION_VERSION,
 	type CustomEntry,
 	type CustomMessageEntry,
 	type FileEntry,
-	getLatestCompactionEntry,
 	type ModelChangeEntry,
 	migrateSessionEntries,
 	type NewSessionOptions,
@@ -181,7 +159,6 @@ export {
 	type ThinkingLevelChangeEntry,
 } from "./core/session-manager.js";
 export {
-	type CompactionSettings,
 	type ImageSettings,
 	type PackageSource,
 	type RetrySettings,
@@ -277,8 +254,6 @@ export {
 	AssistantMessageComponent,
 	BashExecutionComponent,
 	BorderedLoader,
-	BranchSummaryMessageComponent,
-	CompactionSummaryMessageComponent,
 	CustomEditor,
 	CustomMessageComponent,
 	DynamicBorder,

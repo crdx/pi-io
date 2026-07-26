@@ -111,10 +111,6 @@ interface AgentSession {
   // Hook message injection
   sendHookMessage(message: HookMessage, triggerTurn?: boolean): Promise<void>;
   
-  // Compaction
-  compact(customInstructions?: string): Promise<CompactionResult>;
-  abortCompaction(): void;
-  
   // Abort current operation
   abort(): Promise<void>;
   
@@ -232,9 +228,7 @@ session.subscribe((event) => {
       // event.toolResults: tool results from this turn
       break;
     
-    // Session events (auto-compaction, retry)
-    case "auto_compaction_start":
-    case "auto_compaction_end":
+    // Session events (retry)
     case "auto_retry_start":
     case "auto_retry_end":
       break;
@@ -665,14 +659,13 @@ const { session } = await createAgentSession({
 // With overrides
 const settingsManager = SettingsManager.create();
 settingsManager.applyOverrides({
-  compaction: { enabled: false },
   retry: { enabled: true, maxRetries: 5 },
 });
 const { session } = await createAgentSession({ settingsManager });
 
 // In-memory (no file I/O, for testing)
 const { session } = await createAgentSession({
-  settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),
+  settingsManager: SettingsManager.inMemory({ retry: { enabled: false } }),
   sessionManager: SessionManager.inMemory(),
 });
 
@@ -794,7 +787,6 @@ if (!model) throw new Error("Model not found");
 
 // In-memory settings with overrides
 const settingsManager = SettingsManager.inMemory({
-  compaction: { enabled: false },
   retry: { enabled: true, maxRetries: 2 },
 });
 

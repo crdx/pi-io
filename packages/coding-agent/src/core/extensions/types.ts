@@ -40,20 +40,13 @@ import type {
 import type { Static, TSchema } from "@sinclair/typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.js";
 import type { BashResult } from "../bash-executor.js";
-import type { CompactionPreparation, CompactionResult } from "../compaction/index.js";
 import type { EventBus } from "../event-bus.js";
 import type { ExecOptions, ExecResult } from "../exec.js";
 import type { ReadonlyFooterDataProvider } from "../footer-data-provider.js";
 import type { KeybindingsManager } from "../keybindings.js";
 import type { CustomMessage } from "../messages.js";
 import type { ModelRegistry } from "../model-registry.js";
-import type {
-	BranchSummaryEntry,
-	CompactionEntry,
-	ReadonlySessionManager,
-	SessionEntry,
-	SessionManager,
-} from "../session-manager.js";
+import type { ReadonlySessionManager, SessionManager } from "../session-manager.js";
 import type { SlashCommandInfo } from "../slash-commands.js";
 import type { SourceInfo } from "../source-info.js";
 import type { BashOperations } from "../tools/bash.js";
@@ -234,17 +227,11 @@ export interface ExtensionUIContext {
 // ============================================================================
 
 export interface ContextUsage {
-	/** Estimated context tokens, or null if unknown (e.g. right after compaction, before next LLM response). */
+	/** Estimated context tokens, or null if unknown. */
 	tokens: number | null;
 	contextWindow: number;
 	/** Context usage as percentage of context window, or null if tokens is unknown. */
 	percent: number | null;
-}
-
-export interface CompactOptions {
-	customInstructions?: string;
-	onComplete?: (result: CompactionResult) => void;
-	onError?: (error: Error) => void;
 }
 
 /**
@@ -273,8 +260,6 @@ export interface ExtensionContext {
 	shutdown(): void;
 	/** Get current context usage for the active model. */
 	getContextUsage(): ContextUsage | undefined;
-	/** Trigger compaction without awaiting completion. */
-	compact(options?: CompactOptions): void;
 	/** Get the current effective system prompt. */
 	getSystemPrompt(): string;
 }
@@ -297,10 +282,7 @@ export interface ExtensionCommandContext extends ExtensionContext {
 	fork(entryId: string): Promise<{ cancelled: boolean }>;
 
 	/** Navigate to a different point in the session tree. */
-	navigateTree(
-		targetId: string,
-		options?: { summarize?: boolean; customInstructions?: string; replaceInstructions?: boolean; label?: string },
-	): Promise<{ cancelled: boolean }>;
+	navigateTree(targetId: string, options?: { label?: string }): Promise<{ cancelled: boolean }>;
 
 	/** Switch to a different session file. */
 	switchSession(sessionPath: string): Promise<{ cancelled: boolean }>;
@@ -446,22 +428,6 @@ export interface SessionForkEvent {
 	previousSessionFile: string | undefined;
 }
 
-/** Fired before context compaction (can be cancelled or customized) */
-export interface SessionBeforeCompactEvent {
-	type: "session_before_compact";
-	preparation: CompactionPreparation;
-	branchEntries: SessionEntry[];
-	customInstructions?: string;
-	signal: AbortSignal;
-}
-
-/** Fired after context compaction */
-export interface SessionCompactEvent {
-	type: "session_compact";
-	compactionEntry: CompactionEntry;
-	fromExtension: boolean;
-}
-
 /** Fired on process exit */
 export interface SessionShutdownEvent {
 	type: "session_shutdown";
@@ -471,14 +437,7 @@ export interface SessionShutdownEvent {
 export interface TreePreparation {
 	targetId: string;
 	oldLeafId: string | null;
-	commonAncestorId: string | null;
-	entriesToSummarize: SessionEntry[];
-	userWantsSummary: boolean;
-	/** Custom instructions for summarization */
-	customInstructions?: string;
-	/** If true, customInstructions replaces the default prompt instead of being appended */
-	replaceInstructions?: boolean;
-	/** Label to attach to the branch summary entry */
+	/** Label to attach to the target entry */
 	label?: string;
 }
 
@@ -486,7 +445,6 @@ export interface TreePreparation {
 export interface SessionBeforeTreeEvent {
 	type: "session_before_tree";
 	preparation: TreePreparation;
-	signal: AbortSignal;
 }
 
 /** Fired after navigating in the session tree */
@@ -494,8 +452,6 @@ export interface SessionTreeEvent {
 	type: "session_tree";
 	newLeafId: string | null;
 	oldLeafId: string | null;
-	summaryEntry?: BranchSummaryEntry;
-	fromExtension?: boolean;
 }
 
 export type SessionEvent =
@@ -505,8 +461,6 @@ export type SessionEvent =
 	| SessionSwitchEvent
 	| SessionBeforeForkEvent
 	| SessionForkEvent
-	| SessionBeforeCompactEvent
-	| SessionCompactEvent
 	| SessionShutdownEvent
 	| SessionBeforeTreeEvent
 	| SessionTreeEvent;
@@ -915,22 +869,9 @@ export interface SessionBeforeForkResult {
 	skipConversationRestore?: boolean;
 }
 
-export interface SessionBeforeCompactResult {
-	cancel?: boolean;
-	compaction?: CompactionResult;
-}
-
 export interface SessionBeforeTreeResult {
 	cancel?: boolean;
-	summary?: {
-		summary: string;
-		details?: unknown;
-	};
-	/** Override custom instructions for summarization */
-	customInstructions?: string;
-	/** Override whether customInstructions replaces the default prompt */
-	replaceInstructions?: boolean;
-	/** Override label to attach to the branch summary entry */
+	/** Override the label attached to the target entry */
 	label?: string;
 }
 
@@ -990,11 +931,6 @@ export interface ExtensionAPI {
 	on(event: "session_switch", handler: ExtensionHandler<SessionSwitchEvent>): void;
 	on(event: "session_before_fork", handler: ExtensionHandler<SessionBeforeForkEvent, SessionBeforeForkResult>): void;
 	on(event: "session_fork", handler: ExtensionHandler<SessionForkEvent>): void;
-	on(
-		event: "session_before_compact",
-		handler: ExtensionHandler<SessionBeforeCompactEvent, SessionBeforeCompactResult>,
-	): void;
-	on(event: "session_compact", handler: ExtensionHandler<SessionCompactEvent>): void;
 	on(event: "session_shutdown", handler: ExtensionHandler<SessionShutdownEvent>): void;
 	on(event: "session_before_tree", handler: ExtensionHandler<SessionBeforeTreeEvent, SessionBeforeTreeResult>): void;
 	on(event: "session_tree", handler: ExtensionHandler<SessionTreeEvent>): void;
@@ -1382,7 +1318,6 @@ export interface ExtensionContextActions {
 	hasPendingMessages: () => boolean;
 	shutdown: () => void;
 	getContextUsage: () => ContextUsage | undefined;
-	compact: (options?: CompactOptions) => void;
 	getSystemPrompt: () => string;
 }
 
@@ -1397,10 +1332,7 @@ export interface ExtensionCommandContextActions {
 		setup?: (sessionManager: SessionManager) => Promise<void>;
 	}) => Promise<{ cancelled: boolean }>;
 	fork: (entryId: string) => Promise<{ cancelled: boolean }>;
-	navigateTree: (
-		targetId: string,
-		options?: { summarize?: boolean; customInstructions?: string; replaceInstructions?: boolean; label?: string },
-	) => Promise<{ cancelled: boolean }>;
+	navigateTree: (targetId: string, options?: { label?: string }) => Promise<{ cancelled: boolean }>;
 	switchSession: (sessionPath: string) => Promise<{ cancelled: boolean }>;
 	reload: () => Promise<void>;
 }

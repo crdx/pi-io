@@ -213,7 +213,6 @@ async function main(): Promise<void> {
 	const baseModel = { ...model, maxTokens: args.maxTokens };
 
 	const settingsManager = SettingsManager.inMemory({
-		compaction: { enabled: false },
 		retry: { enabled: false },
 		transport: args.transport,
 	});

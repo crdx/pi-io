@@ -13,8 +13,6 @@ Events are defined in [`AgentSessionEvent`](https://github.com/earendil-works/pi
 ```typescript
 type AgentSessionEvent =
   | AgentEvent
-  | { type: "auto_compaction_start"; reason: "threshold" | "overflow" }
-  | { type: "auto_compaction_end"; result: CompactionResult | undefined; aborted: boolean; willRetry: boolean; errorMessage?: string }
   | { type: "auto_retry_start"; attempt: number; maxAttempts: number; delayMs: number; errorMessage: string }
   | { type: "auto_retry_end"; success: boolean; attempt: number; finalError?: string };
 ```
@@ -51,8 +49,6 @@ Extended messages from [`packages/coding-agent/src/core/messages.ts`](https://gi
 
 - `BashExecutionMessage` (line 29)
 - `CustomMessage` (line 46)
-- `BranchSummaryMessage` (line 55)
-- `CompactionSummaryMessage` (line 62)
 
 ## Output Format
 

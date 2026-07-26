@@ -9,7 +9,7 @@ Extensions are TypeScript modules that extend pi's behavior. They can subscribe 
 **Key capabilities:**
 
 - **Custom tools** - Register tools the LLM can call via `pi.registerTool()`
-- **Event interception** - Block or modify tool calls, inject context, customize compaction
+- **Event interception** - Block or modify tool calls, inject context
 - **User interaction** - Prompt users via `ctx.ui` (select, confirm, input, notify)
 - **Custom UI components** - Full TUI components with keyboard input via `ctx.ui.custom()` for complex interactions
 - **Custom commands** - Register commands like `/mycommand` via `pi.registerCommand()`
@@ -21,7 +21,6 @@ Extensions are TypeScript modules that extend pi's behavior. They can subscribe 
 - Permission gates (confirm before `rm -rf`, `sudo`, etc.)
 - Git checkpointing (stash at each turn, restore on branch)
 - Path protection (block writes to `.env`, `node_modules/`)
-- Custom compaction (summarize conversation your way)
 - Conversation summaries
 - Interactive tools (questions, wizards, custom dialogs)
 - Stateful tools (todo lists, connection pools)
@@ -266,10 +265,6 @@ user sends another prompt ◄─────────────────
   ├─► session_before_fork (can cancel)
   └─► session_fork
 
-/compact or auto-compaction
-  ├─► session_before_compact (can cancel or customize)
-  └─► session_compact
-
 /tree navigation
   ├─► session_before_tree (can cancel or customize)
   └─► session_tree
@@ -354,47 +349,20 @@ pi.on("session_fork", async (event, ctx) => {
 });
 ```
 
-#### session_before_compact / session_compact
-
-Fired on compaction. See [compaction.md](compaction.md) for details.
-
-```typescript
-pi.on("session_before_compact", async (event, ctx) => {
-  const { preparation, branchEntries, customInstructions, signal } = event;
-
-  // Cancel:
-  return { cancel: true };
-
-  // Custom summary:
-  return {
-    compaction: {
-      summary: "...",
-      firstKeptEntryId: preparation.firstKeptEntryId,
-      tokensBefore: preparation.tokensBefore,
-    }
-  };
-});
-
-pi.on("session_compact", async (event, ctx) => {
-  // event.compactionEntry - the saved compaction
-  // event.fromExtension - whether extension provided it
-});
-```
-
 #### session_before_tree / session_tree
 
 Fired on `/tree` navigation. See [tree.md](tree.md) for tree navigation concepts.
 
 ```typescript
 pi.on("session_before_tree", async (event, ctx) => {
-  const { preparation, signal } = event;
+  const { preparation } = event;
   return { cancel: true };
-  // OR provide custom summary:
-  return { summary: { summary: "...", details: {} } };
+  // OR override the label attached to the target entry:
+  return { label: "..." };
 });
 
 pi.on("session_tree", async (event, ctx) => {
-  // event.newLeafId, oldLeafId, summaryEntry, fromExtension
+  // event.newLeafId, oldLeafId
 });
 ```
 
@@ -783,22 +751,6 @@ const usage = ctx.getContextUsage();
 if (usage && usage.tokens > 100_000) {
   // ...
 }
-```
-
-### ctx.compact()
-
-Trigger compaction without awaiting completion. Use `onComplete` and `onError` for follow-up actions.
-
-```typescript
-ctx.compact({
-  customInstructions: "Focus on recent changes",
-  onComplete: (result) => {
-    ctx.ui.notify("Compaction completed", "info");
-  },
-  onError: (error) => {
-    ctx.ui.notify(`Compaction failed: ${error.message}`, "error");
-  },
-});
 ```
 
 ### ctx.getSystemPrompt()
@@ -1561,7 +1513,6 @@ const bashTool = createBashTool(cwd, {
 **Tools MUST truncate their output** to avoid overwhelming the LLM context. Large outputs can cause:
 
 - Context overflow errors (prompt too long)
-- Compaction failures
 - Degraded model performance
 
 The built-in limit is **50KB** (~10k tokens) and **2000 lines**, whichever is hit first. Use the exported truncation utilities:

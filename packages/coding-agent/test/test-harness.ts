@@ -324,7 +324,7 @@ export interface HarnessOptions {
 	model?: Model<any>;
 	/** Context window override (applied to the model). */
 	contextWindow?: number;
-	/** Settings overrides (retry, compaction, etc.). */
+	/** Settings overrides (retry, etc.). */
 	settings?: Partial<Settings>;
 	/** System prompt. Default: "You are a test assistant." */
 	systemPrompt?: string;

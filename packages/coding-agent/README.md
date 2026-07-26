@@ -42,7 +42,6 @@ Pi runs in four modes: interactive, print or JSON, RPC for process integration, 
   - [Message Queue](#message-queue)
 - [Sessions](#sessions)
   - [Branching](#branching)
-  - [Compaction](#compaction)
 - [Settings](#settings)
 - [Context Files](#context-files)
 - [Customization](#customization)
@@ -142,7 +141,6 @@ Type `/` in the editor to trigger commands. [Extensions](#extensions) can regist
 | `/session`          | Show session info (path, tokens, cost)                                                               |
 | `/tree`             | Jump to any point in the session and continue from there                                             |
 | `/fork`             | Create a new session from the current branch                                                         |
-| `/compact [prompt]` | Manually compact context, optional custom instructions                                               |
 | `/copy`             | Copy last assistant message to clipboard                                                             |
 | `/export [file]`    | Export the current session branch to a JSONL file                                                    |
 | `/import <file>`    | Import and resume a session from a JSONL file                                                        |
@@ -213,18 +211,6 @@ pi --fork <path>       # Fork specific session file or ID into a new session
 **`/fork`** - Create a new session file from the current branch. Opens a selector, copies history up to the selected point, and places that message in the editor for modification.
 
 **`--fork <path|id>`** - Fork an existing session file or partial session UUID directly from the CLI. This copies the full source session into a new session file in the current project.
-
-### Compaction
-
-Long sessions can exhaust context windows. Compaction summarizes older messages while keeping recent ones.
-
-**Manual:** `/compact` or `/compact <custom instructions>`
-
-**Automatic:** Enabled by default. Triggers on context overflow (recovers and retries) or when approaching the limit (proactive). Configure via `/settings` or `settings.json`.
-
-Compaction is lossy. The full history remains in the JSONL file; use `/tree` to revisit. Customize compaction behavior via [extensions](#extensions). See [docs/compaction.md](docs/compaction.md) for internals.
-
----
 
 ## Settings
 
@@ -303,7 +289,6 @@ export default function (pi: ExtensionAPI) {
 
 - Custom tools (or replace built-in tools entirely)
 - Sub-agents and plan mode
-- Custom compaction and summarization
 - Permission gates and path protection
 - Custom editors and UI components
 - Status lines, headers, footers

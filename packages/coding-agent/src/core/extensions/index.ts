@@ -36,7 +36,6 @@ export type {
 	BeforeProviderRequestEvent,
 	BeforeProviderRequestEventResult,
 	// Context
-	CompactOptions,
 	// Events - Agent
 	ContextEvent,
 	// Event Results
@@ -107,15 +106,12 @@ export type {
 	ResourcesDiscoverResult,
 	SendMessageHandler,
 	SendUserMessageHandler,
-	SessionBeforeCompactEvent,
-	SessionBeforeCompactResult,
 	SessionBeforeForkEvent,
 	SessionBeforeForkResult,
 	SessionBeforeSwitchEvent,
 	SessionBeforeSwitchResult,
 	SessionBeforeTreeEvent,
 	SessionBeforeTreeResult,
-	SessionCompactEvent,
 	SessionDirectoryEvent,
 	SessionDirectoryHandler,
 	SessionDirectoryResult,

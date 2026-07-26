@@ -151,7 +151,7 @@ const agent = new Agent({
   // Convert AgentMessage[] to LLM Message[] (required for custom message types)
   convertToLlm: (messages) => messages.filter(...),
 
-  // Transform context before convertToLlm (for pruning, compaction)
+  // Transform context before convertToLlm (for pruning, injecting external context)
   transformContext: async (messages, signal) => pruneOldMessages(messages),
 
   // Steering mode: "one-at-a-time" (default) or "all"

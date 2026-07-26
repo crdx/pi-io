@@ -66,28 +66,6 @@ describe("SessionManager append and tree traversal", () => {
 			expect(entries[2].parentId).toBe(modelId);
 		});
 
-		it("appendCompaction integrates into tree", () => {
-			const session = SessionManager.inMemory();
-
-			const id1 = session.appendMessage(userMsg("1"));
-			const id2 = session.appendMessage(assistantMsg("2"));
-			const compactionId = session.appendCompaction("summary", id1, 1000);
-			const _id3 = session.appendMessage(userMsg("3"));
-
-			const entries = session.getEntries();
-			const compactionEntry = entries.find((e) => e.type === "compaction");
-			expect(compactionEntry).toBeDefined();
-			expect(compactionEntry?.id).toBe(compactionId);
-			expect(compactionEntry?.parentId).toBe(id2);
-			if (compactionEntry?.type === "compaction") {
-				expect(compactionEntry.summary).toBe("summary");
-				expect(compactionEntry.firstKeptEntryId).toBe(id1);
-				expect(compactionEntry.tokensBefore).toBe(1000);
-			}
-
-			expect(entries[3].parentId).toBe(compactionId);
-		});
-
 		it("appendCustomEntry integrates into tree", () => {
 			const session = SessionManager.inMemory();
 
@@ -308,35 +286,6 @@ describe("SessionManager append and tree traversal", () => {
 			const entries = session.getEntries();
 			const branchedEntry = entries.find((e) => e.id === id3)!;
 			expect(branchedEntry.parentId).toBe(id1); // sibling of id2
-		});
-	});
-
-	describe("branchWithSummary", () => {
-		it("inserts branch summary and advances leaf", () => {
-			const session = SessionManager.inMemory();
-
-			const id1 = session.appendMessage(userMsg("1"));
-			const _id2 = session.appendMessage(assistantMsg("2"));
-			const _id3 = session.appendMessage(userMsg("3"));
-
-			const summaryId = session.branchWithSummary(id1, "Summary of abandoned work");
-
-			expect(session.getLeafId()).toBe(summaryId);
-
-			const entries = session.getEntries();
-			const summaryEntry = entries.find((e) => e.type === "branch_summary");
-			expect(summaryEntry).toBeDefined();
-			expect(summaryEntry?.parentId).toBe(id1);
-			if (summaryEntry?.type === "branch_summary") {
-				expect(summaryEntry.summary).toBe("Summary of abandoned work");
-			}
-		});
-
-		it("throws for non-existent entry", () => {
-			const session = SessionManager.inMemory();
-			session.appendMessage(userMsg("hello"));
-
-			expect(() => session.branchWithSummary("nonexistent", "summary")).toThrow("Entry nonexistent not found");
 		});
 	});
 

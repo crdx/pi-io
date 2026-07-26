@@ -22,8 +22,7 @@ Sessions are stored as trees where each entry has an `id` and `parentId`. The "l
 │  └─ assistant: "Of course! I can..."
 │     ├─ user: "Let's try approach A..."
 │     │  └─ assistant: "For approach A..."
-│     │     └─ [compaction: 12k tokens]
-│     │        └─ user: "That worked..."  ← active
+│     │     └─ user: "That worked..."  ← active
 │     └─ user: "Actually, approach B..."
 │        └─ assistant: "For approach B..."
 ```
@@ -63,7 +62,7 @@ Sessions are stored as trees where each entry has an `id` and `parentId`. The "l
 2. Message text placed in **editor** for re-submission
 3. User edits and submits, creating a new branch
 
-### Non-User Message (assistant, compaction, etc.)
+### Non-User Message (assistant, etc.)
 
 1. Leaf set to **selected node**
 2. Editor stays empty
@@ -77,46 +76,6 @@ If user selects the very first message (has no parent):
 2. Message text placed in editor
 3. User effectively restarts from scratch
 
-## Branch Summarization
-
-When switching branches, user is presented with three options:
-
-1. **No summary** - Switch immediately without summarizing
-2. **Summarize** - Generate a summary using the default prompt
-3. **Summarize with custom prompt** - Opens an editor to enter additional focus instructions that are appended to the default summarization prompt
-
-### What Gets Summarized
-
-Path from old leaf back to common ancestor with target:
-
-```
-A → B → C → D → E → F  ← old leaf
-        ↘ G → H        ← target
-```
-
-Abandoned path: D → E → F (summarized)
-
-Summarization stops at:
-
-1. Common ancestor (always)
-2. Compaction node (if encountered first)
-
-### Summary Storage
-
-Stored as `BranchSummaryEntry`:
-
-```typescript
-interface BranchSummaryEntry {
-  type: "branch_summary";
-  id: string;
-  parentId: string;      // New leaf position
-  timestamp: string;
-  fromId: string;        // Old leaf we abandoned
-  summary: string;       // LLM-generated summary
-  details?: unknown;     // Optional hook data
-}
-```
-
 ## Implementation
 
 ### AgentSession.navigateTree()
@@ -124,34 +83,22 @@ interface BranchSummaryEntry {
 ```typescript
 async navigateTree(
   targetId: string,
-  options?: {
-    summarize?: boolean;
-    customInstructions?: string;
-    replaceInstructions?: boolean;
-    label?: string;
-  }
+  options?: { label?: string }
 ): Promise<{ editorText?: string; cancelled: boolean }>
 ```
 
 Options:
 
-- `summarize`: Whether to generate a summary of the abandoned branch
-- `customInstructions`: Custom instructions for the summarizer
-- `replaceInstructions`: If true, `customInstructions` replaces the default prompt instead of being appended
-- `label`: Label to attach to the branch summary entry (or target entry if not summarizing)
+- `label`: Label to attach to the target entry
 
 Flow:
 
 1. Validate target, check no-op (target === current leaf)
-2. Find common ancestor between old leaf and target
-3. Collect entries to summarize (if requested)
-4. Fire `session_before_tree` event (hook can cancel or provide summary)
-5. Run default summarizer if needed
-6. Switch leaf via `branch()` or `branchWithSummary()`
-7. Update agent: `agent.replaceMessages(sessionManager.buildSessionContext().messages)`
-8. Fire `session_tree` event
-9. Notify custom tools via session event
-10. Return result with `editorText` if user message was selected
+2. Fire `session_before_tree` event (hook can cancel or override the label)
+3. Switch leaf via `resetLeaf()` or `branch()`
+4. Update agent: `agent.replaceMessages(sessionManager.buildSessionContext().messages)`
+5. Fire `session_tree` event
+6. Return result with `editorText` if user message was selected
 
 ### SessionManager
 
@@ -159,16 +106,14 @@ Flow:
 - `resetLeaf(): void` - Set leaf to null (for root user message navigation)
 - `getTree(): SessionTreeNode[]` - Full tree with children sorted by timestamp
 - `branch(id)` - Change leaf pointer
-- `branchWithSummary(id, summary)` - Change leaf and create summary entry
 
 ### InteractiveMode
 
 `/tree` command shows `TreeSelectorComponent`, then:
 
-1. Prompt for summarization
-2. Call `session.navigateTree()`
-3. Clear and re-render chat
-4. Set editor text if applicable
+1. Call `session.navigateTree()`
+2. Clear and re-render chat
+3. Set editor text if applicable
 
 ## Hook Events
 
@@ -178,30 +123,21 @@ Flow:
 interface TreePreparation {
   targetId: string;
   oldLeafId: string | null;
-  commonAncestorId: string | null;
-  entriesToSummarize: SessionEntry[];
-  userWantsSummary: boolean;
-  customInstructions?: string;
-  replaceInstructions?: boolean;
   label?: string;
 }
 
 interface SessionBeforeTreeEvent {
   type: "session_before_tree";
   preparation: TreePreparation;
-  signal: AbortSignal;
 }
 
 interface SessionBeforeTreeResult {
   cancel?: boolean;
-  summary?: { summary: string; details?: unknown };
-  customInstructions?: string;    // Override custom instructions
-  replaceInstructions?: boolean;  // Override replace mode
-  label?: string;                 // Override label
+  label?: string;  // Override label
 }
 ```
 
-Extensions can override `customInstructions`, `replaceInstructions`, and `label` by returning them from the `session_before_tree` handler.
+Extensions can override `label` by returning it from the `session_before_tree` handler.
 
 ### `session_tree`
 
@@ -210,27 +146,9 @@ interface SessionTreeEvent {
   type: "session_tree";
   newLeafId: string | null;
   oldLeafId: string | null;
-  summaryEntry?: BranchSummaryEntry;
-  fromHook?: boolean;
-}
-```
-
-### Example: Custom Summarizer
-
-```typescript
-export default function(pi: HookAPI) {
-  pi.on("session_before_tree", async (event, ctx) => {
-    if (!event.preparation.userWantsSummary) return;
-    if (event.preparation.entriesToSummarize.length === 0) return;
-    
-    const summary = await myCustomSummarizer(event.preparation.entriesToSummarize);
-    return { summary: { summary, details: { custom: true } } };
-  });
 }
 ```
 
 ## Error Handling
 
-- Summarization failure: cancels navigation, shows error
-- User abort (Escape): cancels navigation
 - Hook returns `cancel: true`: cancels navigation silently

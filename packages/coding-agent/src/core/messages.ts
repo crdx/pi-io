@@ -8,21 +8,6 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import type { ImageContent, Message, TextContent } from "@mariozechner/pi-ai";
 
-export const COMPACTION_SUMMARY_PREFIX = `The conversation history before this point was compacted into the following summary:
-
-<summary>
-`;
-
-export const COMPACTION_SUMMARY_SUFFIX = `
-</summary>`;
-
-export const BRANCH_SUMMARY_PREFIX = `The following is a summary of a branch that this conversation came back from:
-
-<summary>
-`;
-
-export const BRANCH_SUMMARY_SUFFIX = `</summary>`;
-
 /**
  * Message type for bash executions via the ! command.
  */
@@ -52,27 +37,11 @@ export interface CustomMessage<T = unknown> {
 	timestamp: number;
 }
 
-export interface BranchSummaryMessage {
-	role: "branchSummary";
-	summary: string;
-	fromId: string;
-	timestamp: number;
-}
-
-export interface CompactionSummaryMessage {
-	role: "compactionSummary";
-	summary: string;
-	tokensBefore: number;
-	timestamp: number;
-}
-
 // Extend CustomAgentMessages via declaration merging
 declare module "@mariozechner/pi-agent-core" {
 	interface CustomAgentMessages {
 		bashExecution: BashExecutionMessage;
 		custom: CustomMessage;
-		branchSummary: BranchSummaryMessage;
-		compactionSummary: CompactionSummaryMessage;
 	}
 }
 
@@ -95,28 +64,6 @@ export function bashExecutionToText(msg: BashExecutionMessage): string {
 		text += `\n\n[Output truncated. Full output: ${msg.fullOutputPath}]`;
 	}
 	return text;
-}
-
-export function createBranchSummaryMessage(summary: string, fromId: string, timestamp: string): BranchSummaryMessage {
-	return {
-		role: "branchSummary",
-		summary,
-		fromId,
-		timestamp: new Date(timestamp).getTime(),
-	};
-}
-
-export function createCompactionSummaryMessage(
-	summary: string,
-	tokensBefore: number,
-	timestamp: string,
-): CompactionSummaryMessage {
-	return {
-		role: "compactionSummary",
-		summary: summary,
-		tokensBefore,
-		timestamp: new Date(timestamp).getTime(),
-	};
 }
 
 /** Convert CustomMessageEntry to AgentMessage format */
@@ -142,7 +89,6 @@ export function createCustomMessage(
  *
  * This is used by:
  * - Agent's transormToLlm option (for prompt calls and queued messages)
- * - Compaction's generateSummary (for summarization)
  * - Custom extensions and tools
  */
 export function convertToLlm(messages: AgentMessage[]): Message[] {
@@ -167,20 +113,6 @@ export function convertToLlm(messages: AgentMessage[]): Message[] {
 						timestamp: m.timestamp,
 					};
 				}
-				case "branchSummary":
-					return {
-						role: "user",
-						content: [{ type: "text" as const, text: BRANCH_SUMMARY_PREFIX + m.summary + BRANCH_SUMMARY_SUFFIX }],
-						timestamp: m.timestamp,
-					};
-				case "compactionSummary":
-					return {
-						role: "user",
-						content: [
-							{ type: "text" as const, text: COMPACTION_SUMMARY_PREFIX + m.summary + COMPACTION_SUMMARY_SUFFIX },
-						],
-						timestamp: m.timestamp,
-					};
 				case "user":
 				case "assistant":
 				case "toolResult":

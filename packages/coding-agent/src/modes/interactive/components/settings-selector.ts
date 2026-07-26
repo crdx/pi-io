@@ -29,7 +29,6 @@ const THINKING_DESCRIPTIONS: Record<ThinkingLevel, string> = {
 };
 
 export interface SettingsConfig {
-	autoCompact: boolean;
 	showImages: boolean;
 	autoResizeImages: boolean;
 	blockImages: boolean;
@@ -52,7 +51,6 @@ export interface SettingsConfig {
 }
 
 export interface SettingsCallbacks {
-	onAutoCompactChange: (enabled: boolean) => void;
 	onShowImagesChange: (enabled: boolean) => void;
 	onAutoResizeImagesChange: (enabled: boolean) => void;
 	onBlockImagesChange: (blocked: boolean) => void;
@@ -153,13 +151,6 @@ export class SettingsSelectorComponent extends Container {
 		const supportsImages = getCapabilities().images;
 
 		const items: SettingItem[] = [
-			{
-				id: "autocompact",
-				label: "Auto-compact",
-				description: "Automatically compact context when it gets too large",
-				currentValue: config.autoCompact ? "true" : "false",
-				values: ["true", "false"],
-			},
 			{
 				id: "steering-mode",
 				label: "Steering mode",
@@ -354,9 +345,6 @@ export class SettingsSelectorComponent extends Container {
 			getSettingsListTheme(),
 			(id, newValue) => {
 				switch (id) {
-					case "autocompact":
-						callbacks.onAutoCompactChange(newValue === "true");
-						break;
 					case "show-images":
 						callbacks.onShowImagesChange(newValue === "true");
 						break;

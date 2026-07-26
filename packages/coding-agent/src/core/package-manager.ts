@@ -1176,13 +1176,8 @@ export class DefaultPackageManager implements PackageManager {
 		}
 
 		const trimmed = source.trim();
-		const isWindowsAbsolutePath = /^[A-Za-z]:[\\/]|^\\\\/.test(trimmed);
 		const isLocalPathLike =
-			trimmed.startsWith(".") ||
-			trimmed.startsWith("/") ||
-			trimmed === "~" ||
-			trimmed.startsWith("~/") ||
-			isWindowsAbsolutePath;
+			trimmed.startsWith(".") || trimmed.startsWith("/") || trimmed === "~" || trimmed.startsWith("~/");
 		if (isLocalPathLike) {
 			return { type: "local", path: source };
 		}

@@ -107,10 +107,6 @@ function parseSizeValue(value: SizeValue | undefined, referenceSize: number): nu
 	return undefined;
 }
 
-function isTermuxSession(): boolean {
-	return Boolean(process.env.TERMUX_VERSION);
-}
-
 /**
  * Options for overlay positioning and sizing.
  * Values can be absolute numbers or percentage strings (e.g., "50%").
@@ -948,10 +944,8 @@ export class TUI extends Container {
 			return;
 		}
 
-		// Height changes normally need a full re-render to keep the visible viewport aligned,
-		// but Termux changes height when the software keyboard shows or hides.
-		// In that environment, a full redraw causes the entire history to replay on every toggle.
-		if (heightChanged && !isTermuxSession()) {
+		// Height changes need a full re-render to keep the visible viewport aligned.
+		if (heightChanged) {
 			logRedraw(`terminal height changed (${this.previousHeight} -> ${height})`);
 			fullRender(true);
 			return;

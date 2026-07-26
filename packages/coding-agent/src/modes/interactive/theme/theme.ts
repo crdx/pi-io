@@ -155,17 +155,9 @@ function detectColorMode(): ColorMode {
 	if (colorterm === "truecolor" || colorterm === "24bit") {
 		return "truecolor";
 	}
-	// Windows Terminal supports truecolor
-	if (process.env.WT_SESSION) {
-		return "truecolor";
-	}
 	const term = process.env.TERM || "";
 	// Fall back to 256color for truly limited terminals
 	if (term === "dumb" || term === "" || term === "linux") {
-		return "256color";
-	}
-	// Terminal.app also doesn't support truecolor
-	if (process.env.TERM_PROGRAM === "Apple_Terminal") {
 		return "256color";
 	}
 	// GNU screen doesn't support truecolor unless explicitly opted in via COLORTERM=truecolor.

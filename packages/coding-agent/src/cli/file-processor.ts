@@ -6,7 +6,7 @@ import { access, readFile, stat } from "node:fs/promises";
 import type { ImageContent } from "@mariozechner/pi-ai";
 import chalk from "chalk";
 import { resolve } from "path";
-import { resolveReadPath } from "../core/tools/path-utils.js";
+import { resolveToCwd } from "../core/tools/path-utils.js";
 import { formatDimensionNote, resizeImage } from "../utils/image-resize.js";
 import { detectSupportedImageMimeTypeFromFile } from "../utils/mime.js";
 
@@ -27,8 +27,8 @@ export async function processFileArguments(fileArgs: string[], options?: Process
 	const images: ImageContent[] = [];
 
 	for (const fileArg of fileArgs) {
-		// Expand and resolve path (handles ~ expansion and macOS screenshot Unicode spaces)
-		const absolutePath = resolve(resolveReadPath(fileArg, process.cwd()));
+		// Expand and resolve path (handles ~ expansion and Unicode spaces)
+		const absolutePath = resolve(resolveToCwd(fileArg, process.cwd()));
 
 		// Check if file exists
 		try {

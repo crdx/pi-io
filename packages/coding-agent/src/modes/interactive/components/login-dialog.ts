@@ -86,8 +86,7 @@ export class LoginDialogComponent extends Container implements Focusable {
 		this.contentContainer.addChild(new Spacer(1));
 		this.contentContainer.addChild(new Text(theme.fg("accent", url), 1, 0));
 
-		const clickHint = process.platform === "darwin" ? "Cmd+click to open" : "Ctrl+click to open";
-		const hyperlink = `\x1b]8;;${url}\x07${clickHint}\x1b]8;;\x07`;
+		const hyperlink = `\x1b]8;;${url}\x07Ctrl+click to open\x1b]8;;\x07`;
 		this.contentContainer.addChild(new Text(theme.fg("dim", hyperlink), 1, 0));
 
 		if (instructions) {
@@ -96,8 +95,7 @@ export class LoginDialogComponent extends Container implements Focusable {
 		}
 
 		// Try to open browser
-		const openCmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
-		exec(`${openCmd} "${url}"`);
+		exec(`xdg-open "${url}"`);
 
 		this.tui.requestRender();
 	}

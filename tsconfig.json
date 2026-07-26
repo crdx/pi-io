@@ -18,6 +18,6 @@
 			"@mariozechner/pi-tui/*": ["./packages/tui/src/*"]
 		}
 	},
-	"include": ["packages/*/src/**/*", "packages/*/test/**/*", "packages/coding-agent/examples/**/*"],
+	"include": ["packages/*/src/**/*", "packages/*/test/**/*"],
 	"exclude": ["**/dist/**"]
 }

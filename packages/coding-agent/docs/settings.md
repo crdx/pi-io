@@ -135,7 +135,7 @@ When a provider requests a retry delay longer than `maxDelayMs` (e.g., Google's 
 
 ```json
 {
-  "enabledModels": ["claude-*", "gpt-4o", "gemini-2*"]
+  "enabledModels": ["claude-*", "gpt-5*", "ollama/*"]
 }
 ```
 

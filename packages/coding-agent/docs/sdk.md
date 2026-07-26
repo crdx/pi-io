@@ -12,8 +12,6 @@ The SDK provides programmatic access to pi's agent capabilities. Use it to embed
 - Build custom tools that spawn sub-agents
 - Test agent behavior programmatically
 
-See [examples/sdk/](../examples/sdk/) for working examples from minimal to full control.
-
 ## Quick Start
 
 ```typescript
@@ -324,8 +322,6 @@ If no model is provided:
 2. Uses default from settings
 3. Falls back to first available model
 
-> See [examples/sdk/02-custom-model.ts](../examples/sdk/02-custom-model.ts)
-
 ### API Keys and OAuth
 
 API key resolution priority (handled by AuthStorage):
@@ -365,8 +361,6 @@ const { session } = await createAgentSession({
 const simpleRegistry = new ModelRegistry(authStorage);
 ```
 
-> See [examples/sdk/09-api-keys-and-oauth.ts](../examples/sdk/09-api-keys-and-oauth.ts)
-
 ### System Prompt
 
 Use a `ResourceLoader` to override the system prompt:
@@ -381,8 +375,6 @@ await loader.reload();
 
 const { session } = await createAgentSession({ resourceLoader: loader });
 ```
-
-> See [examples/sdk/03-custom-prompt.ts](../examples/sdk/03-custom-prompt.ts)
 
 ### Tools
 
@@ -446,8 +438,6 @@ const { session } = await createAgentSession({
 
 - When you specify both `cwd` (different from `process.cwd()`) AND `tools`
 
-> See [examples/sdk/05-tools.ts](../examples/sdk/05-tools.ts)
-
 ### Custom Tools
 
 ```typescript
@@ -475,8 +465,6 @@ const { session } = await createAgentSession({
 ```
 
 Custom tools passed via `customTools` are combined with extension-registered tools. Extensions loaded by the ResourceLoader can also register tools via `pi.registerTool()`.
-
-> See [examples/sdk/05-tools.ts](../examples/sdk/05-tools.ts)
 
 ### Extensions
 
@@ -516,7 +504,7 @@ await loader.reload();
 eventBus.on("my-extension:status", (data) => console.log(data));
 ```
 
-> See [examples/sdk/06-extensions.ts](../examples/sdk/06-extensions.ts) and [docs/extensions.md](extensions.md)
+> See [docs/extensions.md](extensions.md)
 
 ### Skills
 
@@ -546,8 +534,6 @@ await loader.reload();
 const { session } = await createAgentSession({ resourceLoader: loader });
 ```
 
-> See [examples/sdk/04-skills.ts](../examples/sdk/04-skills.ts)
-
 ### Context Files
 
 ```typescript
@@ -565,8 +551,6 @@ await loader.reload();
 
 const { session } = await createAgentSession({ resourceLoader: loader });
 ```
-
-> See [examples/sdk/07-context-files.ts](../examples/sdk/07-context-files.ts)
 
 ### Slash Commands
 
@@ -594,8 +578,6 @@ await loader.reload();
 
 const { session } = await createAgentSession({ resourceLoader: loader });
 ```
-
-> See [examples/sdk/08-prompt-templates.ts](../examples/sdk/08-prompt-templates.ts)
 
 ### Session Management
 
@@ -668,7 +650,7 @@ sm.branchWithSummary(id, "Summary...");  // Branch with context summary
 sm.createBranchedSession(leafId);       // Extract path to new file
 ```
 
-> See [examples/sdk/11-sessions.ts](../examples/sdk/11-sessions.ts) and [docs/session.md](session.md)
+> See [docs/session.md](session.md)
 
 ### Settings Management
 
@@ -720,8 +702,6 @@ Project overrides global. Nested objects merge keys. Setters modify global setti
 - Setters enqueue persistence writes asynchronously.
 - Call `await settingsManager.flush()` when you need a durability boundary (for example, before process exit or before asserting file contents in tests).
 - `SettingsManager` does not print settings I/O errors. Use `settingsManager.drainErrors()` and report them in your app layer.
-
-> See [examples/sdk/10-settings.ts](../examples/sdk/10-settings.ts)
 
 ## ResourceLoader
 

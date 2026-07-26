@@ -25,7 +25,6 @@
 	"files": [
 		"dist",
 		"docs",
-		"examples",
 		"meta.json",
 		"CHANGELOG.md"
 	],

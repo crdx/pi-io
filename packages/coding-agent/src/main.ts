@@ -29,7 +29,7 @@ import { SettingsManager } from "./core/settings-manager.js";
 import { printTimings, time } from "./core/timings.js";
 import { allTools } from "./core/tools/index.js";
 import { runMigrations, showDeprecationWarnings } from "./migrations.js";
-import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.js";
+import { InteractiveMode, runPrintMode } from "./modes/index.js";
 import { initTheme, stopThemeWatcher } from "./modes/interactive/theme/theme.js";
 
 function formatBuildDate(isoDate: string): string {
@@ -747,22 +747,14 @@ export async function main(args: string[]) {
 		process.exit(0);
 	}
 
-	// Read piped stdin content (if any) - skip for RPC mode which uses stdin for JSON-RPC
-	let stdinContent: string | undefined;
-	if (parsed.mode !== "rpc") {
-		stdinContent = await readPipedStdin();
-		if (stdinContent !== undefined) {
-			// Force print mode since interactive mode requires a TTY for keyboard input
-			parsed.print = true;
-		}
+	// Read piped stdin content (if any)
+	const stdinContent = await readPipedStdin();
+	if (stdinContent !== undefined) {
+		// Force print mode since interactive mode requires a TTY for keyboard input
+		parsed.print = true;
 	}
 
 	migrateKeybindingsConfigFile(agentDir);
-
-	if (parsed.mode === "rpc" && parsed.fileArgs.length > 0) {
-		console.error(chalk.red("Error: @file arguments are not supported in RPC mode"));
-		process.exit(1);
-	}
 
 	validateForkFlags(parsed);
 
@@ -858,9 +850,7 @@ export async function main(args: string[]) {
 		}
 	}
 
-	if (mode === "rpc") {
-		await runRpcMode(session);
-	} else if (isInteractive) {
+	if (isInteractive) {
 		if (scopedModels.length > 0 && (parsed.verbose || !settingsManager.getQuietStartup())) {
 			const modelList = scopedModels
 				.map((sm) => {

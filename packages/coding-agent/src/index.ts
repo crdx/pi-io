@@ -271,7 +271,6 @@ export {
 	type InteractiveModeOptions,
 	type PrintModeOptions,
 	runPrintMode,
-	runRpcMode,
 } from "./modes/index.js";
 // UI components for extensions
 export {

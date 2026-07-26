@@ -5,7 +5,7 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import type { ImageContent, Model } from "@mariozechner/pi-ai";
 import type { KeyId } from "@mariozechner/pi-tui";
-import { type Theme, theme } from "../../modes/interactive/theme/theme.js";
+import { theme } from "../../modes/interactive/theme/theme.js";
 import type { ResourceDiagnostic } from "../diagnostics.js";
 import type { KeybindingsConfig } from "../keybindings.js";
 import type { ModelRegistry } from "../model-registry.js";
@@ -191,9 +191,6 @@ const noOpUIContext: ExtensionUIContext = {
 	get theme() {
 		return theme;
 	},
-	getAllThemes: () => [],
-	getTheme: () => undefined,
-	setTheme: (_theme: string | Theme) => ({ success: false, error: "UI not available" }),
 	getToolsExpanded: () => false,
 	setToolsExpanded: () => {},
 };

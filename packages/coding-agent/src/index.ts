@@ -300,7 +300,6 @@ export {
 	SettingsSelectorComponent,
 	ShowImagesSelectorComponent,
 	SkillInvocationMessageComponent,
-	ThemeSelectorComponent,
 	ThinkingSelectorComponent,
 	ToolExecutionComponent,
 	type ToolExecutionOptions,

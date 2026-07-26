@@ -443,10 +443,8 @@ function getBuiltinThemes(): Record<string, ThemeJson> {
 	if (!BUILTIN_THEMES) {
 		const themesDir = getThemesDir();
 		const darkPath = path.join(themesDir, "dark.json");
-		const lightPath = path.join(themesDir, "light.json");
 		BUILTIN_THEMES = {
 			dark: JSON.parse(fs.readFileSync(darkPath, "utf-8")) as ThemeJson,
-			light: JSON.parse(fs.readFileSync(lightPath, "utf-8")) as ThemeJson,
 		};
 	}
 	return BUILTIN_THEMES;
@@ -526,7 +524,7 @@ function parseThemeJson(label: string, json: unknown): ThemeJson {
 			errorMessage += "\nMissing required color tokens:\n";
 			errorMessage += missingColors.map((c) => `  - ${c}`).join("\n");
 			errorMessage += '\n\nPlease add these colors to your theme\'s "colors" object.';
-			errorMessage += "\nSee the built-in themes (dark.json, light.json) for reference values.";
+			errorMessage += "\nSee the built-in theme (dark.json) for reference values.";
 		}
 		if (otherErrors.length > 0) {
 			errorMessage += `\n\nOther errors:\n${otherErrors.join("\n")}`;
@@ -619,24 +617,7 @@ export function getThemeByName(name: string): Theme | undefined {
 	}
 }
 
-function detectTerminalBackground(): "dark" | "light" {
-	const colorfgbg = process.env.COLORFGBG || "";
-	if (colorfgbg) {
-		const parts = colorfgbg.split(";");
-		if (parts.length >= 2) {
-			const bg = parseInt(parts[1], 10);
-			if (!Number.isNaN(bg)) {
-				const result = bg < 8 ? "dark" : "light";
-				return result;
-			}
-		}
-	}
-	return "dark";
-}
-
-function getDefaultTheme(): string {
-	return detectTerminalBackground();
-}
+const DEFAULT_THEME = "dark";
 
 // ============================================================================
 // Global Theme Instance
@@ -675,7 +656,7 @@ export function setRegisteredThemes(themes: Theme[]): void {
 }
 
 export function initTheme(themeName?: string, enableWatcher: boolean = false): void {
-	const name = themeName ?? getDefaultTheme();
+	const name = themeName ?? DEFAULT_THEME;
 	currentThemeName = name;
 	try {
 		setGlobalTheme(loadTheme(name));
@@ -730,7 +711,7 @@ function startThemeWatcher(): void {
 	stopThemeWatcher();
 
 	// Only watch if it's a custom theme (not built-in)
-	if (!currentThemeName || currentThemeName === "dark" || currentThemeName === "light") {
+	if (!currentThemeName || currentThemeName === DEFAULT_THEME) {
 		return;
 	}
 

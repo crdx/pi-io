@@ -9,8 +9,8 @@ TSGO := "npx tsgo"
 help:
     just --list --unsorted --list-submodules
 
-# build all packages in dependency order
-build:
+# build all packages from scratch in dependency order, so dist always mirrors src
+build: clean
     {{ TSGO }} -p packages/tui/tsconfig.build.json
     {{ TSGO }} -p packages/ai/tsconfig.build.json
     {{ TSGO }} -p packages/agent/tsconfig.build.json

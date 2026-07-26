@@ -18,13 +18,9 @@ Pi also supports deleting sessions interactively from `/resume` (select a sessio
 
 ## Session Version
 
-Sessions have a version field in the header:
+Sessions have a version field in the header. The current version is 3, and it is the only version pi reads: loading a session whose version is anything else fails with an error rather than converting it.
 
-- **Version 1**: Linear entry sequence (legacy, auto-migrated on load)
-- **Version 2**: Tree structure with `id`/`parentId` linking
-- **Version 3**: Renamed `hookMessage` role to `custom` (extensions unification)
-
-Existing sessions are automatically migrated to the current version (v3) when loaded.
+The number is 3 because of two earlier formats, neither of which pi still understands. Version 1 was a linear entry sequence; version 2 introduced the tree structure with `id`/`parentId` linking; version 3 renamed the `hookMessage` role to `custom` as part of the extensions unification.
 
 ## Source Files
 

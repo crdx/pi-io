@@ -145,7 +145,6 @@ export {
 	type CustomMessageEntry,
 	type FileEntry,
 	type ModelChangeEntry,
-	migrateSessionEntries,
 	type NewSessionOptions,
 	parseSessionEntries,
 	type SessionContext,

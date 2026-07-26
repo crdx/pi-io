@@ -23,7 +23,7 @@ export const CURRENT_SESSION_VERSION = 3;
 
 export interface SessionHeader {
 	type: "session";
-	version?: number; // v1 sessions don't have this
+	version: number;
 	id: string;
 	timestamp: string;
 	cwd: string;
@@ -179,62 +179,6 @@ function generateId(byId: { has(id: string): boolean }): string {
 	}
 	// Fallback to full UUID if somehow we have collisions
 	return randomUUID();
-}
-
-/** Migrate v1 → v2: add id/parentId tree structure. Mutates in place. */
-function migrateV1ToV2(entries: FileEntry[]): void {
-	const ids = new Set<string>();
-	let prevId: string | null = null;
-
-	for (const entry of entries) {
-		if (entry.type === "session") {
-			entry.version = 2;
-			continue;
-		}
-
-		entry.id = generateId(ids);
-		entry.parentId = prevId;
-		prevId = entry.id;
-	}
-}
-
-/** Migrate v2 → v3: rename hookMessage role to custom. Mutates in place. */
-function migrateV2ToV3(entries: FileEntry[]): void {
-	for (const entry of entries) {
-		if (entry.type === "session") {
-			entry.version = 3;
-			continue;
-		}
-
-		// Update message entries with hookMessage role
-		if (entry.type === "message") {
-			const msgEntry = entry as SessionMessageEntry;
-			if (msgEntry.message && (msgEntry.message as { role: string }).role === "hookMessage") {
-				(msgEntry.message as { role: string }).role = "custom";
-			}
-		}
-	}
-}
-
-/**
- * Run all necessary migrations to bring entries to current version.
- * Mutates entries in place. Returns true if any migration was applied.
- */
-function migrateToCurrentVersion(entries: FileEntry[]): boolean {
-	const header = entries.find((e) => e.type === "session") as SessionHeader | undefined;
-	const version = header?.version ?? 1;
-
-	if (version >= CURRENT_SESSION_VERSION) return false;
-
-	if (version < 2) migrateV1ToV2(entries);
-	if (version < 3) migrateV2ToV3(entries);
-
-	return true;
-}
-
-/** Exported for testing */
-export function migrateSessionEntries(entries: FileEntry[]): void {
-	migrateToCurrentVersion(entries);
 }
 
 /** Exported for tests. */
@@ -623,8 +567,10 @@ export class SessionManager {
 			const header = this.fileEntries.find((e) => e.type === "session") as SessionHeader | undefined;
 			this.sessionId = header?.id ?? createSessionId();
 
-			if (migrateToCurrentVersion(this.fileEntries)) {
-				this._rewriteFile();
+			if (header && header.version !== CURRENT_SESSION_VERSION) {
+				throw new Error(
+					`Unsupported session version ${header.version} in ${this.sessionFile} (expected ${CURRENT_SESSION_VERSION})`,
+				);
 			}
 
 			this._buildIndex();

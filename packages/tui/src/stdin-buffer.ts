@@ -39,11 +39,6 @@ function isCompleteSequence(data: string): "complete" | "incomplete" | "not-esca
 
 	// CSI sequences: ESC [
 	if (afterEsc.startsWith("[")) {
-		// Check for old-style mouse sequence: ESC[M + 3 bytes
-		if (afterEsc.startsWith("[M")) {
-			// Old-style mouse needs ESC[M + 3 bytes = 6 total
-			return data.length >= 6 ? "complete" : "incomplete";
-		}
 		return isCompleteCsiSequence(data);
 	}
 

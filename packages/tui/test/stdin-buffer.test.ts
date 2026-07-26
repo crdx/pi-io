@@ -244,22 +244,6 @@ describe("StdinBuffer", () => {
 			processInput("\x1b[<35;1;1m\x1b[<35;2;2m\x1b[<35;3;3m");
 			assert.deepStrictEqual(emittedSequences, ["\x1b[<35;1;1m", "\x1b[<35;2;2m", "\x1b[<35;3;3m"]);
 		});
-
-		it("should handle old-style mouse sequence (ESC[M + 3 bytes)", () => {
-			processInput("\x1b[M abc");
-			assert.deepStrictEqual(emittedSequences, ["\x1b[M ab", "c"]);
-		});
-
-		it("should buffer incomplete old-style mouse sequence", () => {
-			processInput("\x1b[M");
-			assert.strictEqual(buffer.getBuffer(), "\x1b[M");
-
-			processInput(" a");
-			assert.strictEqual(buffer.getBuffer(), "\x1b[M a");
-
-			processInput("b");
-			assert.deepStrictEqual(emittedSequences, ["\x1b[M ab"]);
-		});
 	});
 
 	describe("Edge Cases", () => {

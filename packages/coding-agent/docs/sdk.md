@@ -839,7 +839,6 @@ const { session } = await createAgentSession({ /* ... */ });
 
 const mode = new InteractiveMode(session, {
   // All optional
-  migratedProviders: [],           // Show migration warnings
   modelFallbackMessage: undefined, // Show model restore warning
   initialMessage: "Hello",         // Send on startup
   initialImages: [],               // Images with initial message
@@ -865,43 +864,6 @@ await runPrintMode(session, {
   messages: ["Follow up"],   // Additional prompts
 });
 ```
-
-### runRpcMode
-
-JSON-RPC mode for subprocess integration:
-
-```typescript
-import { createAgentSession, runRpcMode } from "@mariozechner/pi-coding-agent";
-
-const { session } = await createAgentSession({ /* ... */ });
-
-await runRpcMode(session);  // Reads JSON commands from stdin, writes to stdout
-```
-
-See [RPC documentation](rpc.md) for the JSON protocol.
-
-## RPC Mode Alternative
-
-For subprocess-based integration without building with the SDK, use the CLI directly:
-
-```bash
-pi --mode rpc --no-session
-```
-
-See [RPC documentation](rpc.md) for the JSON protocol.
-
-The SDK is preferred when:
-
-- You want type safety
-- You're in the same Node.js process
-- You need direct access to agent state
-- You want to customize tools/extensions programmatically
-
-RPC mode is preferred when:
-
-- You're integrating from another language
-- You want process isolation
-- You're building a language-agnostic client
 
 ## Exports
 

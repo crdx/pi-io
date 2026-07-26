@@ -29,7 +29,7 @@ Pi is a minimal terminal coding harness. Adapt pi to your workflows, not the oth
 
 Pi ships with powerful defaults but skips features like sub agents and plan mode. Instead, you can ask pi to build what you want or install a third party pi package that matches your workflow.
 
-Pi runs in four modes: interactive, print or JSON, RPC for process integration, and an SDK for embedding in your own apps. See [openclaw/openclaw](https://github.com/openclaw/openclaw) for a real-world SDK integration.
+Pi runs in three modes: interactive, print or JSON, and an SDK for embedding in your own apps.
 
 ## Table of Contents
 
@@ -78,7 +78,7 @@ pi
 
 Then just talk to pi. By default, pi gives the model four tools: `read`, `write`, `edit`, and `bash`. The model uses these to fulfill your requests. Add capabilities via [skills](#skills), [prompt templates](#prompt-templates), [extensions](#extensions), or [pi packages](#pi-packages).
 
-**Platform notes:** [Windows](docs/windows.md) | [Termux (Android)](docs/termux.md) | [tmux](docs/tmux.md) | [Terminal setup](docs/terminal-setup.md) | [Shell aliases](docs/shell-aliases.md)
+**Platform notes:** [tmux](docs/tmux.md) | [Terminal setup](docs/terminal-setup.md) | [Shell aliases](docs/shell-aliases.md)
 
 ---
 
@@ -372,18 +372,6 @@ await session.prompt("What files are in the current directory?");
 
 See [docs/sdk.md](docs/sdk.md).
 
-### RPC Mode
-
-For non-Node.js integrations, use RPC mode over stdin/stdout:
-
-```bash
-pi --mode rpc
-```
-
-RPC mode uses strict LF-delimited JSONL framing. Clients must split records on `\n` only. Do not use generic line readers like Node `readline`, which also split on Unicode separators inside JSON payloads.
-
-See [docs/rpc.md](docs/rpc.md) for the protocol.
-
 ---
 
 ## Philosophy
@@ -430,7 +418,6 @@ pi config                    # Enable/disable package resources
 | (default)       | Interactive mode                                                   |
 | `-p`, `--print` | Print response and exit                                            |
 | `--mode json`   | Output all events as JSON lines (see [docs/json.md](docs/json.md)) |
-| `--mode rpc`    | RPC mode for process integration (see [docs/rpc.md](docs/rpc.md))  |
 
 In print mode, pi also reads piped stdin and merges it into the initial prompt:
 

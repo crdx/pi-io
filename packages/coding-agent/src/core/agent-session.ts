@@ -1,7 +1,7 @@
 /**
  * AgentSession - Core abstraction for agent lifecycle and session management.
  *
- * This class is shared between all run modes (interactive, print, rpc).
+ * This class is shared between all run modes (interactive, print).
  * It encapsulates:
  * - Agent state access
  * - Event subscription with automatic session persistence

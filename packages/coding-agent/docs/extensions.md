@@ -654,7 +654,7 @@ Fired when user input is received, after extension commands are checked but befo
 pi.on("input", async (event, ctx) => {
   // event.text - raw input (before skill/template expansion)
   // event.images - attached images, if any
-  // event.source - "interactive" (typed), "rpc" (API), or "extension" (via sendUserMessage)
+  // event.source - "interactive" (typed), "extension" (via sendUserMessage), or "keybinding"
 
   // Transform: rewrite input before expansion
   if (event.text.startsWith("?quick "))
@@ -698,7 +698,7 @@ UI methods for user interaction. See [Custom UI](#custom-ui) for full details.
 
 ### ctx.hasUI
 
-`false` in print mode (`-p`) and JSON mode. `true` in interactive and RPC mode. In RPC mode, dialog methods (`select`, `confirm`, `input`, `editor`) work via the extension UI sub-protocol, and fire-and-forget methods (`notify`, `setStatus`, `setWidget`, `setTitle`, `setEditorText`) emit requests to the client. Some TUI-specific methods are no-ops or return defaults (see [rpc.md](rpc.md#extension-ui-protocol)).
+`false` in print mode (`-p`) and JSON mode. `true` in interactive mode.
 
 ### ctx.cwd
 
@@ -729,7 +729,6 @@ Control flow helpers.
 Request a graceful shutdown of pi.
 
 - **Interactive mode:** Deferred until the agent becomes idle (after processing all queued steering and follow-up messages).
-- **RPC mode:** Deferred until the next idle state (after completing the current command response, when waiting for the next command).
 - **Print mode:** No-op. The process exits automatically when all prompts are processed.
 
 Emits `session_shutdown` event to all extensions before exiting. Available in all contexts (event handlers, tools, commands, shortcuts).
@@ -1079,7 +1078,7 @@ pi.registerCommand("deploy", {
 ### pi.getCommands()
 
 Get the slash commands available for invocation via `prompt` in the current session. Includes extension commands, prompt templates, and skill commands.
-The list matches the RPC `get_commands` ordering: extensions first, then templates, then skills.
+The ordering is extensions first, then templates, then skills.
 
 ```typescript
 const commands = pi.getCommands();
@@ -2011,11 +2010,10 @@ const highlighted = highlightCode(code, lang, theme);
 
 ## Mode Behavior
 
-| Mode                 | UI Methods    | Notes                                          |
-|----------------------|---------------|------------------------------------------------|
-| Interactive          | Full TUI      | Normal operation                               |
-| RPC (`--mode rpc`)   | JSON protocol | Host handles UI, see [rpc.md](rpc.md)          |
-| JSON (`--mode json`) | No-op         | Event stream to stdout, see [json.md](json.md) |
-| Print (`-p`)         | No-op         | Extensions run but can't prompt                |
+| Mode                 | UI Methods | Notes                                          |
+|----------------------|------------|------------------------------------------------|
+| Interactive          | Full TUI   | Normal operation                               |
+| JSON (`--mode json`) | No-op      | Event stream to stdout, see [json.md](json.md) |
+| Print (`-p`)         | No-op      | Extensions run but can't prompt                |
 
 In non-interactive modes, check `ctx.hasUI` before using UI methods.

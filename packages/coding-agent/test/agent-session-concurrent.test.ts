@@ -322,7 +322,7 @@ describe("AgentSession concurrent prompt guard", () => {
 				emitInput: (
 					text: string,
 					images: unknown,
-					source: "interactive" | "rpc" | "extension",
+					source: "interactive" | "extension" | "keybinding",
 				) => Promise<{ action: "continue" }>;
 				emitBeforeAgentStart: (prompt: string, images: unknown, systemPrompt: string) => Promise<undefined>;
 			};
@@ -457,7 +457,7 @@ describe("AgentSession concurrent prompt guard", () => {
 				emitInput: (
 					text: string,
 					images: unknown,
-					source: "interactive" | "rpc" | "extension",
+					source: "interactive" | "extension" | "keybinding",
 				) => Promise<{ action: "continue" }>;
 				emitBeforeAgentStart: (prompt: string, images: unknown, systemPrompt: string) => Promise<undefined>;
 			};

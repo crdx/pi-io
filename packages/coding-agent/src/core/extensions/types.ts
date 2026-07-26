@@ -97,7 +97,7 @@ export type TerminalInputHandler = (data: string) => { consume?: boolean; data?:
 
 /**
  * UI context for extensions to request interactive UI.
- * Each mode (interactive, RPC, print) provides its own implementation.
+ * Each mode (interactive, print) provides its own implementation.
  */
 export interface ExtensionUIContext {
 	/** Show a selector and return the user's choice. */
@@ -244,7 +244,7 @@ export interface ContextUsage {
 export interface ExtensionContext {
 	/** UI methods for user interaction */
 	ui: ExtensionUIContext;
-	/** Whether UI is available (false in print/RPC mode) */
+	/** Whether UI is available (false in print mode) */
 	hasUI: boolean;
 	/** Current working directory */
 	cwd: string;

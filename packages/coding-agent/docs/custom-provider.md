@@ -148,7 +148,6 @@ The `api` field determines which streaming implementation is used:
 |--------------------------|---------------------------------------------|
 | `anthropic-messages`     | Anthropic Claude API and compatibles        |
 | `openai-completions`     | OpenAI Chat Completions API and compatibles |
-| `openai-responses`       | OpenAI Responses API                        |
 | `openai-codex-responses` | OpenAI Codex Responses API                  |
 
 Most OpenAI-compatible providers work with `openai-completions`. Use `compat` for quirks:
@@ -199,7 +198,7 @@ import type { OAuthCredentials, OAuthLoginCallbacks } from "@mariozechner/pi-ai"
 
 pi.registerProvider("corporate-ai", {
   baseUrl: "https://ai.corp.com/v1",
-  api: "openai-responses",
+  api: "openai-completions",
   models: [...],
   oauth: {
     name: "Corporate AI (SSO)",
@@ -291,7 +290,6 @@ For providers with non-standard APIs, implement `streamSimple`. Study the existi
 
 - [anthropic.ts](https://github.com/earendil-works/pi/blob/main/packages/ai/src/providers/anthropic.ts) - Anthropic Messages API
 - [openai-completions.ts](https://github.com/earendil-works/pi/blob/main/packages/ai/src/providers/openai-completions.ts) - OpenAI Chat Completions
-- [openai-responses.ts](https://github.com/earendil-works/pi/blob/main/packages/ai/src/providers/openai-responses.ts) - OpenAI Responses API
 - [openai-codex-responses.ts](https://github.com/earendil-works/pi/blob/main/packages/ai/src/providers/openai-codex-responses.ts) - OpenAI Codex Responses API
 
 ### Stream Pattern

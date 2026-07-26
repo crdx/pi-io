@@ -48,11 +48,7 @@ const OpenAICompletionsCompatSchema = Type.Object({
 	supportsStrictMode: Type.Optional(Type.Boolean()),
 });
 
-const OpenAIResponsesCompatSchema = Type.Object({
-	// Reserved for future use
-});
-
-const OpenAICompatSchema = Type.Union([OpenAICompletionsCompatSchema, OpenAIResponsesCompatSchema]);
+const OpenAICompatSchema = OpenAICompletionsCompatSchema;
 
 // Schema for custom model definition
 // Most fields are optional with sensible defaults for local models (Ollama, LM Studio, etc.)

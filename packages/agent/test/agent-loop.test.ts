@@ -36,11 +36,11 @@ function createUsage() {
 	};
 }
 
-function createModel(): Model<"openai-responses"> {
+function createModel(): Model<"openai-codex-responses"> {
 	return {
 		id: "mock",
 		name: "mock",
-		api: "openai-responses",
+		api: "openai-codex-responses",
 		provider: "openai",
 		baseUrl: "https://example.invalid",
 		reasoning: false,
@@ -58,7 +58,7 @@ function createAssistantMessage(
 	return {
 		role: "assistant",
 		content,
-		api: "openai-responses",
+		api: "openai-codex-responses",
 		provider: "openai",
 		model: "mock",
 		usage: createUsage(),

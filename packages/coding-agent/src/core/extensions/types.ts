@@ -1114,7 +1114,7 @@ export interface ExtensionAPI {
 	 * // Register provider with OAuth support
 	 * pi.registerProvider("corporate-ai", {
 	 *   baseUrl: "https://ai.corp.com",
-	 *   api: "openai-responses",
+	 *   api: "openai-codex-responses",
 	 *   models: [...],
 	 *   oauth: {
 	 *     name: "Corporate AI (SSO)",

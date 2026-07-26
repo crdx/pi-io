@@ -82,7 +82,7 @@ describe("OpenAI to Anthropic session migration across APIs", () => {
 						thoughtSignature: JSON.stringify({ type: "reasoning.encrypted", id: "call_123", data: "encrypted" }),
 					},
 				],
-				api: "openai-responses",
+				api: "openai-codex-responses",
 				provider: "custom-proxy",
 				model: "gpt-5",
 				usage: {

@@ -595,7 +595,6 @@ The library uses a registry of API implementations. Built-in APIs include:
 
 - **`anthropic-messages`**: Anthropic Messages API (`streamAnthropic`, `AnthropicOptions`)
 - **`openai-completions`**: OpenAI Chat Completions API (`streamOpenAICompletions`, `OpenAICompletionsOptions`)
-- **`openai-responses`**: OpenAI Responses API (`streamOpenAIResponses`, `OpenAIResponsesOptions`)
 - **`openai-codex-responses`**: OpenAI Codex Responses API (`streamOpenAICodexResponses`, `OpenAICodexResponsesOptions`)
 
 ### Providers and Models
@@ -604,7 +603,6 @@ A **provider** offers models through a specific API. For example:
 
 - **Anthropic** models use the `anthropic-messages` API
 - **OpenAI Codex** models use the `openai-codex-responses` API
-- **OpenAI** models use the `openai-responses` API
 - **Ollama, vLLM, LM Studio, etc.** models use the `openai-completions` API (OpenAI-compatible)
 
 ### Querying Providers and Models
@@ -718,7 +716,7 @@ const ollamaReasoningModel: Model<'openai-completions'> = {
 
 ### OpenAI Compatibility Settings
 
-The `openai-completions` API is implemented by many providers with minor differences. By default, the library auto-detects compatibility settings based on `baseUrl` for a small set of known OpenAI-compatible endpoints. For custom proxies or unknown endpoints, you can override these settings via the `compat` field. For `openai-responses` models, the compat field only supports Responses-specific flags.
+The `openai-completions` API is implemented by many providers with minor differences. By default, the library auto-detects compatibility settings based on `baseUrl` for a small set of known OpenAI-compatible endpoints. For custom proxies or unknown endpoints, you can override these settings via the `compat` field.
 
 ```typescript
 interface OpenAICompletionsCompat {

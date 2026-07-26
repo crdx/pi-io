@@ -29,7 +29,7 @@ describe("OpenAI Responses foreign tool call ID normalization", () => {
 					arguments: { path: "src/styles/app.css" },
 				},
 			],
-			api: "openai-responses",
+			api: "openai-codex-responses",
 			provider: "github-copilot",
 			model: "gpt-5.3-codex",
 			usage,

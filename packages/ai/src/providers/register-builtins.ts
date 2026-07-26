@@ -13,7 +13,6 @@ import { AssistantMessageEventStream } from "../utils/event-stream.js";
 import type { AnthropicOptions } from "./anthropic.js";
 import type { OpenAICodexResponsesOptions } from "./openai-codex-responses.js";
 import type { OpenAICompletionsOptions } from "./openai-completions.js";
-import type { OpenAIResponsesOptions } from "./openai-responses.js";
 
 interface LazyProviderModule<
 	TApi extends Api,
@@ -43,11 +42,6 @@ interface OpenAICompletionsProviderModule {
 	streamSimpleOpenAICompletions: StreamFunction<"openai-completions", SimpleStreamOptions>;
 }
 
-interface OpenAIResponsesProviderModule {
-	streamOpenAIResponses: StreamFunction<"openai-responses", OpenAIResponsesOptions>;
-	streamSimpleOpenAIResponses: StreamFunction<"openai-responses", SimpleStreamOptions>;
-}
-
 let anthropicProviderModulePromise:
 	| Promise<LazyProviderModule<"anthropic-messages", AnthropicOptions, SimpleStreamOptions>>
 	| undefined;
@@ -56,9 +50,6 @@ let openAICodexResponsesProviderModulePromise:
 	| undefined;
 let openAICompletionsProviderModulePromise:
 	| Promise<LazyProviderModule<"openai-completions", OpenAICompletionsOptions, SimpleStreamOptions>>
-	| undefined;
-let openAIResponsesProviderModulePromise:
-	| Promise<LazyProviderModule<"openai-responses", OpenAIResponsesOptions, SimpleStreamOptions>>
 	| undefined;
 
 function forwardStream(target: AssistantMessageEventStream, source: AsyncIterable<AssistantMessageEvent>): void {
@@ -174,27 +165,12 @@ function loadOpenAICompletionsProviderModule(): Promise<
 	return openAICompletionsProviderModulePromise;
 }
 
-function loadOpenAIResponsesProviderModule(): Promise<
-	LazyProviderModule<"openai-responses", OpenAIResponsesOptions, SimpleStreamOptions>
-> {
-	openAIResponsesProviderModulePromise ||= import("./openai-responses.js").then((module) => {
-		const provider = module as OpenAIResponsesProviderModule;
-		return {
-			stream: provider.streamOpenAIResponses,
-			streamSimple: provider.streamSimpleOpenAIResponses,
-		};
-	});
-	return openAIResponsesProviderModulePromise;
-}
-
 export const streamAnthropic = createLazyStream(loadAnthropicProviderModule);
 export const streamSimpleAnthropic = createLazySimpleStream(loadAnthropicProviderModule);
 export const streamOpenAICodexResponses = createLazyStream(loadOpenAICodexResponsesProviderModule);
 export const streamSimpleOpenAICodexResponses = createLazySimpleStream(loadOpenAICodexResponsesProviderModule);
 export const streamOpenAICompletions = createLazyStream(loadOpenAICompletionsProviderModule);
 export const streamSimpleOpenAICompletions = createLazySimpleStream(loadOpenAICompletionsProviderModule);
-export const streamOpenAIResponses = createLazyStream(loadOpenAIResponsesProviderModule);
-export const streamSimpleOpenAIResponses = createLazySimpleStream(loadOpenAIResponsesProviderModule);
 
 export function registerBuiltInApiProviders(): void {
 	registerApiProvider({
@@ -207,12 +183,6 @@ export function registerBuiltInApiProviders(): void {
 		api: "openai-completions",
 		stream: streamOpenAICompletions,
 		streamSimple: streamSimpleOpenAICompletions,
-	});
-
-	registerApiProvider({
-		api: "openai-responses",
-		stream: streamOpenAIResponses,
-		streamSimple: streamSimpleOpenAIResponses,
 	});
 
 	registerApiProvider({

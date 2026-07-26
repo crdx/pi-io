@@ -4,7 +4,7 @@ import { processResponsesStream } from "../src/providers/openai-responses-shared
 import type { AssistantMessage, AssistantMessageEvent, Model } from "../src/types.js";
 import { AssistantMessageEventStream } from "../src/utils/event-stream.js";
 
-function createOutput(model: Model<"openai-responses">): AssistantMessage {
+function createOutput(model: Model<"openai-codex-responses">): AssistantMessage {
 	return {
 		role: "assistant",
 		content: [],
@@ -61,10 +61,10 @@ async function* createFunctionCallEvents(argumentsJson: string): AsyncIterable<R
 
 describe("openai responses partialJson cleanup", () => {
 	it("removes partialJson from persisted tool-call blocks at output_item.done", async () => {
-		const model: Model<"openai-responses"> = {
+		const model: Model<"openai-codex-responses"> = {
 			id: "gpt-5-mini",
 			name: "GPT-5 Mini",
-			api: "openai-responses",
+			api: "openai-codex-responses",
 			provider: "openai",
 			baseUrl: "https://api.openai.com/v1",
 			reasoning: true,

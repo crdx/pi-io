@@ -95,7 +95,6 @@ The file reloads each time you open `/model`. Edit during session; no restart ne
 | API                      | Description                               |
 |--------------------------|-------------------------------------------|
 | `openai-completions`     | OpenAI Chat Completions (most compatible) |
-| `openai-responses`       | OpenAI Responses API                      |
 | `anthropic-messages`     | Anthropic Messages API                    |
 | `openai-codex-responses` | OpenAI Codex Responses API                |
 

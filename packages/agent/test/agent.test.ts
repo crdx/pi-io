@@ -20,7 +20,7 @@ function createAssistantMessage(text: string): AssistantMessage {
 	return {
 		role: "assistant",
 		content: [{ type: "text", text }],
-		api: "openai-responses",
+		api: "openai-codex-responses",
 		provider: "openai",
 		model: "mock",
 		usage: {

@@ -1244,7 +1244,7 @@ pi.registerProvider("anthropic", {
 // Register provider with OAuth support for /login
 pi.registerProvider("corporate-ai", {
   baseUrl: "https://ai.corp.com",
-  api: "openai-responses",
+  api: "openai-codex-responses",
   models: [...],
   oauth: {
     name: "Corporate AI (SSO)",
@@ -1269,7 +1269,7 @@ pi.registerProvider("corporate-ai", {
 
 - `baseUrl` - API endpoint URL. Required when defining models.
 - `apiKey` - API key or environment variable name. Required when defining models (unless `oauth` provided).
-- `api` - API type: `"anthropic-messages"`, `"openai-completions"`, `"openai-responses"`, etc.
+- `api` - API type: `"anthropic-messages"`, `"openai-completions"`, `"openai-codex-responses"`, etc.
 - `headers` - Custom headers to include in requests.
 - `authHeader` - If true, adds `Authorization: Bearer` header automatically.
 - `models` - Array of model definitions. If provided, replaces all existing models for this provider.

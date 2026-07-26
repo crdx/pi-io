@@ -22,10 +22,6 @@
 			"types": "./dist/providers/openai-completions.d.ts",
 			"import": "./dist/providers/openai-completions.js"
 		},
-		"./openai-responses": {
-			"types": "./dist/providers/openai-responses.d.ts",
-			"import": "./dist/providers/openai-responses.js"
-		},
 		"./oauth": {
 			"types": "./dist/oauth.d.ts",
 			"import": "./dist/oauth.js"

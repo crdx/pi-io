@@ -144,30 +144,9 @@ export type ThemeBg =
 	| "toolSuccessBg"
 	| "toolErrorBg";
 
-type ColorMode = "truecolor" | "256color";
-
 // ============================================================================
 // Color Utilities
 // ============================================================================
-
-function detectColorMode(): ColorMode {
-	const colorterm = process.env.COLORTERM;
-	if (colorterm === "truecolor" || colorterm === "24bit") {
-		return "truecolor";
-	}
-	const term = process.env.TERM || "";
-	// Fall back to 256color for truly limited terminals
-	if (term === "dumb" || term === "" || term === "linux") {
-		return "256color";
-	}
-	// GNU screen doesn't support truecolor unless explicitly opted in via COLORTERM=truecolor.
-	// TERM under screen is typically "screen", "screen-256color", or "screen.xterm-256color".
-	if (term === "screen" || term.startsWith("screen-") || term.startsWith("screen.")) {
-		return "256color";
-	}
-	// Assume truecolor for everything else - virtually all modern terminals support it
-	return "truecolor";
-}
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
 	const cleaned = hex.replace("#", "");
@@ -183,110 +162,22 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
 	return { r, g, b };
 }
 
-// The 6x6x6 color cube channel values (indices 0-5)
-const CUBE_VALUES = [0, 95, 135, 175, 215, 255];
-
-// Grayscale ramp values (indices 232-255, 24 grays from 8 to 238)
-const GRAY_VALUES = Array.from({ length: 24 }, (_, i) => 8 + i * 10);
-
-function findClosestCubeIndex(value: number): number {
-	let minDist = Infinity;
-	let minIdx = 0;
-	for (let i = 0; i < CUBE_VALUES.length; i++) {
-		const dist = Math.abs(value - CUBE_VALUES[i]);
-		if (dist < minDist) {
-			minDist = dist;
-			minIdx = i;
-		}
-	}
-	return minIdx;
-}
-
-function findClosestGrayIndex(gray: number): number {
-	let minDist = Infinity;
-	let minIdx = 0;
-	for (let i = 0; i < GRAY_VALUES.length; i++) {
-		const dist = Math.abs(gray - GRAY_VALUES[i]);
-		if (dist < minDist) {
-			minDist = dist;
-			minIdx = i;
-		}
-	}
-	return minIdx;
-}
-
-function colorDistance(r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number {
-	// Weighted Euclidean distance (human eye is more sensitive to green)
-	const dr = r1 - r2;
-	const dg = g1 - g2;
-	const db = b1 - b2;
-	return dr * dr * 0.299 + dg * dg * 0.587 + db * db * 0.114;
-}
-
-function rgbTo256(r: number, g: number, b: number): number {
-	// Find closest color in the 6x6x6 cube
-	const rIdx = findClosestCubeIndex(r);
-	const gIdx = findClosestCubeIndex(g);
-	const bIdx = findClosestCubeIndex(b);
-	const cubeR = CUBE_VALUES[rIdx];
-	const cubeG = CUBE_VALUES[gIdx];
-	const cubeB = CUBE_VALUES[bIdx];
-	const cubeIndex = 16 + 36 * rIdx + 6 * gIdx + bIdx;
-	const cubeDist = colorDistance(r, g, b, cubeR, cubeG, cubeB);
-
-	// Find closest grayscale
-	const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-	const grayIdx = findClosestGrayIndex(gray);
-	const grayValue = GRAY_VALUES[grayIdx];
-	const grayIndex = 232 + grayIdx;
-	const grayDist = colorDistance(r, g, b, grayValue, grayValue, grayValue);
-
-	// Check if color has noticeable saturation (hue matters)
-	// If max-min spread is significant, prefer cube to preserve tint
-	const maxC = Math.max(r, g, b);
-	const minC = Math.min(r, g, b);
-	const spread = maxC - minC;
-
-	// Only consider grayscale if color is nearly neutral (spread < 10)
-	// AND grayscale is actually closer
-	if (spread < 10 && grayDist < cubeDist) {
-		return grayIndex;
-	}
-
-	return cubeIndex;
-}
-
-function hexTo256(hex: string): number {
-	const { r, g, b } = hexToRgb(hex);
-	return rgbTo256(r, g, b);
-}
-
-function fgAnsi(color: string | number, mode: ColorMode): string {
+function fgAnsi(color: string | number): string {
 	if (color === "") return "\x1b[39m";
 	if (typeof color === "number") return `\x1b[38;5;${color}m`;
 	if (color.startsWith("#")) {
-		if (mode === "truecolor") {
-			const { r, g, b } = hexToRgb(color);
-			return `\x1b[38;2;${r};${g};${b}m`;
-		} else {
-			const index = hexTo256(color);
-			return `\x1b[38;5;${index}m`;
-		}
+		const { r, g, b } = hexToRgb(color);
+		return `\x1b[38;2;${r};${g};${b}m`;
 	}
 	throw new Error(`Invalid color value: ${color}`);
 }
 
-function bgAnsi(color: string | number, mode: ColorMode): string {
+function bgAnsi(color: string | number): string {
 	if (color === "") return "\x1b[49m";
 	if (typeof color === "number") return `\x1b[48;5;${color}m`;
 	if (color.startsWith("#")) {
-		if (mode === "truecolor") {
-			const { r, g, b } = hexToRgb(color);
-			return `\x1b[48;2;${r};${g};${b}m`;
-		} else {
-			const index = hexTo256(color);
-			return `\x1b[48;5;${index}m`;
-		}
+		const { r, g, b } = hexToRgb(color);
+		return `\x1b[48;2;${r};${g};${b}m`;
 	}
 	throw new Error(`Invalid color value: ${color}`);
 }
@@ -330,25 +221,22 @@ export class Theme {
 	sourceInfo?: SourceInfo;
 	private fgColors: Map<ThemeColor, string>;
 	private bgColors: Map<ThemeBg, string>;
-	private mode: ColorMode;
 
 	constructor(
 		fgColors: Record<ThemeColor, string | number>,
 		bgColors: Record<ThemeBg, string | number>,
-		mode: ColorMode,
 		options: { name?: string; sourcePath?: string; sourceInfo?: SourceInfo } = {},
 	) {
 		this.name = options.name;
 		this.sourcePath = options.sourcePath;
 		this.sourceInfo = options.sourceInfo;
-		this.mode = mode;
 		this.fgColors = new Map();
 		for (const [key, value] of Object.entries(fgColors) as [ThemeColor, string | number][]) {
-			this.fgColors.set(key, fgAnsi(value, mode));
+			this.fgColors.set(key, fgAnsi(value));
 		}
 		this.bgColors = new Map();
 		for (const [key, value] of Object.entries(bgColors) as [ThemeBg, string | number][]) {
-			this.bgColors.set(key, bgAnsi(value, mode));
+			this.bgColors.set(key, bgAnsi(value));
 		}
 	}
 
@@ -394,10 +282,6 @@ export class Theme {
 		const ansi = this.bgColors.get(color);
 		if (!ansi) throw new Error(`Unknown theme background color: ${color}`);
 		return ansi;
-	}
-
-	getColorMode(): ColorMode {
-		return this.mode;
 	}
 
 	getThinkingBorderColor(level: "off" | "minimal" | "low" | "medium" | "high" | "xhigh"): (str: string) => string {
@@ -560,8 +444,7 @@ function loadThemeJson(name: string): ThemeJson {
 	return parseThemeJsonContent(name, content);
 }
 
-function createTheme(themeJson: ThemeJson, mode?: ColorMode, sourcePath?: string): Theme {
-	const colorMode = mode ?? detectColorMode();
+function createTheme(themeJson: ThemeJson, sourcePath?: string): Theme {
 	const resolvedColors = resolveThemeColors(themeJson.colors, themeJson.vars);
 	const fgColors: Record<ThemeColor, string | number> = {} as Record<ThemeColor, string | number>;
 	const bgColors: Record<ThemeBg, string | number> = {} as Record<ThemeBg, string | number>;
@@ -580,25 +463,25 @@ function createTheme(themeJson: ThemeJson, mode?: ColorMode, sourcePath?: string
 			fgColors[key as ThemeColor] = value;
 		}
 	}
-	return new Theme(fgColors, bgColors, colorMode, {
+	return new Theme(fgColors, bgColors, {
 		name: themeJson.name,
 		sourcePath,
 	});
 }
 
-export function loadThemeFromPath(themePath: string, mode?: ColorMode): Theme {
+export function loadThemeFromPath(themePath: string): Theme {
 	const content = fs.readFileSync(themePath, "utf-8");
 	const themeJson = parseThemeJsonContent(themePath, content);
-	return createTheme(themeJson, mode, themePath);
+	return createTheme(themeJson, themePath);
 }
 
-function loadTheme(name: string, mode?: ColorMode): Theme {
+function loadTheme(name: string): Theme {
 	const registeredTheme = registeredThemes.get(name);
 	if (registeredTheme) {
 		return registeredTheme;
 	}
 	const themeJson = loadThemeJson(name);
-	return createTheme(themeJson, mode);
+	return createTheme(themeJson);
 }
 
 export function getThemeByName(name: string): Theme | undefined {

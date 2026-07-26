@@ -254,13 +254,7 @@ Four formats are supported:
 
 ### Terminal Compatibility
 
-Pi uses 24-bit RGB colors. Most modern terminals support this (iTerm2, Kitty, WezTerm, Windows Terminal, VS Code). For older terminals with only 256-color support, pi falls back to the nearest approximation.
-
-Check truecolor support:
-
-```bash
-echo $COLORTERM  # Should output "truecolor" or "24bit"
-```
+Pi emits hex colors as 24-bit RGB unconditionally, and has no fallback for terminals that lack truecolor. A palette index is still emitted as a 256-color code, since that is what the author asked for.
 
 ## Tips
 

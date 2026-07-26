@@ -67,8 +67,6 @@ export {
 	calculateImageRows,
 	deleteAllKittyImages,
 	deleteKittyImage,
-	detectCapabilities,
-	encodeITerm2,
 	encodeKitty,
 	getCapabilities,
 	getCellDimensions,
@@ -82,7 +80,6 @@ export {
 	type ImageRenderOptions,
 	imageFallback,
 	renderImage,
-	resetCapabilitiesCache,
 	setCellDimensions,
 	type TerminalCapabilities,
 } from "./terminal-image.js";

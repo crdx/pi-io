@@ -44,7 +44,7 @@ describe("Bug regression: isImageLine() crash with image escape sequences", () =
 
 			// Line containing image escape sequence with text before it (common bug scenario)
 			const lineWithImageSequence =
-				"Read image file [image/jpeg]\x1b]1337;File=size=800,600;inline=1:base64data...\x07";
+				"Read image file [image/jpeg]\x1b_Ga=T,f=100,d=size=800,600;inline=1:base64data...\x07";
 
 			// Old implementation would return false (BUG!)
 			const oldResult = oldIsImageLine(lineWithImageSequence, terminalWithoutImageSupport);
@@ -60,7 +60,7 @@ describe("Bug regression: isImageLine() crash with image escape sequences", () =
 
 			// Line containing image escape sequence with text before it
 			const lineWithImageSequence =
-				"Read image file [image/jpeg]\x1b]1337;File=size=800,600;inline=1:base64data...\x07";
+				"Read image file [image/jpeg]\x1b_Ga=T,f=100,d=size=800,600;inline=1:base64data...\x07";
 
 			// New implementation should return true (FIX!)
 			const newResult = isImageLine(lineWithImageSequence);
@@ -84,20 +84,20 @@ describe("Bug regression: isImageLine() crash with image escape sequences", () =
 			}
 		});
 
-		it("new implementation detects iTerm2 sequences in any position", async () => {
+		it("new implementation detects Kitty sequences in any position", async () => {
 			const { isImageLine } = await import("../src/terminal-image.js");
 
 			const scenarios = [
-				"At start: \x1b]1337;File=size=100,100:base64...\x07",
-				"Prefix \x1b]1337;File=inline=1:data==\x07",
-				"Suffix text \x1b]1337;File=inline=1:data==\x07 suffix",
-				"Middle \x1b]1337;File=inline=1:data==\x07 more text",
+				"At start: \x1b_Ga=T,f=100,d=size=100,100:base64...\x07",
+				"Prefix \x1b_Ga=T,f=100,d=inline=1:data==\x07",
+				"Suffix text \x1b_Ga=T,f=100,d=inline=1:data==\x07 suffix",
+				"Middle \x1b_Ga=T,f=100,d=inline=1:data==\x07 more text",
 				// Very long line (simulating 304KB crash scenario)
-				`Text before \x1b]1337;File=size=800,600;inline=1:${"B".repeat(300000)} text after`,
+				`Text before \x1b_Ga=T,f=100,d=size=800,600;inline=1:${"B".repeat(300000)} text after`,
 			];
 
 			for (const line of scenarios) {
-				assert.strictEqual(isImageLine(line), true, `Should detect iTerm2 sequence in: ${line.slice(0, 50)}...`);
+				assert.strictEqual(isImageLine(line), true, `Should detect Kitty sequence in: ${line.slice(0, 50)}...`);
 			}
 		});
 	});
@@ -125,7 +125,8 @@ describe("Bug regression: isImageLine() crash with image escape sequences", () =
 
 			// Simulate output when read tool processes an image
 			// The line might have text from the read result plus the image escape sequence
-			const toolOutputLine = "Read image file [image/jpeg]\x1b]1337;File=size=800,600;inline=1:base64image...\x07";
+			const toolOutputLine =
+				"Read image file [image/jpeg]\x1b_Ga=T,f=100,d=size=800,600;inline=1:base64image...\x07";
 
 			assert.strictEqual(isImageLine(toolOutputLine), true, "Should detect image sequence in tool output line");
 		});
@@ -144,9 +145,9 @@ describe("Bug regression: isImageLine() crash with image escape sequences", () =
 
 			// Line might have styling (error, warning, etc.) before image data
 			const lines = [
-				"\x1b[31mError\x1b[0m: \x1b]1337;File=inline=1:base64==\x07",
+				"\x1b[31mError\x1b[0m: \x1b_Ga=T,f=100,d=inline=1:base64==\x07",
 				"\x1b[33mWarning\x1b[0m: \x1b_Ga=T,data...\x1b\\",
-				"\x1b[1mBold\x1b[0m \x1b]1337;File=:base64==\x07\x1b[0m",
+				"\x1b[1mBold\x1b[0m \x1b_Ga=T,f=100,d=:base64==\x07\x1b[0m",
 			];
 
 			for (const line of lines) {
@@ -172,12 +173,12 @@ describe("Bug regression: isImageLine() crash with image escape sequences", () =
 			 */
 
 			const base64Char = "A".repeat(100);
-			const iterm2Sequence = "\x1b]1337;File=size=800,600;inline=1:";
+			const imageSequence = "\x1b_Ga=T,f=100,d=size=800,600;inline=1:";
 
 			// Build a line that would cause the crash
 			const crashLine =
 				"Output: " +
-				iterm2Sequence +
+				imageSequence +
 				base64Char.repeat(3040) + // ~304,000 chars
 				" end of output";
 
@@ -222,12 +223,7 @@ describe("Bug regression: isImageLine() crash with image escape sequences", () =
 		it("does not detect images in lines with file paths", async () => {
 			const { isImageLine } = await import("../src/terminal-image.js");
 
-			const filePaths = [
-				"/path/to/1337/image.jpg",
-				"/usr/local/bin/File_converter",
-				"~/Documents/1337File_backup.png",
-				"./_G_test_file.txt",
-			];
+			const filePaths = ["/path/to/G/image.jpg", "/usr/local/bin/File_converter", "./_G_test_file.txt"];
 
 			for (const path of filePaths) {
 				assert.strictEqual(isImageLine(path), false, `Should not falsely detect image sequence in path: ${path}`);

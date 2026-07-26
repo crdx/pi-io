@@ -80,25 +80,13 @@ export class Image implements Component {
 					this.imageId = result.imageId;
 				}
 
-				// Return `rows` lines so TUI accounts for image height
-				if (result.sequenceFirst) {
-					// Kitty C=1 mode: sequence on first line, empty lines after.
-					// No cursor-up needed; kitty does not move the cursor (C=1),
-					// and the TUI advances through the empty lines naturally.
-					lines = [result.sequence];
-					for (let i = 1; i < result.rows; i++) {
-						lines.push("");
-					}
-				} else {
-					// Legacy cursor-up approach (iTerm2 etc.):
-					// First (rows-1) lines are empty, last line moves cursor
-					// back up then outputs the image sequence.
-					lines = [];
-					for (let i = 0; i < result.rows - 1; i++) {
-						lines.push("");
-					}
-					const moveUp = result.rows > 1 ? `\x1b[${result.rows - 1}A` : "";
-					lines.push(moveUp + result.sequence);
+				// Return `rows` lines so TUI accounts for image height. Kitty C=1 mode puts
+				// the sequence on the first line with empty lines after; no cursor-up is
+				// needed, since kitty does not move the cursor and the TUI advances through
+				// the empty lines naturally.
+				lines = [result.sequence];
+				for (let i = 1; i < result.rows; i++) {
+					lines.push("");
 				}
 			} else {
 				const fallback = imageFallback(this.mimeType, this.dimensions, this.options.filename);

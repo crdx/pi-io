@@ -1,4 +1,4 @@
-export type ImageProtocol = "kitty" | "iterm2" | null;
+export type ImageProtocol = "kitty" | null;
 
 export interface TerminalCapabilities {
 	images: ImageProtocol;
@@ -37,33 +37,12 @@ export function setCellDimensions(dims: CellDimensions): void {
 	cellDimensions = dims;
 }
 
-export function detectCapabilities(): TerminalCapabilities {
+function detectCapabilities(): TerminalCapabilities {
 	const termProgram = process.env.TERM_PROGRAM?.toLowerCase() || "";
-	const term = process.env.TERM?.toLowerCase() || "";
 	const colorTerm = process.env.COLORTERM?.toLowerCase() || "";
 
 	if (process.env.KITTY_WINDOW_ID || termProgram === "kitty") {
 		return { images: "kitty", trueColor: true, hyperlinks: true };
-	}
-
-	if (termProgram === "ghostty" || term.includes("ghostty") || process.env.GHOSTTY_RESOURCES_DIR) {
-		return { images: "kitty", trueColor: true, hyperlinks: true };
-	}
-
-	if (process.env.WEZTERM_PANE || termProgram === "wezterm") {
-		return { images: "kitty", trueColor: true, hyperlinks: true };
-	}
-
-	if (process.env.ITERM_SESSION_ID || termProgram === "iterm.app") {
-		return { images: "iterm2", trueColor: true, hyperlinks: true };
-	}
-
-	if (termProgram === "vscode") {
-		return { images: null, trueColor: true, hyperlinks: true };
-	}
-
-	if (termProgram === "alacritty") {
-		return { images: null, trueColor: true, hyperlinks: true };
 	}
 
 	const trueColor = colorTerm === "truecolor" || colorTerm === "24bit";
@@ -77,20 +56,15 @@ export function getCapabilities(): TerminalCapabilities {
 	return cachedCapabilities;
 }
 
-export function resetCapabilitiesCache(): void {
-	cachedCapabilities = null;
-}
-
 const KITTY_PREFIX = "\x1b_G";
-const ITERM2_PREFIX = "\x1b]1337;File=";
 
 export function isImageLine(line: string): boolean {
 	// Fast path: sequence at line start (single-row images)
-	if (line.startsWith(KITTY_PREFIX) || line.startsWith(ITERM2_PREFIX)) {
+	if (line.startsWith(KITTY_PREFIX)) {
 		return true;
 	}
 	// Slow path: sequence elsewhere (multi-row images have cursor-up prefix)
-	return line.includes(KITTY_PREFIX) || line.includes(ITERM2_PREFIX);
+	return line.includes(KITTY_PREFIX);
 }
 
 /**
@@ -162,31 +136,6 @@ export function deleteKittyImage(imageId: number): string {
  */
 export function deleteAllKittyImages(): string {
 	return `\x1b_Ga=d,d=A\x1b\\`;
-}
-
-export function encodeITerm2(
-	base64Data: string,
-	options: {
-		width?: number | string;
-		height?: number | string;
-		name?: string;
-		preserveAspectRatio?: boolean;
-		inline?: boolean;
-	} = {},
-): string {
-	const params: string[] = [`inline=${options.inline !== false ? 1 : 0}`];
-
-	if (options.width !== undefined) params.push(`width=${options.width}`);
-	if (options.height !== undefined) params.push(`height=${options.height}`);
-	if (options.name) {
-		const nameBase64 = Buffer.from(options.name).toString("base64");
-		params.push(`name=${nameBase64}`);
-	}
-	if (options.preserveAspectRatio === false) {
-		params.push("preserveAspectRatio=0");
-	}
-
-	return `\x1b]1337;File=${params.join(";")}:${base64Data}\x07`;
 }
 
 export function calculateImageRows(
@@ -346,7 +295,7 @@ export function renderImage(
 	base64Data: string,
 	imageDimensions: ImageDimensions,
 	options: ImageRenderOptions = {},
-): { sequence: string; rows: number; imageId?: number; sequenceFirst?: boolean } | null {
+): { sequence: string; rows: number; imageId?: number } | null {
 	const caps = getCapabilities();
 
 	if (!caps.images) {
@@ -364,16 +313,7 @@ export function renderImage(
 			imageId: options.imageId,
 			suppressCursorMovement: true,
 		});
-		return { sequence, rows, imageId: options.imageId, sequenceFirst: true };
-	}
-
-	if (caps.images === "iterm2") {
-		const sequence = encodeITerm2(base64Data, {
-			width: maxWidth,
-			height: "auto",
-			preserveAspectRatio: options.preserveAspectRatio ?? true,
-		});
-		return { sequence, rows };
+		return { sequence, rows, imageId: options.imageId };
 	}
 
 	return null;

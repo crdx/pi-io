@@ -247,7 +247,7 @@ md.setText("Updated markdown");
 
 ### Image
 
-Renders images in supported terminals (Kitty, iTerm2, Ghostty, WezTerm).
+Renders images in terminals that support the Kitty graphics protocol.
 
 ```typescript
 const image = new Image(

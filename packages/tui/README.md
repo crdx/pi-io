@@ -10,7 +10,7 @@ Minimal terminal UI framework with differential rendering and synchronized outpu
 - **Component-based**: Simple Component interface with render() method
 - **Theme Support**: Components accept theme interfaces for customizable styling
 - **Built-in Components**: Text, TruncatedText, Input, Editor, Markdown, Loader, SelectList, SettingsList, Spacer, Image, Box, Container
-- **Inline Images**: Renders images in terminals that support Kitty or iTerm2 graphics protocols
+- **Inline Images**: Renders images in terminals that support the Kitty graphics protocol
 - **Autocomplete Support**: File paths and slash commands
 
 ## Quick Start
@@ -496,7 +496,7 @@ const spacer = new Spacer(2); // 2 empty lines (default: 1)
 
 ### Image
 
-Renders images inline for terminals that support the Kitty graphics protocol (Kitty, Ghostty, WezTerm) or iTerm2 inline images. Falls back to a text placeholder on unsupported terminals.
+Renders images inline for terminals that support the Kitty graphics protocol. Falls back to a text placeholder on unsupported terminals.
 
 ```typescript
 interface ImageTheme {

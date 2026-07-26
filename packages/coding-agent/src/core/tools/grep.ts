@@ -6,7 +6,7 @@ import { spawn } from "child_process";
 import { readFileSync, statSync } from "fs";
 import path from "path";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.js";
-import { ensureTool } from "../../utils/tools-manager.js";
+import { findBinary, missingBinaryMessage } from "../../utils/binaries.js";
 import type { ToolDefinition, ToolRenderResultOptions } from "../extensions/types.js";
 import { resolveToCwd } from "./path-utils.js";
 import { getTextOutput, invalidArgText, shortenPath, str } from "./render-utils.js";
@@ -168,9 +168,9 @@ export function createGrepToolDefinition(
 
 				(async () => {
 					try {
-						const rgPath = await ensureTool("rg", true);
+						const rgPath = findBinary("rg");
 						if (!rgPath) {
-							settle(() => reject(new Error("ripgrep (rg) is not available and could not be downloaded")));
+							settle(() => reject(new Error(missingBinaryMessage("rg"))));
 							return;
 						}
 

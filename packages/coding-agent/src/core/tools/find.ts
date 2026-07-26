@@ -6,7 +6,7 @@ import { spawn } from "child_process";
 import { existsSync } from "fs";
 import path from "path";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.js";
-import { ensureTool } from "../../utils/tools-manager.js";
+import { findBinary, missingBinaryMessage } from "../../utils/binaries.js";
 import type { ToolDefinition, ToolRenderResultOptions } from "../extensions/types.js";
 import { resolveToCwd } from "./path-utils.js";
 import { getTextOutput, invalidArgText, shortenPath, str } from "./render-utils.js";
@@ -214,13 +214,13 @@ export function createFindToolDefinition(
 						}
 
 						// Default implementation uses fd.
-						const fdPath = await ensureTool("fd", true);
+						const fdPath = findBinary("fd");
 						if (signal?.aborted) {
 							settle(() => reject(new Error("Operation aborted")));
 							return;
 						}
 						if (!fdPath) {
-							settle(() => reject(new Error("fd is not available and could not be downloaded")));
+							settle(() => reject(new Error(missingBinaryMessage("fd"))));
 							return;
 						}
 

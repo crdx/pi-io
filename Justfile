@@ -36,6 +36,15 @@ commit message:
 pi *args: build
     PI_DEV=1 node packages/coding-agent/dist/cli.js --no-extensions -e ~/.system/config/pi/agent/extensions {{ args }}
 
+# time cold startup of the built CLI over N runs, skipping extensions to isolate core startup
+time-startup runs="5": build
+    for i in $(seq 1 {{ runs }}); do \
+        START=$(date +%s%N); \
+        node packages/coding-agent/dist/cli.js --no-extensions --build-info >/dev/null; \
+        END=$(date +%s%N); \
+        echo "$(( (END - START) / 1000000 ))ms"; \
+    done
+
 # run all tests (builds first: some tests spawn the built CLI)
 test: build
     cd packages/tui && node --test --import tsx test/*.test.ts

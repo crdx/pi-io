@@ -403,20 +403,28 @@ export async function main(args: string[]) {
 		return;
 	}
 
+	time("node boot + imports");
+
 	// First pass: parse args to get --extension paths
 	const firstPass = parseArgs(args);
 	const shouldTakeOverStdout = firstPass.mode !== undefined || firstPass.print || !process.stdin.isTTY;
 	if (shouldTakeOverStdout) {
 		takeOverStdout();
 	}
+	time("parseArgs (first pass)");
 
 	// Early load extensions to discover their CLI flags
 	const cwd = process.cwd();
 	const agentDir = getAgentDir();
 	const settingsManager = SettingsManager.create(cwd, agentDir);
 	reportSettingsErrors(settingsManager, "startup");
+	time("SettingsManager.create");
+
 	const authStorage = AuthStorage.create();
+	time("AuthStorage.create");
+
 	const modelRegistry = new ModelRegistry(authStorage, getModelsPath());
+	time("ModelRegistry");
 
 	const resourceLoader = new DefaultResourceLoader({
 		cwd,
@@ -460,8 +468,11 @@ export async function main(args: string[]) {
 		}
 	}
 
+	time("extension registration");
+
 	// Second pass: parse args with extension flags
 	const parsed = parseArgs(args, extensionFlags);
+	time("parseArgs (second pass)");
 
 	// Pass flag values to extensions via runtime
 	for (const [name, value] of parsed.unknownFlags) {
@@ -593,6 +604,8 @@ export async function main(args: string[]) {
 			session.setThinkingLevel(effectiveThinking);
 		}
 	}
+
+	time("session + model setup");
 
 	if (isInteractive) {
 		if (scopedModels.length > 0 && (parsed.verbose || !settingsManager.getQuietStartup())) {

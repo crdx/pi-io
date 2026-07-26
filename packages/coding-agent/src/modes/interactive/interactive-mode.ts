@@ -54,6 +54,7 @@ import type { SourceInfo } from "../../core/source-info.js";
 import type { TruncationResult } from "../../core/tools/truncate.js";
 import { findBinary } from "../../utils/binaries.js";
 import { copyToClipboard } from "../../utils/clipboard.js";
+import { readClipboardImage } from "../../utils/clipboard-image.js";
 import { parseGitUrl } from "../../utils/git.js";
 import { AssistantMessageComponent } from "./components/assistant-message.js";
 import { BashExecutionComponent } from "./components/bash-execution.js";
@@ -1393,6 +1394,7 @@ export class InteractiveMode {
 			input: (title, placeholder, opts) => this.showExtensionInput(title, placeholder, opts),
 			notify: (message, type) => this.showExtensionNotify(message, type),
 			onTerminalInput: (handler) => this.addExtensionTerminalInputListener(handler),
+			readClipboardImage: () => readClipboardImage(this.ui.terminal),
 			setStatus: (key, text) => this.setExtensionStatus(key, text),
 			setWorkingMessage: (message) => {
 				if (this.loadingAnimation) {

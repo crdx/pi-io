@@ -39,6 +39,7 @@ import type {
 } from "@mariozechner/pi-tui";
 import type { Static, TSchema } from "@sinclair/typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.js";
+import type { ClipboardImage } from "../../utils/clipboard-image.js";
 import type { BashResult } from "../bash-executor.js";
 import type { EventBus } from "../event-bus.js";
 import type { ExecOptions, ExecResult } from "../exec.js";
@@ -113,6 +114,9 @@ export interface ExtensionUIContext {
 
 	/** Listen to raw terminal input (interactive mode only). Returns an unsubscribe function. */
 	onTerminalInput(handler: TerminalInputHandler): () => void;
+
+	/** Read an image from the clipboard as PNG (interactive mode only). Null when there is none. */
+	readClipboardImage(): Promise<ClipboardImage | null>;
 
 	/** Set status text in the footer/status bar. Pass undefined to clear. */
 	setStatus(key: string, text: string | undefined): void;

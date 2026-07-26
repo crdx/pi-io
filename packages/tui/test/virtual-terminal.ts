@@ -1,6 +1,6 @@
 import type { Terminal as XtermTerminalType } from "@xterm/headless";
 import xterm from "@xterm/headless";
-import type { Terminal } from "../src/terminal.js";
+import type { Terminal, TerminalQueryOptions } from "../src/terminal.js";
 
 // Extract Terminal class from the module
 const XtermTerminal = xterm.Terminal;
@@ -38,6 +38,11 @@ export class VirtualTerminal implements Terminal {
 
 	async drainInput(_maxMs?: number, _idleMs?: number): Promise<void> {
 		// No-op for virtual terminal - no stdin to drain
+	}
+
+	async queryRaw(_request: string, _options: TerminalQueryOptions): Promise<string | null> {
+		// No terminal on the other end to answer
+		return null;
 	}
 
 	stop(): void {

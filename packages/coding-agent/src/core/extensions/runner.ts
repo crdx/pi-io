@@ -168,6 +168,7 @@ const noOpUIContext: ExtensionUIContext = {
 	input: async () => undefined,
 	notify: () => {},
 	onTerminalInput: () => () => {},
+	readClipboardImage: async () => null,
 	setStatus: () => {},
 	setWorkingMessage: () => {},
 	setWidget: () => {},

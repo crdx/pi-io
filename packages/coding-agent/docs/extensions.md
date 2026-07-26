@@ -1770,6 +1770,19 @@ if (confirmed) {
 }
 ```
 
+### Clipboard
+
+```typescript
+const image = await ctx.ui.readClipboardImage();
+if (image) {
+  // image.data is base64 PNG, image.mimeType is always "image/png"
+}
+```
+
+Reads an image from the clipboard over kitty's OSC 5522 protocol, converting to PNG if the clipboard holds JPEG, WebP or GIF. Returns `null` when the clipboard holds no image, when the terminal refuses the read, or outside interactive mode.
+
+The call takes over stdin for the duration of the terminal round-trip, so keystrokes typed while it is in flight are discarded. It gives up after 5 seconds.
+
 ### Widgets, Status, and Footer
 
 ```typescript

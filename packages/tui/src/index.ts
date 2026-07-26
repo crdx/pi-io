@@ -59,7 +59,7 @@ export {
 // Input buffering for batch splitting
 export { StdinBuffer, type StdinBufferEventMap, type StdinBufferOptions } from "./stdin-buffer.js";
 // Terminal interface and implementations
-export { ProcessTerminal, type Terminal } from "./terminal.js";
+export { ProcessTerminal, type Terminal, type TerminalQueryOptions } from "./terminal.js";
 // Terminal image support
 export {
 	allocateImageId,

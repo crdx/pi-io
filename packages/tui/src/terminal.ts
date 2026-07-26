@@ -2,6 +2,13 @@ import * as fs from "node:fs";
 import { setKittyProtocolActive } from "./keys.js";
 import { StdinBuffer } from "./stdin-buffer.js";
 
+export interface TerminalQueryOptions {
+	/** Called on every accumulated chunk; return true once the reply is whole. */
+	isComplete: (reply: string) => boolean;
+	timeoutMs: number;
+	maxBytes: number;
+}
+
 /**
  * Minimal terminal interface for TUI
  */
@@ -19,6 +26,13 @@ export interface Terminal {
 	 * @param idleMs - Exit early if no input arrives within this time (default: 50ms)
 	 */
 	drainInput(maxMs?: number, idleMs?: number): Promise<void>;
+
+	/**
+	 * Perform one request-and-reply exchange with the terminal, suspending the
+	 * normal input framing for its duration. Resolves with the raw reply, or
+	 * null on timeout or overflow.
+	 */
+	queryRaw(request: string, options: TerminalQueryOptions): Promise<string | null>;
 
 	// Write output to terminal
 	write(data: string): void;
@@ -203,6 +217,47 @@ export class ProcessTerminal implements Terminal {
 		} finally {
 			process.stdin.removeListener("data", onData);
 			this.inputHandler = previousHandler;
+		}
+	}
+
+	/**
+	 * The reply is accumulated raw, outside StdinBuffer's 10ms idle framing,
+	 * which would otherwise flush a large payload mid-transfer and forward the
+	 * fragments to the focused component as ordinary input. On timeout or
+	 * overflow the partial reply is discarded rather than leaked.
+	 */
+	async queryRaw(request: string, options: TerminalQueryOptions): Promise<string | null> {
+		if (this.stdinDataHandler) {
+			process.stdin.removeListener("data", this.stdinDataHandler);
+		}
+
+		let reply = "";
+		let finish: (value: string | null) => void = () => {};
+
+		const collect = (chunk: string) => {
+			reply += chunk;
+			if (options.isComplete(reply)) {
+				finish(reply);
+			} else if (Buffer.byteLength(reply) > options.maxBytes) {
+				finish(null);
+			}
+		};
+		process.stdin.on("data", collect);
+
+		try {
+			return await new Promise<string | null>((resolve) => {
+				const timer = setTimeout(() => resolve(null), options.timeoutMs);
+				finish = (value) => {
+					clearTimeout(timer);
+					resolve(value);
+				};
+				this.write(request);
+			});
+		} finally {
+			process.stdin.removeListener("data", collect);
+			if (this.stdinDataHandler) {
+				process.stdin.on("data", this.stdinDataHandler);
+			}
 		}
 	}
 

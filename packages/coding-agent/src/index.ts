@@ -157,26 +157,6 @@ export type {
 export { DefaultPackageManager } from "./core/package-manager.js";
 export type { ResourceCollision, ResourceDiagnostic, ResourceLoader } from "./core/resource-loader.js";
 export { DefaultResourceLoader } from "./core/resource-loader.js";
-// SDK for programmatic usage
-export {
-	type CreateAgentSessionOptions,
-	type CreateAgentSessionResult,
-	// Factory
-	createAgentSession,
-	createBashTool,
-	// Tool factories (for custom cwd)
-	createCodingTools,
-	createEditTool,
-	createFindTool,
-	createGrepTool,
-	createLsTool,
-	createReadOnlyTools,
-	createReadTool,
-	createWriteTool,
-	type PromptTemplate,
-	// Pre-built tools (use process.cwd())
-	readOnlyTools,
-} from "./core/sdk.js";
 export {
 	type BranchSummaryEntry,
 	buildSessionContext,

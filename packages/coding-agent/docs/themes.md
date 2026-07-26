@@ -18,7 +18,7 @@ Themes are JSON files that define colors for the TUI.
 
 Pi loads themes from:
 
-- Built-in: `dark`, `light`
+- Built-in: `dark`
 - Global: `~/.pi/agent/themes/*.json`
 - Project: `.pi/themes/*.json`
 - Packages: `themes/` directories or `pi.themes` entries in `package.json`
@@ -37,7 +37,7 @@ Select a theme via `/settings` or in `settings.json`:
 }
 ```
 
-On first run, pi detects your terminal background and defaults to `dark` or `light`.
+Pi defaults to `dark`.
 
 ## Creating a Custom Theme
 
@@ -270,7 +270,6 @@ Pi emits hex colors as 24-bit RGB unconditionally, and has no fallback for termi
 
 ## Examples
 
-See the built-in themes:
+See the built-in theme:
 
 - [dark.json](../src/modes/interactive/theme/dark.json)
-- [light.json](../src/modes/interactive/theme/light.json)

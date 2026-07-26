@@ -1828,8 +1828,8 @@ ctx.ui.setEditorComponent(undefined);  // Restore default editor
 
 // Theme management (see themes.md for creating themes)
 const themes = ctx.ui.getAllThemes();  // [{ name: "dark", path: "/..." | undefined }, ...]
-const lightTheme = ctx.ui.getTheme("light");  // Load without switching
-const result = ctx.ui.setTheme("light");  // Switch by name
+const customTheme = ctx.ui.getTheme("my-theme");  // Load without switching
+const result = ctx.ui.setTheme("my-theme");  // Switch by name
 if (!result.success) {
   ctx.ui.notify(`Failed: ${result.error}`, "error");
 }

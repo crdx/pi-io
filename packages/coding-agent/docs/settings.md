@@ -38,9 +38,8 @@ Edit directly or use `/settings` for common options.
 
 | Setting                  | Type    | Default     | Description                                                                                     |
 |--------------------------|---------|-------------|-------------------------------------------------------------------------------------------------|
-| `theme`                  | string  | `"dark"`    | Theme name (`"dark"`, `"light"`, or custom)                                                     |
+| `theme`                  | string  | `"dark"`    | Theme name (`"dark"` or custom)                                                                 |
 | `quietStartup`           | boolean | `false`     | Hide startup header                                                                             |
-| `collapseChangelog`      | boolean | `false`     | Show condensed changelog after updates                                                          |
 | `doubleEscapeAction`     | string  | `"tree"`    | Action for double-escape: `"tree"`, `"fork"`, or `"none"`                                       |
 | `treeFilterMode`         | string  | `"default"` | Default filter for `/tree`: `"default"`, `"no-tools"`, `"user-only"`, `"labeled-only"`, `"all"` |
 | `editorPaddingX`         | number  | `0`         | Horizontal padding for input editor (0-3)                                                       |
@@ -90,7 +89,6 @@ When a provider requests a retry delay longer than `maxDelayMs` (e.g., Google's 
 
 | Setting              | Type     | Default | Description                                                                                                    |
 |----------------------|----------|---------|----------------------------------------------------------------------------------------------------------------|
-| `shellPath`          | string   | -       | Custom shell path (e.g., for Cygwin on Windows)                                                                |
 | `shellCommandPrefix` | string   | -       | Prefix for every bash command (e.g., `"shopt -s expand_aliases"`)                                              |
 | `npmCommand`         | string[] | -       | Command argv used for npm package lookup/install operations (e.g., `["mise", "exec", "node@20", "--", "npm"]`) |
 

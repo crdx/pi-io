@@ -32,18 +32,24 @@ interface ModelsDevModel {
 	};
 }
 
+/** Only the anthropic slice is consumed; every other provider was dropped from the fork. */
+interface ModelsDevApi {
+	anthropic?: {
+		models?: Record<string, ModelsDevModel>;
+	};
+}
+
 async function loadModelsDevData(): Promise<Model<any>[]> {
 	try {
 		console.log("Fetching models from models.dev API...");
 		const response = await fetch("https://models.dev/api.json");
-		const data = await response.json();
+		const data = (await response.json()) as ModelsDevApi;
 
 		const models: Model<any>[] = [];
 
 		// Process Anthropic models
 		if (data.anthropic?.models) {
-			for (const [modelId, model] of Object.entries(data.anthropic.models)) {
-				const m = model as ModelsDevModel;
+			for (const [modelId, m] of Object.entries(data.anthropic.models)) {
 				if (m.tool_call !== true) continue;
 
 				models.push({

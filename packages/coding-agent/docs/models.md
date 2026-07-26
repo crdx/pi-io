@@ -92,41 +92,46 @@ The file reloads each time you open `/model`. Edit during session; no restart ne
 
 ## Supported APIs
 
-| API | Description |
-|-----|-------------|
-| `openai-completions` | OpenAI Chat Completions (most compatible) |
-| `openai-responses` | OpenAI Responses API |
-| `anthropic-messages` | Anthropic Messages API |
-| `google-generative-ai` | Google Generative AI |
+| API                      | Description                               |
+|--------------------------|-------------------------------------------|
+| `openai-completions`     | OpenAI Chat Completions (most compatible) |
+| `openai-responses`       | OpenAI Responses API                      |
+| `anthropic-messages`     | Anthropic Messages API                    |
+| `openai-codex-responses` | OpenAI Codex Responses API                |
 
 Set `api` at provider level (default for all models) or model level (override per model).
 
 ## Provider Configuration
 
-| Field | Description |
-|-------|-------------|
-| `baseUrl` | API endpoint URL |
-| `api` | API type (see above) |
-| `apiKey` | API key (see value resolution below) |
-| `headers` | Custom headers (see value resolution below) |
-| `authHeader` | Set `true` to add `Authorization: Bearer <apiKey>` automatically |
-| `models` | Array of model configurations |
-| `modelOverrides` | Per-model overrides for built-in models on this provider |
+| Field            | Description                                                      |
+|------------------|------------------------------------------------------------------|
+| `baseUrl`        | API endpoint URL                                                 |
+| `api`            | API type (see above)                                             |
+| `apiKey`         | API key (see value resolution below)                             |
+| `headers`        | Custom headers (see value resolution below)                      |
+| `authHeader`     | Set `true` to add `Authorization: Bearer <apiKey>` automatically |
+| `models`         | Array of model configurations                                    |
+| `modelOverrides` | Per-model overrides for built-in models on this provider         |
 
 ### Value Resolution
 
 The `apiKey` and `headers` fields support three formats:
 
 - **Shell command:** `"!command"` executes and uses stdout
+
   ```json
   "apiKey": "!security find-generic-password -ws 'anthropic'"
   "apiKey": "!op read 'op://vault/item/credential'"
   ```
+
 - **Environment variable:** Uses the value of the named variable
+
   ```json
   "apiKey": "MY_API_KEY"
   ```
+
 - **Literal value:** Used directly
+
   ```json
   "apiKey": "sk-..."
   ```
@@ -152,19 +157,20 @@ The `apiKey` and `headers` fields support three formats:
 
 ## Model Configuration
 
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `id` | Yes | — | Model identifier (passed to the API) |
-| `name` | No | `id` | Human-readable model label. Used for matching (`--model` patterns) and shown in model details/status text. |
-| `api` | No | provider's `api` | Override provider's API for this model |
-| `reasoning` | No | `false` | Supports extended thinking |
-| `input` | No | `["text"]` | Input types: `["text"]` or `["text", "image"]` |
-| `contextWindow` | No | `128000` | Context window size in tokens |
-| `maxTokens` | No | `16384` | Maximum output tokens |
-| `cost` | No | all zeros | `{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}` (per million tokens) |
-| `compat` | No | provider `compat` | OpenAI compatibility overrides. Merged with provider-level `compat` when both are set. |
+| Field           | Required | Default           | Description                                                                                                |
+|-----------------|----------|-------------------|------------------------------------------------------------------------------------------------------------|
+| `id`            | Yes      | —                 | Model identifier (passed to the API)                                                                       |
+| `name`          | No       | `id`              | Human-readable model label. Used for matching (`--model` patterns) and shown in model details/status text. |
+| `api`           | No       | provider's `api`  | Override provider's API for this model                                                                     |
+| `reasoning`     | No       | `false`           | Supports extended thinking                                                                                 |
+| `input`         | No       | `["text"]`        | Input types: `["text"]` or `["text", "image"]`                                                             |
+| `contextWindow` | No       | `128000`          | Context window size in tokens                                                                              |
+| `maxTokens`     | No       | `16384`           | Maximum output tokens                                                                                      |
+| `cost`          | No       | all zeros         | `{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}` (per million tokens)                          |
+| `compat`        | No       | provider `compat` | OpenAI compatibility overrides. Merged with provider-level `compat` when both are set.                     |
 
 Current behavior:
+
 - `/model` and `--list-models` list entries by model `id`.
 - The configured `name` is used for model matching and detail/status text.
 
@@ -200,6 +206,7 @@ To merge custom models into a built-in provider, include the `models` array:
 ```
 
 Merge semantics:
+
 - Built-in models are kept.
 - Custom models are upserted by `id` within the provider.
 - If a custom model `id` matches a built-in model `id`, the custom model replaces that built-in model.
@@ -212,15 +219,11 @@ Use `modelOverrides` to customize specific built-in models without replacing the
 ```json
 {
   "providers": {
-    "openrouter": {
+    "anthropic": {
       "modelOverrides": {
-        "anthropic/claude-sonnet-4": {
-          "name": "Claude Sonnet 4 (Bedrock Route)",
-          "compat": {
-            "openRouterRouting": {
-              "only": ["amazon-bedrock"]
-            }
-          }
+        "claude-opus-4-6": {
+          "name": "Claude Opus 4.6 (proxied)",
+          "headers": { "X-Proxy-Tag": "team-a" }
         }
       }
     }
@@ -231,6 +234,7 @@ Use `modelOverrides` to customize specific built-in models without replacing the
 `modelOverrides` supports these fields per model: `name`, `reasoning`, `input`, `cost` (partial), `contextWindow`, `maxTokens`, `headers`, `compat`.
 
 Behavior notes:
+
 - `modelOverrides` are applied to built-in provider models.
 - Unknown model IDs are ignored.
 - You can combine provider-level `baseUrl`/`headers` with `modelOverrides`.
@@ -259,21 +263,21 @@ For providers with partial OpenAI compatibility, use the `compat` field.
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `supportsStore` | Provider supports `store` field |
-| `supportsDeveloperRole` | Use `developer` vs `system` role |
-| `supportsReasoningEffort` | Support for `reasoning_effort` parameter |
-| `reasoningEffortMap` | Map pi thinking levels to provider-specific `reasoning_effort` values |
-| `supportsUsageInStreaming` | Supports `stream_options: { include_usage: true }` (default: `true`) |
-| `maxTokensField` | Use `max_completion_tokens` or `max_tokens` |
-| `requiresToolResultName` | Include `name` on tool result messages |
-| `requiresAssistantAfterToolResult` | Insert an assistant message before a user message after tool results |
-| `requiresThinkingAsText` | Convert thinking blocks to plain text |
-| `thinkingFormat` | Use `reasoning_effort`, `zai`, `qwen`, or `qwen-chat-template` thinking parameters |
-| `supportsStrictMode` | Include the `strict` field in tool definitions |
-| `openRouterRouting` | OpenRouter routing config passed to OpenRouter for model/provider selection |
-| `vercelGatewayRouting` | Vercel AI Gateway routing config for provider selection (`only`, `order`) |
+| Field                              | Description                                                                        |
+|------------------------------------|------------------------------------------------------------------------------------|
+| `supportsStore`                    | Provider supports `store` field                                                    |
+| `supportsDeveloperRole`            | Use `developer` vs `system` role                                                   |
+| `supportsReasoningEffort`          | Support for `reasoning_effort` parameter                                           |
+| `reasoningEffortMap`               | Map pi thinking levels to provider-specific `reasoning_effort` values              |
+| `supportsUsageInStreaming`         | Supports `stream_options: { include_usage: true }` (default: `true`)               |
+| `maxTokensField`                   | Use `max_completion_tokens` or `max_tokens`                                        |
+| `requiresToolResultName`           | Include `name` on tool result messages                                             |
+| `requiresAssistantAfterToolResult` | Insert an assistant message before a user message after tool results               |
+| `requiresThinkingAsText`           | Convert thinking blocks to plain text                                              |
+| `thinkingFormat`                   | Use `reasoning_effort`, `zai`, `qwen`, or `qwen-chat-template` thinking parameters |
+| `supportsStrictMode`               | Include the `strict` field in tool definitions                                     |
+| `openRouterRouting`                | OpenRouter routing config passed to OpenRouter for model/provider selection        |
+| `vercelGatewayRouting`             | Vercel AI Gateway routing config for provider selection (`only`, `order`)          |
 
 `qwen` uses top-level `enable_thinking`. Use `qwen-chat-template` for local Qwen-compatible servers that require `chat_template_kwargs.enable_thinking`.
 
@@ -282,50 +286,21 @@ Example:
 ```json
 {
   "providers": {
-    "openrouter": {
-      "baseUrl": "https://openrouter.ai/api/v1",
-      "apiKey": "OPENROUTER_API_KEY",
+    "ollama": {
+      "baseUrl": "http://localhost:11434/v1",
       "api": "openai-completions",
       "models": [
         {
-          "id": "openrouter/anthropic/claude-3.5-sonnet",
-          "name": "OpenRouter Claude 3.5 Sonnet",
-          "compat": {
-            "openRouterRouting": {
-              "order": ["anthropic"],
-              "fallbacks": ["openai"]
-            }
-          }
-        }
-      ]
-    }
-  }
-}
-```
-
-Vercel AI Gateway example:
-
-```json
-{
-  "providers": {
-    "vercel-ai-gateway": {
-      "baseUrl": "https://ai-gateway.vercel.sh/v1",
-      "apiKey": "AI_GATEWAY_API_KEY",
-      "api": "openai-completions",
-      "models": [
-        {
-          "id": "moonshotai/kimi-k2.5",
-          "name": "Kimi K2.5 (Fireworks via Vercel)",
+          "id": "qwen3-coder",
+          "name": "Qwen3 Coder (local)",
           "reasoning": true,
-          "input": ["text", "image"],
-          "cost": { "input": 0.6, "output": 3, "cacheRead": 0, "cacheWrite": 0 },
+          "input": ["text"],
+          "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
           "contextWindow": 262144,
-          "maxTokens": 262144,
+          "maxTokens": 65536,
           "compat": {
-            "vercelGatewayRouting": {
-              "only": ["fireworks", "novita"],
-              "order": ["fireworks", "novita"]
-            }
+            "thinkingFormat": "qwen-chat-template",
+            "supportsDeveloperRole": false
           }
         }
       ]

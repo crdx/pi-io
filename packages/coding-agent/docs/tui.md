@@ -19,12 +19,12 @@ interface Component {
 }
 ```
 
-| Method | Description |
-|--------|-------------|
-| `render(width)` | Return array of strings (one per line). Each line **must not exceed `width`**. |
-| `handleInput?(data)` | Receive keyboard input when component has focus. |
-| `wantsKeyRelease?` | If true, component receives key release events (Kitty protocol). Default: false. |
-| `invalidate()` | Clear cached render state. Called on theme changes. |
+| Method               | Description                                                                      |
+|----------------------|----------------------------------------------------------------------------------|
+| `render(width)`      | Return array of strings (one per line). Each line **must not exceed `width`**.   |
+| `handleInput?(data)` | Receive keyboard input when component has focus.                                 |
+| `wantsKeyRelease?`   | If true, component receives key release events (Kitty protocol). Default: false. |
+| `invalidate()`       | Clear cached render state. Called on theme changes.                              |
 
 The TUI appends a full SGR reset and OSC 8 reset at the end of each rendered line. Styles do not carry across lines. If you emit multi-line text with styling, reapply styles per line or use `wrapTextWithAnsi()` so styles are preserved for each wrapped line.
 
@@ -47,6 +47,7 @@ class MyInput implements Component, Focusable {
 ```
 
 When a `Focusable` component has focus, TUI:
+
 1. Sets `focused = true` on the component
 2. Scans rendered output for `CURSOR_MARKER` (a zero-width APC escape sequence)
 3. Positions the hardware terminal cursor at that location
@@ -280,6 +281,7 @@ handleInput(data: string) {
 ```
 
 **Key identifiers** (use `Key.*` for autocomplete, or string literals):
+
 - Basic keys: `Key.enter`, `Key.escape`, `Key.tab`, `Key.space`, `Key.backspace`, `Key.delete`, `Key.home`, `Key.end`
 - Arrow keys: `Key.up`, `Key.down`, `Key.left`, `Key.right`
 - With modifiers: `Key.ctrl("c")`, `Key.shift("tab")`, `Key.alt("left")`, `Key.ctrlShift("p")`
@@ -299,6 +301,7 @@ render(width: number): string[] {
 ```
 
 Utilities:
+
 - `visibleWidth(str)` - Get display width (ignores ANSI codes)
 - `truncateToWidth(str, width, ellipsis?)` - Truncate with optional ellipsis
 - `wrapTextWithAnsi(str, width)` - Word wrap preserving ANSI codes
@@ -405,18 +408,18 @@ renderResult(result, options, theme, context) {
 
 **Foreground colors** (`theme.fg(color, text)`):
 
-| Category | Colors |
-|----------|--------|
-| General | `text`, `accent`, `muted`, `dim` |
-| Status | `success`, `error`, `warning` |
-| Borders | `border`, `borderAccent`, `borderMuted` |
-| Messages | `userMessageText`, `customMessageText`, `customMessageLabel` |
-| Tools | `toolTitle`, `toolOutput` |
-| Diffs | `toolDiffAdded`, `toolDiffRemoved`, `toolDiffContext` |
-| Markdown | `mdHeading`, `mdLink`, `mdLinkUrl`, `mdCode`, `mdCodeBlock`, `mdCodeBlockBorder`, `mdQuote`, `mdQuoteBorder`, `mdHr`, `mdListBullet` |
-| Syntax | `syntaxComment`, `syntaxKeyword`, `syntaxFunction`, `syntaxVariable`, `syntaxString`, `syntaxNumber`, `syntaxType`, `syntaxOperator`, `syntaxPunctuation` |
-| Thinking | `thinkingOff`, `thinkingMinimal`, `thinkingLow`, `thinkingMedium`, `thinkingHigh`, `thinkingXhigh` |
-| Modes | `bashMode` |
+| Category | Colors                                                                                                                                                    |
+|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| General  | `text`, `accent`, `muted`, `dim`                                                                                                                          |
+| Status   | `success`, `error`, `warning`                                                                                                                             |
+| Borders  | `border`, `borderAccent`, `borderMuted`                                                                                                                   |
+| Messages | `userMessageText`, `customMessageText`, `customMessageLabel`                                                                                              |
+| Tools    | `toolTitle`, `toolOutput`                                                                                                                                 |
+| Diffs    | `toolDiffAdded`, `toolDiffRemoved`, `toolDiffContext`                                                                                                     |
+| Markdown | `mdHeading`, `mdLink`, `mdLinkUrl`, `mdCode`, `mdCodeBlock`, `mdCodeBlockBorder`, `mdQuote`, `mdQuoteBorder`, `mdHr`, `mdListBullet`                      |
+| Syntax   | `syntaxComment`, `syntaxKeyword`, `syntaxFunction`, `syntaxVariable`, `syntaxString`, `syntaxNumber`, `syntaxType`, `syntaxOperator`, `syntaxPunctuation` |
+| Thinking | `thinkingOff`, `thinkingMinimal`, `thinkingLow`, `thinkingMedium`, `thinkingHigh`, `thinkingXhigh`                                                        |
+| Modes    | `bashMode`                                                                                                                                                |
 
 **Background colors** (`theme.bg(color, text)`):
 

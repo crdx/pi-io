@@ -3,6 +3,7 @@
 LLMs have limited context windows. When conversations grow too long, pi uses compaction to summarize older content while preserving recent work. This page covers both auto-compaction and branch summarization.
 
 **Source files** ([pi-mono](https://github.com/earendil-works/pi)):
+
 - [`packages/coding-agent/src/core/compaction/compaction.ts`](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/src/core/compaction/compaction.ts) - Auto-compaction logic
 - [`packages/coding-agent/src/core/compaction/branch-summarization.ts`](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/src/core/compaction/branch-summarization.ts) - Branch summarization
 - [`packages/coding-agent/src/core/compaction/utils.ts`](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/src/core/compaction/utils.ts) - Shared utilities (file tracking, serialization)
@@ -15,10 +16,10 @@ For TypeScript definitions in your project, inspect `node_modules/@mariozechner/
 
 Pi has two summarization mechanisms:
 
-| Mechanism | Trigger | Purpose |
-|-----------|---------|---------|
-| Compaction | Context exceeds threshold, or `/compact` | Summarize old messages to free up context |
-| Branch summarization | `/tree` navigation | Preserve context when switching branches |
+| Mechanism            | Trigger                                  | Purpose                                   |
+|----------------------|------------------------------------------|-------------------------------------------|
+| Compaction           | Context exceeds threshold, or `/compact` | Summarize old messages to free up context |
+| Branch summarization | `/tree` navigation                       | Preserve context when switching branches  |
 
 Both use the same structured summary format and track file operations cumulatively.
 
@@ -101,12 +102,14 @@ Split turn (one huge turn exceeds budget):
 ```
 
 For split turns, pi generates two summaries and merges them:
+
 1. **History summary**: Previous context (if any)
 2. **Turn prefix summary**: The early part of the split turn
 
 ### Cut Point Rules
 
 Valid cut points are:
+
 - User messages
 - Assistant messages
 - BashExecution messages
@@ -176,6 +179,7 @@ After navigation with summary:
 ### Cumulative File Tracking
 
 Both compaction and branch summarization track files cumulatively. When generating a summary, pi extracts file operations from:
+
 - Tool calls in the messages being summarized
 - Previous compaction or branch summary `details` (if any)
 
@@ -383,10 +387,10 @@ Configure compaction in `~/.pi/agent/settings.json` or `<project-dir>/.pi/settin
 }
 ```
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `enabled` | `true` | Enable auto-compaction |
-| `reserveTokens` | `16384` | Tokens to reserve for LLM response |
+| Setting            | Default | Description                            |
+|--------------------|---------|----------------------------------------|
+| `enabled`          | `true`  | Enable auto-compaction                 |
+| `reserveTokens`    | `16384` | Tokens to reserve for LLM response     |
 | `keepRecentTokens` | `20000` | Recent tokens to keep (not summarized) |
 
 Disable auto-compaction with `"enabled": false`. You can still compact manually with `/compact`.

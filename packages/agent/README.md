@@ -36,6 +36,7 @@ await agent.prompt("Hello!");
 ### AgentMessage vs LLM Message
 
 The agent works with `AgentMessage`, a flexible type that can include:
+
 - Standard LLM messages (`user`, `assistant`, `toolResult`)
 - Custom app-specific message types via declaration merging
 
@@ -121,18 +122,18 @@ The last message in context must be `user` or `toolResult` (not `assistant`).
 
 ### Event Types
 
-| Event | Description |
-|-------|-------------|
-| `agent_start` | Agent begins processing |
-| `agent_end` | Agent completes with all new messages |
-| `turn_start` | New turn begins (one LLM call + tool executions) |
-| `turn_end` | Turn completes with assistant message and tool results |
-| `message_start` | Any message begins (user, assistant, toolResult) |
-| `message_update` | **Assistant only.** Includes `assistantMessageEvent` with delta |
-| `message_end` | Message completes |
-| `tool_execution_start` | Tool begins |
-| `tool_execution_update` | Tool streams progress |
-| `tool_execution_end` | Tool completes |
+| Event                   | Description                                                     |
+|-------------------------|-----------------------------------------------------------------|
+| `agent_start`           | Agent begins processing                                         |
+| `agent_end`             | Agent completes with all new messages                           |
+| `turn_start`            | New turn begins (one LLM call + tool executions)                |
+| `turn_end`              | Turn completes with assistant message and tool results          |
+| `message_start`         | Any message begins (user, assistant, toolResult)                |
+| `message_update`        | **Assistant only.** Includes `assistantMessageEvent` with delta |
+| `message_end`           | Message completes                                               |
+| `tool_execution_start`  | Tool begins                                                     |
+| `tool_execution_update` | Tool streams progress                                           |
+| `tool_execution_end`    | Tool completes                                                  |
 
 ## Agent Options
 
@@ -311,6 +312,7 @@ agent.clearAllQueues();
 Use clearSteeringQueue, clearFollowUpQueue, or clearAllQueues to drop queued messages.
 
 When steering messages are detected after a turn completes:
+
 1. All tool calls from the current assistant message have already finished
 2. Steering messages are injected
 3. The LLM responds on the next turn

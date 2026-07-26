@@ -8,12 +8,12 @@ Sessions are stored as trees where each entry has an `id` and `parentId`. The "l
 
 ### Comparison with `/fork`
 
-| Feature | `/fork` | `/tree` |
-|---------|---------|---------|
-| View | Flat list of user messages | Full tree structure |
-| Action | Extracts path to **new session file** | Changes leaf in **same session** |
-| Summary | Never | Optional (user prompted) |
-| Events | `session_before_fork` / `session_fork` | `session_before_tree` / `session_tree` |
+| Feature | `/fork`                                | `/tree`                                |
+|---------|----------------------------------------|----------------------------------------|
+| View    | Flat list of user messages             | Full tree structure                    |
+| Action  | Extracts path to **new session file**  | Changes leaf in **same session**       |
+| Summary | Never                                  | Optional (user prompted)               |
+| Events  | `session_before_fork` / `session_fork` | `session_before_tree` / `session_tree` |
 
 ## Tree UI
 
@@ -30,15 +30,15 @@ Sessions are stored as trees where each entry has an `id` and `parentId`. The "l
 
 ### Controls
 
-| Key | Action |
-|-----|--------|
-| ↑/↓ | Navigate (depth-first order) |
-| ←/→ | Page up/down |
-| Ctrl+←/Ctrl+→ or Alt+←/Alt+→ | Fold/unfold and jump between branch segments |
-| Enter | Select node |
-| Escape/Ctrl+C | Cancel |
-| Ctrl+U | Toggle: user messages only |
-| Ctrl+O | Toggle: show all (including custom/label entries) |
+| Key                          | Action                                            |
+|------------------------------|---------------------------------------------------|
+| ↑/↓                          | Navigate (depth-first order)                      |
+| ←/→                          | Page up/down                                      |
+| Ctrl+←/Ctrl+→ or Alt+←/Alt+→ | Fold/unfold and jump between branch segments      |
+| Enter                        | Select node                                       |
+| Escape/Ctrl+C                | Cancel                                            |
+| Ctrl+U                       | Toggle: user messages only                        |
+| Ctrl+O                       | Toggle: show all (including custom/label entries) |
 
 `Ctrl+←` or `Alt+←` folds the current node if it is foldable. Foldable nodes are roots and branch segment starts that have visible children. If the current node is not foldable, or is already folded, the selection jumps up to the previous visible branch segment start.
 
@@ -58,17 +58,21 @@ Sessions are stored as trees where each entry has an `id` and `parentId`. The "l
 ## Selection Behavior
 
 ### User Message or Custom Message
+
 1. Leaf set to **parent** of selected node (or `null` if root)
 2. Message text placed in **editor** for re-submission
 3. User edits and submits, creating a new branch
 
 ### Non-User Message (assistant, compaction, etc.)
+
 1. Leaf set to **selected node**
 2. Editor stays empty
 3. User continues from that point
 
 ### Selecting Root User Message
+
 If user selects the very first message (has no parent):
+
 1. Leaf reset to `null` (empty conversation)
 2. Message text placed in editor
 3. User effectively restarts from scratch
@@ -93,6 +97,7 @@ A → B → C → D → E → F  ← old leaf
 Abandoned path: D → E → F (summarized)
 
 Summarization stops at:
+
 1. Common ancestor (always)
 2. Compaction node (if encountered first)
 
@@ -129,12 +134,14 @@ async navigateTree(
 ```
 
 Options:
+
 - `summarize`: Whether to generate a summary of the abandoned branch
 - `customInstructions`: Custom instructions for the summarizer
 - `replaceInstructions`: If true, `customInstructions` replaces the default prompt instead of being appended
 - `label`: Label to attach to the branch summary entry (or target entry if not summarizing)
 
 Flow:
+
 1. Validate target, check no-op (target === current leaf)
 2. Find common ancestor between old leaf and target
 3. Collect entries to summarize (if requested)
@@ -157,6 +164,7 @@ Flow:
 ### InteractiveMode
 
 `/tree` command shows `TreeSelectorComponent`, then:
+
 1. Prompt for summarization
 2. Call `session.navigateTree()`
 3. Clear and re-render chat

@@ -11,13 +11,13 @@ function anthropicNormalizeToolCallId(
 	return id.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
 }
 
-function makeCopilotClaudeModel(): Model<"anthropic-messages"> {
+function makeClaudeModel(): Model<"anthropic-messages"> {
 	return {
 		id: "claude-sonnet-4",
 		name: "Claude Sonnet 4",
 		api: "anthropic-messages",
-		provider: "github-copilot",
-		baseUrl: "https://api.individual.githubcopilot.com",
+		provider: "custom-proxy",
+		baseUrl: "https://proxy.example.com",
 		reasoning: true,
 		input: ["text", "image"],
 		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
@@ -26,9 +26,9 @@ function makeCopilotClaudeModel(): Model<"anthropic-messages"> {
 	};
 }
 
-describe("OpenAI to Anthropic session migration for Copilot Claude", () => {
+describe("OpenAI to Anthropic session migration across APIs", () => {
 	it("converts thinking blocks to plain text when source model differs", () => {
-		const model = makeCopilotClaudeModel();
+		const model = makeClaudeModel();
 		const messages: Message[] = [
 			{ role: "user", content: "hello", timestamp: Date.now() },
 			{
@@ -42,7 +42,7 @@ describe("OpenAI to Anthropic session migration for Copilot Claude", () => {
 					{ type: "text", text: "Hi there!" },
 				],
 				api: "openai-completions",
-				provider: "github-copilot",
+				provider: "custom-proxy",
 				model: "gpt-4o",
 				usage: {
 					input: 0,
@@ -68,7 +68,7 @@ describe("OpenAI to Anthropic session migration for Copilot Claude", () => {
 	});
 
 	it("removes thoughtSignature from tool calls when migrating between models", () => {
-		const model = makeCopilotClaudeModel();
+		const model = makeClaudeModel();
 		const messages: Message[] = [
 			{ role: "user", content: "run a command", timestamp: Date.now() },
 			{
@@ -83,7 +83,7 @@ describe("OpenAI to Anthropic session migration for Copilot Claude", () => {
 					},
 				],
 				api: "openai-responses",
-				provider: "github-copilot",
+				provider: "custom-proxy",
 				model: "gpt-5",
 				usage: {
 					input: 0,

@@ -47,44 +47,58 @@ Create `~/.pi/agent/AGENTS.md` to help the agent understand the Termux environme
 
 ## Opening URLs
 ```bash
+
 termux-open-url "https://example.com"
+
 ```
 
 ## Opening Files
 ```bash
+
 termux-open file.pdf          # Opens with default app
 termux-open -c image.jpg      # Choose app
+
 ```
 
 ## Clipboard
 ```bash
+
 termux-clipboard-set "text"   # Copy
 termux-clipboard-get          # Paste
+
 ```
 
 ## Notifications
 ```bash
+
 termux-notification -t "Title" -c "Content"
+
 ```
 
 ## Device Info
 ```bash
+
 termux-battery-status         # Battery info
 termux-wifi-connectioninfo    # WiFi info
 termux-telephony-deviceinfo   # Device info
+
 ```
 
 ## Sharing
 ```bash
+
 termux-share -a send file.txt # Share file
+
 ```
 
 ## Other Useful Commands
 ```bash
+
 termux-toast "message"        # Quick toast popup
 termux-vibrate                # Vibrate device
 termux-tts-speak "hello"      # Text to speech
 termux-camera-photo out.jpg   # Take photo
+
 ```
 
 ## Notes
@@ -104,10 +118,12 @@ termux-camera-photo out.jpg   # Take photo
 ### Clipboard not working
 
 Ensure both apps are installed:
+
 1. Termux (from GitHub or F-Droid)
 2. Termux:API (from GitHub or F-Droid)
 
 Then install the CLI tools:
+
 ```bash
 pkg install termux-api
 ```
@@ -115,6 +131,7 @@ pkg install termux-api
 ### Permission denied for shared storage
 
 Run once to grant storage permissions:
+
 ```bash
 termux-setup-storage
 ```
@@ -122,6 +139,7 @@ termux-setup-storage
 ### Node.js installation issues
 
 If npm fails, try clearing the cache:
+
 ```bash
 npm cache clean --force
 ```

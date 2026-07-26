@@ -1,6 +1,6 @@
 import { MODELS } from "./models.generated.js";
 import { supportsXhigh as anthropicSupportsXhigh } from "./providers/anthropic-thinking.js";
-import type { Api, KnownProvider, Model, ModelCost, ModelCostRates, Usage } from "./types.js";
+import type { Api, Model, ModelCost, ModelCostRates, Usage } from "./types.js";
 
 const modelRegistry: Map<string, Map<string, Model<Api>>> = new Map();
 
@@ -13,9 +13,9 @@ for (const [provider, models] of Object.entries(MODELS)) {
 	modelRegistry.set(provider, providerModels);
 }
 
-// Providers present in the generated registry; a subset of KnownProvider since the registry is
-// filtered down to the providers we actually use (see scripts/generate-models.ts).
-type RegistryProvider = keyof typeof MODELS;
+// Providers present in the generated registry, which is filtered down to the providers we
+// actually use (see scripts/generate-models.ts).
+export type RegistryProvider = keyof typeof MODELS;
 
 type ModelApi<
 	TProvider extends RegistryProvider,
@@ -30,15 +30,15 @@ export function getModel<TProvider extends RegistryProvider, TModelId extends ke
 	return providerModels?.get(modelId as string) as Model<ModelApi<TProvider, TModelId>>;
 }
 
-export function getProviders(): KnownProvider[] {
-	return Array.from(modelRegistry.keys()) as KnownProvider[];
+export function getProviders(): RegistryProvider[] {
+	return Array.from(modelRegistry.keys()) as RegistryProvider[];
 }
 
 export function getModels<TProvider extends RegistryProvider>(
 	provider: TProvider,
 ): Model<ModelApi<TProvider, keyof (typeof MODELS)[TProvider]>>[];
-export function getModels(provider: KnownProvider): Model<Api>[];
-export function getModels(provider: KnownProvider): Model<Api>[] {
+export function getModels(provider: RegistryProvider): Model<Api>[];
+export function getModels(provider: RegistryProvider): Model<Api>[] {
 	const models = modelRegistry.get(provider);
 	return models ? Array.from(models.values()) : [];
 }

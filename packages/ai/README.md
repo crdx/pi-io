@@ -37,7 +37,6 @@ Unified LLM API with automatic model discovery, provider configuration, token an
   - [Environment Variables](#environment-variables-nodejs-only)
   - [Checking Environment Variables](#checking-environment-variables)
 - [OAuth Providers](#oauth-providers)
-  - [Vertex AI](#vertex-ai)
   - [CLI Login](#cli-login)
   - [Programmatic OAuth](#programmatic-oauth)
   - [Login Flow Example](#login-flow-example)
@@ -48,25 +47,8 @@ Unified LLM API with automatic model discovery, provider configuration, token an
 ## Supported Providers
 
 - **OpenAI**
-- **Azure OpenAI (Responses)**
 - **OpenAI Codex** (ChatGPT Plus/Pro subscription, requires OAuth, see below)
 - **Anthropic**
-- **Google**
-- **Vertex AI** (Gemini via Vertex AI)
-- **Mistral**
-- **Groq**
-- **Cerebras**
-- **xAI**
-- **OpenRouter**
-- **Vercel AI Gateway**
-- **MiniMax**
-- **GitHub Copilot** (requires OAuth, see below)
-- **Google Gemini CLI** (requires OAuth, see below)
-- **Antigravity** (requires OAuth, see below)
-- **Amazon Bedrock**
-- **OpenCode Zen**
-- **OpenCode Go**
-- **Kimi For Coding** (Moonshot AI, uses Anthropic-compatible API)
 - **Any OpenAI-compatible API**: Ollama, vLLM, LM Studio, etc.
 
 ## Installation
@@ -218,8 +200,8 @@ const weatherTool: Tool = {
   })
 };
 
-// Note: For Google API compatibility, use StringEnum helper instead of Type.Enum
-// Type.Enum generates anyOf/const patterns that Google doesn't support
+// Note: use the StringEnum helper instead of Type.Enum
+// Type.Enum generates anyOf/const patterns that some providers don't support
 
 const bookMeetingTool: Tool = {
   name: 'book_meeting',
@@ -317,13 +299,13 @@ for await (const event of s) {
 ```
 
 **Important notes about partial tool arguments:**
+
 - During `toolcall_delta` events, `arguments` contains the best-effort parse of partial JSON
 - Fields may be missing or incomplete - always check for existence before use
 - String values may be truncated mid-word
 - Arrays may be incomplete
 - Nested objects may be partially populated
 - At minimum, `arguments` will be an empty object `{}`, never `undefined`
-- The Google provider does not support function call streaming. Instead, you will receive a single `toolcall_delta` event with the full arguments.
 
 ### Validating Tool Arguments
 
@@ -365,20 +347,20 @@ for await (const event of s) {
 
 All streaming events emitted during assistant message generation:
 
-| Event Type | Description | Key Properties |
-|------------|-------------|----------------|
-| `start` | Stream begins | `partial`: Initial assistant message structure |
-| `text_start` | Text block starts | `contentIndex`: Position in content array |
-| `text_delta` | Text chunk received | `delta`: New text, `contentIndex`: Position |
-| `text_end` | Text block complete | `content`: Full text, `contentIndex`: Position |
-| `thinking_start` | Thinking block starts | `contentIndex`: Position in content array |
-| `thinking_delta` | Thinking chunk received | `delta`: New text, `contentIndex`: Position |
-| `thinking_end` | Thinking block complete | `content`: Full thinking, `contentIndex`: Position |
-| `toolcall_start` | Tool call begins | `contentIndex`: Position in content array |
-| `toolcall_delta` | Tool arguments streaming | `delta`: JSON chunk, `partial.content[contentIndex].arguments`: Partial parsed args |
-| `toolcall_end` | Tool call complete | `toolCall`: Complete validated tool call with `id`, `name`, `arguments` |
-| `done` | Stream complete | `reason`: Stop reason ("stop", "length", "toolUse"), `message`: Final assistant message |
-| `error` | Error occurred | `reason`: Error type ("error" or "aborted"), `error`: AssistantMessage with partial content |
+| Event Type       | Description              | Key Properties                                                                              |
+|------------------|--------------------------|---------------------------------------------------------------------------------------------|
+| `start`          | Stream begins            | `partial`: Initial assistant message structure                                              |
+| `text_start`     | Text block starts        | `contentIndex`: Position in content array                                                   |
+| `text_delta`     | Text chunk received      | `delta`: New text, `contentIndex`: Position                                                 |
+| `text_end`       | Text block complete      | `content`: Full text, `contentIndex`: Position                                              |
+| `thinking_start` | Thinking block starts    | `contentIndex`: Position in content array                                                   |
+| `thinking_delta` | Thinking chunk received  | `delta`: New text, `contentIndex`: Position                                                 |
+| `thinking_end`   | Thinking block complete  | `content`: Full thinking, `contentIndex`: Position                                          |
+| `toolcall_start` | Tool call begins         | `contentIndex`: Position in content array                                                   |
+| `toolcall_delta` | Tool arguments streaming | `delta`: JSON chunk, `partial.content[contentIndex].arguments`: Partial parsed args         |
+| `toolcall_end`   | Tool call complete       | `toolCall`: Complete validated tool call with `id`, `name`, `arguments`                     |
+| `done`           | Stream complete          | `reason`: Stop reason ("stop", "length", "toolUse"), `message`: Final assistant message     |
+| `error`          | Error occurred           | `reason`: Error type ("error" or "aborted"), `error`: AssistantMessage with partial content |
 
 ## Image Input
 
@@ -428,11 +410,6 @@ import { getModel, streamSimple, completeSimple } from '@mariozechner/pi-ai';
 // Many models across providers support thinking/reasoning
 const model = getModel('anthropic', 'claude-sonnet-4-20250514');
 // or getModel('openai', 'gpt-5-mini');
-// or getModel('google', 'gemini-2.5-flash');
-// or getModel('xai', 'grok-code-fast-1');
-// or getModel('groq', 'openai/gpt-oss-20b');
-// or getModel('cerebras', 'gpt-oss-120b');
-// or getModel('openrouter', 'z-ai/glm-4.5v');
 
 // Check if model supports reasoning
 if (model.reasoning) {
@@ -475,15 +452,6 @@ const anthropicModel = getModel('anthropic', 'claude-sonnet-4-20250514');
 await complete(anthropicModel, context, {
   thinkingEnabled: true,
   thinkingBudgetTokens: 8192  // Optional token limit
-});
-
-// Google Gemini Thinking
-const googleModel = getModel('google', 'gemini-2.5-flash');
-await complete(googleModel, context, {
-  thinking: {
-    enabled: true,
-    budgetTokens: 8192  // -1 for dynamic, 0 to disable
-  }
 });
 ```
 
@@ -626,24 +594,18 @@ The callback is supported by `stream`, `complete`, `streamSimple`, and `complete
 The library uses a registry of API implementations. Built-in APIs include:
 
 - **`anthropic-messages`**: Anthropic Messages API (`streamAnthropic`, `AnthropicOptions`)
-- **`google-generative-ai`**: Google Generative AI API (`streamGoogle`, `GoogleOptions`)
-- **`google-gemini-cli`**: Google Cloud Code Assist API (`streamGoogleGeminiCli`, `GoogleGeminiCliOptions`)
-- **`google-vertex`**: Google Vertex AI API (`streamGoogleVertex`, `GoogleVertexOptions`)
-- **`mistral-conversations`**: Mistral Conversations API (`streamMistral`, `MistralOptions`)
 - **`openai-completions`**: OpenAI Chat Completions API (`streamOpenAICompletions`, `OpenAICompletionsOptions`)
 - **`openai-responses`**: OpenAI Responses API (`streamOpenAIResponses`, `OpenAIResponsesOptions`)
 - **`openai-codex-responses`**: OpenAI Codex Responses API (`streamOpenAICodexResponses`, `OpenAICodexResponsesOptions`)
-- **`azure-openai-responses`**: Azure OpenAI Responses API (`streamAzureOpenAIResponses`, `AzureOpenAIResponsesOptions`)
-- **`bedrock-converse-stream`**: Amazon Bedrock Converse API (`streamBedrock`, `BedrockOptions`)
 
 ### Providers and Models
 
 A **provider** offers models through a specific API. For example:
+
 - **Anthropic** models use the `anthropic-messages` API
-- **Google** models use the `google-generative-ai` API
+- **OpenAI Codex** models use the `openai-codex-responses` API
 - **OpenAI** models use the `openai-responses` API
-- **Mistral** models use the `mistral-conversations` API
-- **xAI, Cerebras, Groq, etc.** models use the `openai-completions` API (OpenAI-compatible)
+- **Ollama, vLLM, LM Studio, etc.** models use the `openai-completions` API (OpenAI-compatible)
 
 ### Querying Providers and Models
 
@@ -652,7 +614,7 @@ import { getProviders, getModels, getModel } from '@mariozechner/pi-ai';
 
 // Get all available providers
 const providers = getProviders();
-console.log(providers); // ['openai', 'anthropic', 'google', 'xai', 'groq', ...]
+console.log(providers); // ['anthropic', 'openai-codex']
 
 // Get all models from a provider (fully typed)
 const anthropicModels = getModels('anthropic');
@@ -665,7 +627,7 @@ for (const model of anthropicModels) {
 }
 
 // Get a specific model (both provider and model ID are auto-completed in IDEs)
-const model = getModel('openai', 'gpt-4o-mini');
+const model = getModel('openai-codex', 'gpt-5.4');
 console.log(`Using ${model.name} via ${model.api} API`);
 ```
 
@@ -756,7 +718,7 @@ const ollamaReasoningModel: Model<'openai-completions'> = {
 
 ### OpenAI Compatibility Settings
 
-The `openai-completions` API is implemented by many providers with minor differences. By default, the library auto-detects compatibility settings based on `baseUrl` for a small set of known OpenAI-compatible providers (Cerebras, xAI, Chutes, DeepSeek, zAi, OpenCode, etc.). For custom proxies or unknown endpoints, you can override these settings via the `compat` field. For `openai-responses` models, the compat field only supports Responses-specific flags.
+The `openai-completions` API is implemented by many providers with minor differences. By default, the library auto-detects compatibility settings based on `baseUrl` for a small set of known OpenAI-compatible endpoints. For custom proxies or unknown endpoints, you can override these settings via the `compat` field. For `openai-responses` models, the compat field only supports Responses-specific flags.
 
 ```typescript
 interface OpenAICompletionsCompat {
@@ -838,22 +800,19 @@ const gpt5 = getModel('openai', 'gpt-5-mini');
 context.messages.push({ role: 'user', content: 'Is that calculation correct?' });
 const gptResponse = await complete(gpt5, context);
 context.messages.push(gptResponse);
-
-// Switch to Gemini
-const gemini = getModel('google', 'gemini-2.5-flash');
-context.messages.push({ role: 'user', content: 'What was the original question?' });
-const geminiResponse = await complete(gemini, context);
 ```
 
 ### Provider Compatibility
 
 All providers can handle messages from other providers, including:
+
 - Text content
 - Tool calls and tool results (including images in tool results)
 - Thinking/reasoning blocks (transformed to tagged text for cross-provider compatibility)
 - Aborted messages with partial content
 
 This enables flexible workflows where you can:
+
 - Start with a fast model for initial responses
 - Switch to a more capable model for complex reasoning
 - Use specialized models for specific tasks
@@ -917,33 +876,17 @@ const response = await complete(model, {
 
 ### Browser Compatibility Notes
 
-- Amazon Bedrock (`bedrock-converse-stream`) is not supported in browser environments.
 - OAuth login flows are not supported in browser environments. Use the `@mariozechner/pi-ai/oauth` entry point in Node.js.
-- In browser builds, Bedrock can still appear in model lists. Calls to Bedrock models fail at runtime.
-- Use a server-side proxy or backend service if you need Bedrock or OAuth-based auth from a web app.
+- Use a server-side proxy or backend service if you need OAuth-based auth from a web app.
 
 ### Environment Variables (Node.js only)
 
 In Node.js environments, you can set environment variables to avoid passing API keys:
 
-| Provider | Environment Variable(s) |
-|----------|------------------------|
-| OpenAI | `OPENAI_API_KEY` |
-| Azure OpenAI | `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_BASE_URL` or `AZURE_OPENAI_RESOURCE_NAME` (optional `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_DEPLOYMENT_NAME_MAP` like `model=deployment,model2=deployment2`) |
+| Provider  | Environment Variable(s)                        |
+|-----------|------------------------------------------------|
+| OpenAI    | `OPENAI_API_KEY`                               |
 | Anthropic | `ANTHROPIC_API_KEY` or `ANTHROPIC_OAUTH_TOKEN` |
-| Google | `GEMINI_API_KEY` |
-| Vertex AI | `GOOGLE_CLOUD_API_KEY` or `GOOGLE_CLOUD_PROJECT` (or `GCLOUD_PROJECT`) + `GOOGLE_CLOUD_LOCATION` + ADC |
-| Mistral | `MISTRAL_API_KEY` |
-| Groq | `GROQ_API_KEY` |
-| Cerebras | `CEREBRAS_API_KEY` |
-| xAI | `XAI_API_KEY` |
-| OpenRouter | `OPENROUTER_API_KEY` |
-| Vercel AI Gateway | `AI_GATEWAY_API_KEY` |
-| zAI | `ZAI_API_KEY` |
-| MiniMax | `MINIMAX_API_KEY` |
-| OpenCode Zen / OpenCode Go | `OPENCODE_API_KEY` |
-| Kimi For Coding | `KIMI_API_KEY` |
-| GitHub Copilot | `COPILOT_GITHUB_TOKEN` or `GH_TOKEN` or `GITHUB_TOKEN` |
 
 When set, the library automatically uses these keys:
 
@@ -958,22 +901,14 @@ const response = await complete(model, context, {
 });
 ```
 
-#### Antigravity Version Override
-
-Set `PI_AI_ANTIGRAVITY_VERSION` to override the Antigravity User-Agent version when Google updates their requirements:
-
-```bash
-export PI_AI_ANTIGRAVITY_VERSION="1.23.0"
-```
-
 #### Cache Retention
 
 Set `PI_CACHE_RETENTION=long` to extend prompt cache retention:
 
-| Provider | Default | With `PI_CACHE_RETENTION=long` |
-|----------|---------|-------------------------------|
-| Anthropic | 5 minutes | 1 hour |
-| OpenAI | in-memory | 24 hours |
+| Provider  | Default   | With `PI_CACHE_RETENTION=long` |
+|-----------|-----------|--------------------------------|
+| Anthropic | 5 minutes | 1 hour                         |
+| OpenAI    | in-memory | 24 hours                       |
 
 This only affects direct API calls to `api.anthropic.com` and `api.openai.com`. Proxies and other providers are unaffected.
 
@@ -994,52 +929,6 @@ Several providers require OAuth authentication instead of static API keys:
 
 - **Anthropic** (Claude Pro/Max subscription)
 - **OpenAI Codex** (ChatGPT Plus/Pro subscription, access to GPT-5.x Codex models)
-- **GitHub Copilot** (Copilot subscription)
-- **Google Gemini CLI** (Gemini 2.0/2.5 via Google Cloud Code Assist; free tier or paid subscription)
-- **Antigravity** (Free Gemini 3, Claude, GPT-OSS via Google Cloud)
-
-For paid Cloud Code Assist subscriptions, set `GOOGLE_CLOUD_PROJECT` or `GOOGLE_CLOUD_PROJECT_ID` to your project ID.
-
-### Vertex AI
-
-Vertex AI models support either a Google Cloud API key or Application Default Credentials (ADC):
-
-- **API key**: Set `GOOGLE_CLOUD_API_KEY` or pass `apiKey` in the call options.
-- **Local development (ADC)**: Run `gcloud auth application-default login`
-- **CI/Production (ADC)**: Set `GOOGLE_APPLICATION_CREDENTIALS` to point to a service account JSON key file
-
-When using ADC, also set `GOOGLE_CLOUD_PROJECT` (or `GCLOUD_PROJECT`) and `GOOGLE_CLOUD_LOCATION`. You can also pass `project`/`location` in the call options. When using `GOOGLE_CLOUD_API_KEY`, `project` and `location` are not required.
-
-Example:
-
-```bash
-# Local (uses your user credentials)
-gcloud auth application-default login
-export GOOGLE_CLOUD_PROJECT="my-project"
-export GOOGLE_CLOUD_LOCATION="us-central1"
-
-# CI/Production (service account key file)
-export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
-```
-
-```typescript
-import { getModel, complete } from '@mariozechner/pi-ai';
-
-(async () => {
-  const model = getModel('google-vertex', 'gemini-2.5-flash');
-  const response = await complete(model, {
-    messages: [{ role: 'user', content: 'Hello from Vertex AI' }]
-  }, {
-    apiKey: process.env.GOOGLE_CLOUD_API_KEY,
-  });
-
-  for (const block of response.content) {
-    if (block.type === 'text') console.log(block.text);
-  }
-})().catch(console.error);
-```
-
-Official docs: [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials)
 
 ### CLI Login
 
@@ -1062,16 +951,13 @@ import {
   // Login functions (return credentials, do not store)
   loginAnthropic,
   loginOpenAICodex,
-  loginGitHubCopilot,
-  loginGeminiCli,
-  loginAntigravity,
 
   // Token management
   refreshOAuthToken,   // (provider, credentials) => new credentials
   getOAuthApiKey,      // (provider, credentialsMap) => { newCredentials, apiKey } | null
 
   // Types
-  type OAuthProvider,  // 'anthropic' | 'openai-codex' | 'github-copilot' | 'google-gemini-cli' | 'google-antigravity'
+  type OAuthProvider,  // 'anthropic' | 'openai-codex'
   type OAuthCredentials,
 } from '@mariozechner/pi-ai/oauth';
 ```
@@ -1079,10 +965,10 @@ import {
 ### Login Flow Example
 
 ```typescript
-import { loginGitHubCopilot } from '@mariozechner/pi-ai/oauth';
+import { loginAnthropic } from '@mariozechner/pi-ai/oauth';
 import { writeFileSync } from 'fs';
 
-const credentials = await loginGitHubCopilot({
+const credentials = await loginAnthropic({
   onAuth: (url, instructions) => {
     console.log(`Open: ${url}`);
     if (instructions) console.log(instructions);
@@ -1094,7 +980,7 @@ const credentials = await loginGitHubCopilot({
 });
 
 // Store credentials yourself
-const auth = { 'github-copilot': { type: 'oauth', ...credentials } };
+const auth = { anthropic: { type: 'oauth', ...credentials } };
 writeFileSync('auth.json', JSON.stringify(auth, null, 2));
 ```
 
@@ -1111,15 +997,15 @@ import { readFileSync, writeFileSync } from 'fs';
 const auth = JSON.parse(readFileSync('auth.json', 'utf-8'));
 
 // Get API key (refreshes if expired)
-const result = await getOAuthApiKey('github-copilot', auth);
+const result = await getOAuthApiKey('anthropic', auth);
 if (!result) throw new Error('Not logged in');
 
 // Save refreshed credentials
-auth['github-copilot'] = { type: 'oauth', ...result.newCredentials };
+auth.anthropic = { type: 'oauth', ...result.newCredentials };
 writeFileSync('auth.json', JSON.stringify(auth, null, 2));
 
 // Use the API key
-const model = getModel('github-copilot', 'gpt-4o');
+const model = getModel('anthropic', 'claude-sonnet-4-6');
 const response = await complete(model, {
   messages: [{ role: 'user', content: 'Hello!' }]
 }, { apiKey: result.apiKey });
@@ -1129,12 +1015,6 @@ const response = await complete(model, {
 
 **OpenAI Codex**: Requires a ChatGPT Plus or Pro subscription. Provides access to GPT-5.x Codex models with extended context windows and reasoning capabilities. The library automatically handles session-based prompt caching when `sessionId` is provided in stream options. You can set `transport` in stream options to `"sse"`, `"websocket"`, or `"auto"` for Codex Responses transport selection. When using WebSocket with a `sessionId`, connections are reused per session and expire after 5 minutes of inactivity.
 
-**Azure OpenAI (Responses)**: Uses the Responses API only. Set `AZURE_OPENAI_API_KEY` and either `AZURE_OPENAI_BASE_URL` or `AZURE_OPENAI_RESOURCE_NAME`. Use `AZURE_OPENAI_API_VERSION` (defaults to `v1`) to override the API version if needed. Deployment names are treated as model IDs by default, override with `azureDeploymentName` or `AZURE_OPENAI_DEPLOYMENT_NAME_MAP` using comma-separated `model-id=deployment` pairs (for example `gpt-4o-mini=my-deployment,gpt-4o=prod`). Legacy deployment-based URLs are intentionally unsupported.
-
-**GitHub Copilot**: If you get "The requested model is not supported" error, enable the model manually in VS Code: open Copilot Chat, click the model selector, select the model (warning icon), and click "Enable".
-
-**Google Gemini CLI / Antigravity**: These use Google Cloud OAuth. The `apiKey` returned by `getOAuthApiKey()` is a JSON string containing both the token and project ID, which the library handles automatically.
-
 ## Development
 
 ### Adding a New Provider
@@ -1143,13 +1023,13 @@ Adding a new LLM provider requires changes across multiple files. This checklist
 
 #### 1. Core Types (`src/types.ts`)
 
-- Add the API identifier to `KnownApi` (for example `"bedrock-converse-stream"`)
-- Create an options interface extending `StreamOptions` (for example `BedrockOptions`)
-- Add the provider name to `KnownProvider` (for example `"amazon-bedrock"`)
+- Add the API identifier to `KnownApi` (for example `"anthropic-messages"`)
+- Create an options interface extending `StreamOptions` (for example `AnthropicOptions`)
+- Add the provider name to `KnownProvider` (for example `"anthropic"`)
 
 #### 2. Provider Implementation (`src/providers/`)
 
-Create a new provider file (for example `amazon-bedrock.ts`) that exports:
+Create a new provider file (for example `anthropic.ts`) that exports:
 
 - `stream<Provider>()` function returning `AssistantMessageEventStream`
 - `streamSimple<Provider>()` for `SimpleStreamOptions` mapping
@@ -1191,7 +1071,7 @@ Create or update test files to cover the new provider:
 
 For `cross-provider-handoff.test.ts`, add at least one provider/model pair. If the provider exposes multiple model families (for example GPT and Claude), add at least one pair per family.
 
-For providers with non-standard auth (AWS, Google Vertex), create a utility like `bedrock-utils.ts` with credential detection helpers.
+For providers with non-standard auth, create a utility module with credential detection helpers.
 
 #### 6. Coding Agent Integration (`../coding-agent/`)
 

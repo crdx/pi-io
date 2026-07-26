@@ -2298,6 +2298,13 @@ export class AgentSession {
 
 		// Emit session event to custom tools (with reason "fork")
 
+		// Queued messages were written against the old conversation point, so they
+		// must not survive into the forked one. Clears both this class's arrays and
+		// the agent's own queues, which replaceMessages() does not touch.
+		this._steeringMessages = [];
+		this._followUpMessages = [];
+		this.agent.clearAllQueues();
+
 		if (!skipConversationRestore) {
 			this.agent.replaceMessages(sessionContext.messages);
 		}
@@ -2393,6 +2400,14 @@ export class AgentSession {
 		if (label) {
 			this.sessionManager.appendLabelChange(targetId, label);
 		}
+
+		// Queued messages were written against the old conversation point, so they
+		// must not survive the jump. Clears both this class's arrays and the agent's
+		// own queues, which replaceMessages() does not touch.
+		this._steeringMessages = [];
+		this._followUpMessages = [];
+		this._pendingNextTurnMessages = [];
+		this.agent.clearAllQueues();
 
 		// Update agent state
 		const sessionContext = this.sessionManager.buildSessionContext();

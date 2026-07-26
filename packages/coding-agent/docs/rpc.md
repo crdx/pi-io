@@ -559,31 +559,6 @@ Response:
 }
 ```
 
-#### export_html
-
-Export session to an HTML file.
-
-```json
-{"type": "export_html"}
-```
-
-With custom path:
-
-```json
-{"type": "export_html", "outputPath": "/tmp/session.html"}
-```
-
-Response:
-
-```json
-{
-  "type": "response",
-  "command": "export_html",
-  "success": true,
-  "data": {"path": "/tmp/session.html"}
-}
-```
-
 #### switch_session
 
 Load a different session file. Can be cancelled by a `session_before_switch` extension event handler.

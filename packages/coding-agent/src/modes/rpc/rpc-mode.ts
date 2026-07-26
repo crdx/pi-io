@@ -495,11 +495,6 @@ export async function runRpcMode(session: AgentSession): Promise<never> {
 				return success(id, "get_session_stats", stats);
 			}
 
-			case "export_html": {
-				const path = await session.exportToHtml(command.outputPath);
-				return success(id, "export_html", { path });
-			}
-
 			case "switch_session": {
 				const cancelled = !(await session.switchSession(command.sessionPath));
 				return success(id, "switch_session", { cancelled });

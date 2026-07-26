@@ -144,7 +144,8 @@ Type `/` in the editor to trigger commands. [Extensions](#extensions) can regist
 | `/fork`             | Create a new session from the current branch                                                         |
 | `/compact [prompt]` | Manually compact context, optional custom instructions                                               |
 | `/copy`             | Copy last assistant message to clipboard                                                             |
-| `/export [file]`    | Export session to HTML file                                                                          |
+| `/export [file]`    | Export the current session branch to a JSONL file                                                    |
+| `/import <file>`    | Import and resume a session from a JSONL file                                                        |
 | `/reload`           | Reload keybindings, extensions, skills, prompts, and context files (themes hot-reload automatically) |
 | `/hotkeys`          | Show all keyboard shortcuts                                                                          |
 | `/changelog`        | Display version history                                                                              |
@@ -439,13 +440,12 @@ pi config                    # Enable/disable package resources
 
 ### Modes
 
-| Flag                  | Description                                                        |
-|-----------------------|--------------------------------------------------------------------|
-| (default)             | Interactive mode                                                   |
-| `-p`, `--print`       | Print response and exit                                            |
-| `--mode json`         | Output all events as JSON lines (see [docs/json.md](docs/json.md)) |
-| `--mode rpc`          | RPC mode for process integration (see [docs/rpc.md](docs/rpc.md))  |
-| `--export <in> [out]` | Export session to HTML                                             |
+| Flag            | Description                                                        |
+|-----------------|--------------------------------------------------------------------|
+| (default)       | Interactive mode                                                   |
+| `-p`, `--print` | Print response and exit                                            |
+| `--mode json`   | Output all events as JSON lines (see [docs/json.md](docs/json.md)) |
+| `--mode rpc`    | RPC mode for process integration (see [docs/rpc.md](docs/rpc.md))  |
 
 In print mode, pi also reads piped stdin and merges it into the initial prompt:
 

@@ -64,8 +64,3 @@ generate-models:
 _copy-assets:
     mkdir -p packages/coding-agent/dist/modes/interactive/theme
     cp packages/coding-agent/src/modes/interactive/theme/*.json packages/coding-agent/dist/modes/interactive/theme/
-    mkdir -p packages/coding-agent/dist/core/export-html/vendor
-    cp packages/coding-agent/src/core/export-html/template.html packages/coding-agent/dist/core/export-html/
-    cp packages/coding-agent/src/core/export-html/template.css packages/coding-agent/dist/core/export-html/
-    cp packages/coding-agent/src/core/export-html/template.js packages/coding-agent/dist/core/export-html/
-    cp packages/coding-agent/src/core/export-html/vendor/*.js packages/coding-agent/dist/core/export-html/vendor/

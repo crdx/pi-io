@@ -2043,7 +2043,7 @@ export class InteractiveMode {
 				return;
 			}
 			if (text.startsWith("/export")) {
-				await this.handleExportCommand(text);
+				this.handleExportCommand(text);
 				this.editor.setText("");
 				return;
 			}
@@ -4006,18 +4006,13 @@ export class InteractiveMode {
 		}
 	}
 
-	private async handleExportCommand(text: string): Promise<void> {
+	private handleExportCommand(text: string): void {
 		const parts = text.split(/\s+/);
 		const outputPath = parts.length > 1 ? parts[1] : undefined;
 
 		try {
-			if (outputPath?.endsWith(".jsonl")) {
-				const filePath = this.session.exportToJsonl(outputPath);
-				this.showStatus(`Session exported to: ${filePath}`);
-			} else {
-				const filePath = await this.session.exportToHtml(outputPath);
-				this.showStatus(`Session exported to: ${filePath}`);
-			}
+			const filePath = this.session.exportToJsonl(outputPath);
+			this.showStatus(`Session exported to: ${filePath}`);
 		} catch (error: unknown) {
 			this.showError(`Failed to export session: ${error instanceof Error ? error.message : "Unknown error"}`);
 		}

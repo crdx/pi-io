@@ -71,7 +71,7 @@ describe("SettingsManager", () => {
 
 			// User adds custom settings externally
 			const currentSettings = JSON.parse(readFileSync(settingsPath, "utf-8"));
-			currentSettings.shellPath = "/bin/zsh";
+			currentSettings.shellCommandPrefix = "shopt -s expand_aliases";
 			currentSettings.extensions = ["/path/to/extension.ts"];
 			writeFileSync(settingsPath, JSON.stringify(currentSettings, null, 2));
 
@@ -81,7 +81,7 @@ describe("SettingsManager", () => {
 
 			// Verify all settings preserved
 			const savedSettings = JSON.parse(readFileSync(settingsPath, "utf-8"));
-			expect(savedSettings.shellPath).toBe("/bin/zsh");
+			expect(savedSettings.shellCommandPrefix).toBe("shopt -s expand_aliases");
 			expect(savedSettings.extensions).toEqual(["/path/to/extension.ts"]);
 			expect(savedSettings.theme).toBe("light");
 		});

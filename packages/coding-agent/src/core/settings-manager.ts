@@ -72,7 +72,6 @@ export interface Settings {
 	branchSummary?: BranchSummarySettings;
 	retry?: RetrySettings;
 	hideThinkingBlock?: boolean;
-	shellPath?: string; // Custom shell path (e.g., for Cygwin users on Windows)
 	quietStartup?: boolean;
 	shellCommandPrefix?: string; // Prefix prepended to every bash command (e.g., "shopt -s expand_aliases" for alias support)
 	npmCommand?: string[]; // Command used for npm package lookup/install operations, argv-style (e.g., ["mise", "exec", "node@20", "--", "npm"])
@@ -660,16 +659,6 @@ export class SettingsManager {
 	setHideThinkingBlock(hide: boolean): void {
 		this.globalSettings.hideThinkingBlock = hide;
 		this.settings = deepMergeSettings(this.globalSettings, this.projectSettings);
-	}
-
-	getShellPath(): string | undefined {
-		return this.settings.shellPath;
-	}
-
-	setShellPath(path: string | undefined): void {
-		this.globalSettings.shellPath = path;
-		this.markModified("shellPath");
-		this.save();
 	}
 
 	getQuietStartup(): boolean {

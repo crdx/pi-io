@@ -2054,7 +2054,6 @@ export class DefaultPackageManager implements PackageManager {
 			const child = spawn(command, args, {
 				cwd: options?.cwd,
 				stdio: ["ignore", "pipe", "pipe"],
-				shell: process.platform === "win32",
 				env: options?.env ? { ...process.env, ...options.env } : process.env,
 			});
 			let stdout = "";
@@ -2098,7 +2097,6 @@ export class DefaultPackageManager implements PackageManager {
 			const child = spawn(command, args, {
 				cwd: options?.cwd,
 				stdio: isStdoutTakenOver() ? ["ignore", 2, 2] : "inherit",
-				shell: process.platform === "win32",
 			});
 			child.on("error", reject);
 			child.on("exit", (code) => {
@@ -2115,7 +2113,6 @@ export class DefaultPackageManager implements PackageManager {
 		const result = spawnSync(command, args, {
 			stdio: ["ignore", "pipe", "pipe"],
 			encoding: "utf-8",
-			shell: process.platform === "win32",
 		});
 		if (result.status !== 0) {
 			throw new Error(`Failed to run ${command} ${args.join(" ")}: ${result.stderr || result.stdout}`);

@@ -17,7 +17,6 @@ import { selectSession } from "./cli/session-picker.js";
 import { getAgentDir, getModelsPath, loadBuildInfo, VERSION } from "./config.js";
 import { AuthStorage } from "./core/auth-storage.js";
 import type { LoadExtensionsResult } from "./core/extensions/index.js";
-import { migrateKeybindingsConfigFile } from "./core/keybindings.js";
 import { ModelRegistry } from "./core/model-registry.js";
 import { resolveCliModel, resolveModelScope, type ScopedModel } from "./core/model-resolver.js";
 import { restoreStdout, takeOverStdout } from "./core/output-guard.js";
@@ -510,8 +509,6 @@ export async function main(args: string[]) {
 		// Force print mode since interactive mode requires a TTY for keyboard input
 		parsed.print = true;
 	}
-
-	migrateKeybindingsConfigFile(agentDir);
 
 	validateForkFlags(parsed);
 

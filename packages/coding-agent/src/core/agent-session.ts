@@ -141,6 +141,22 @@ export interface ExtensionBindings {
 	onError?: ExtensionErrorListener;
 }
 
+/**
+ * Assemble user message content. An image-only message carries no text block at
+ * all, because an empty one says nothing and only the Anthropic path strips it:
+ * the Responses and completions converters pass it straight to the provider.
+ */
+function buildUserContent(text: string, images?: ImageContent[]): (TextContent | ImageContent)[] {
+	const content: (TextContent | ImageContent)[] = [];
+	if (text.length > 0 || !images?.length) {
+		content.push({ type: "text", text });
+	}
+	if (images?.length) {
+		content.push(...images);
+	}
+	return content;
+}
+
 /** Options for AgentSession.prompt() */
 export interface PromptOptions {
 	/** Whether to expand file-based prompt templates (default: true) */
@@ -910,10 +926,7 @@ export class AgentSession {
 		const messages: AgentMessage[] = [];
 
 		// Add user message
-		const userContent: (TextContent | ImageContent)[] = [{ type: "text", text: expandedText }];
-		if (currentImages) {
-			userContent.push(...currentImages);
-		}
+		const userContent = buildUserContent(expandedText, currentImages);
 		messages.push({
 			role: "user",
 			content: userContent,
@@ -1067,13 +1080,9 @@ export class AgentSession {
 	 */
 	private async _queueSteer(text: string, images?: ImageContent[]): Promise<void> {
 		this._steeringMessages.push(text);
-		const content: (TextContent | ImageContent)[] = [{ type: "text", text }];
-		if (images) {
-			content.push(...images);
-		}
 		this.agent.steer({
 			role: "user",
-			content,
+			content: buildUserContent(text, images),
 			timestamp: Date.now(),
 		});
 	}
@@ -1083,13 +1092,9 @@ export class AgentSession {
 	 */
 	private async _queueFollowUp(text: string, images?: ImageContent[]): Promise<void> {
 		this._followUpMessages.push(text);
-		const content: (TextContent | ImageContent)[] = [{ type: "text", text }];
-		if (images) {
-			content.push(...images);
-		}
 		this.agent.followUp({
 			role: "user",
-			content,
+			content: buildUserContent(text, images),
 			timestamp: Date.now(),
 		});
 	}

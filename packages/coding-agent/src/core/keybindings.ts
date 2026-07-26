@@ -26,7 +26,6 @@ export interface AppKeybindings {
 	"app.message.followUp": true;
 	"app.message.steer": true;
 	"app.message.dequeue": true;
-	"app.clipboard.pasteImage": true;
 	"app.session.new": true;
 	"app.session.tree": true;
 	"app.session.fork": true;
@@ -89,10 +88,6 @@ export const KEYBINDINGS = {
 	"app.message.dequeue": {
 		defaultKeys: "alt+up",
 		description: "Restore queued messages",
-	},
-	"app.clipboard.pasteImage": {
-		defaultKeys: "ctrl+v",
-		description: "Paste image from clipboard",
 	},
 	"app.session.new": { defaultKeys: [], description: "Start a new session" },
 	"app.session.tree": { defaultKeys: [], description: "Open session tree" },

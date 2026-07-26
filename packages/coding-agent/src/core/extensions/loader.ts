@@ -1,7 +1,5 @@
 /**
  * Extension loader - loads TypeScript extension modules using jiti.
- *
- * Uses @mariozechner/jiti fork with virtualModules support for compiled Bun binaries.
  */
 
 import * as fs from "node:fs";
@@ -9,8 +7,8 @@ import { createRequire } from "node:module";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createJiti } from "@mariozechner/jiti";
 import type { KeyId } from "@mariozechner/pi-tui";
+import { createJiti } from "jiti";
 import { getAgentDir } from "../../config.js";
 import { createEventBus, type EventBus } from "../event-bus.js";
 import type { ExecOptions } from "../exec.js";

@@ -2275,6 +2275,10 @@ export class AgentSession {
 			skipConversationRestore = result?.skipConversationRestore ?? false;
 		}
 
+		// Stop any in-flight turn before the conversation context changes underneath
+		// it, matching newSession() and switchSession().
+		await this.abort();
+
 		// Clear pending messages (bound to old session state)
 		this._pendingNextTurnMessages = [];
 
@@ -2288,6 +2292,14 @@ export class AgentSession {
 		// Reload messages from entries (works for both file and in-memory mode)
 		const sessionContext = this.sessionManager.buildSessionContext();
 
+		// Queued messages were written against the old conversation point, so they
+		// must not survive into the forked one. Clears both this class's arrays and
+		// the agent's own queues, which replaceMessages() does not touch. Done before
+		// the extension event so handlers never observe a half-cleared state.
+		this._steeringMessages = [];
+		this._followUpMessages = [];
+		this.agent.clearAllQueues();
+
 		// Emit session_fork event to extensions (after fork completes)
 		if (this._extensionRunner) {
 			await this._extensionRunner.emit({
@@ -2297,13 +2309,6 @@ export class AgentSession {
 		}
 
 		// Emit session event to custom tools (with reason "fork")
-
-		// Queued messages were written against the old conversation point, so they
-		// must not survive into the forked one. Clears both this class's arrays and
-		// the agent's own queues, which replaceMessages() does not touch.
-		this._steeringMessages = [];
-		this._followUpMessages = [];
-		this.agent.clearAllQueues();
 
 		if (!skipConversationRestore) {
 			this.agent.replaceMessages(sessionContext.messages);
@@ -2365,6 +2370,10 @@ export class AgentSession {
 				label = result.label;
 			}
 		}
+
+		// Stop any in-flight turn before the conversation context changes underneath
+		// it, matching newSession() and switchSession().
+		await this.abort();
 
 		// Determine the new leaf position based on target type
 		let newLeafId: string | null;

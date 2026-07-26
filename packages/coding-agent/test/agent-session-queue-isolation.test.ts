@@ -14,6 +14,11 @@ afterEach(() => {
 	harness = undefined;
 });
 
+/** Yield to the event loop so the agent reaches its streaming state. */
+async function tick(): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, 20));
+}
+
 async function seedConversation(h: Harness): Promise<void> {
 	await h.session.prompt("first");
 	await h.session.prompt("second");
@@ -54,5 +59,42 @@ describe("queue isolation across context changes", () => {
 		expect(harness.agent.hasQueuedMessages()).toBe(false);
 		expect(harness.session.getSteeringMessages()).toHaveLength(0);
 		expect(harness.session.getFollowUpMessages()).toHaveLength(0);
+	});
+
+	it("fork() aborts an in-flight turn instead of letting it write into the new context", async () => {
+		harness = createHarness({ responses: ["one", { text: "slow", delayMs: 500 }] });
+		await harness.session.prompt("first");
+		const targetId = firstUserEntryId(harness);
+
+		// Start a turn and leave it streaming.
+		const inFlight = harness.session.prompt("second");
+		await tick();
+		expect(harness.session.isStreaming).toBe(true);
+
+		harness.session.steer("steered mid-stream");
+
+		await harness.session.fork(targetId);
+
+		expect(harness.session.isStreaming).toBe(false);
+		expect(harness.agent.hasQueuedMessages()).toBe(false);
+		await inFlight;
+	});
+
+	it("navigateTree() aborts an in-flight turn instead of letting it write into the new context", async () => {
+		harness = createHarness({ responses: ["one", { text: "slow", delayMs: 500 }] });
+		await harness.session.prompt("first");
+		const targetId = firstUserEntryId(harness);
+
+		const inFlight = harness.session.prompt("second");
+		await tick();
+		expect(harness.session.isStreaming).toBe(true);
+
+		harness.session.steer("steered mid-stream");
+
+		await harness.session.navigateTree(targetId);
+
+		expect(harness.session.isStreaming).toBe(false);
+		expect(harness.agent.hasQueuedMessages()).toBe(false);
+		await inFlight;
 	});
 });

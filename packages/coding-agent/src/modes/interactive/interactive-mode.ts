@@ -104,8 +104,6 @@ function isExpandable(obj: unknown): obj is Expandable {
  * Options for InteractiveMode initialization.
  */
 export interface InteractiveModeOptions {
-	/** Providers that were migrated to auth.json (shows warning) */
-	migratedProviders?: string[];
 	/** Warning message if session model couldn't be restored */
 	modelFallbackMessage?: string;
 	/** Initial message to send on startup (can include @file content) */
@@ -517,11 +515,7 @@ export class InteractiveMode {
 		});
 
 		// Show startup warnings
-		const { migratedProviders, modelFallbackMessage, initialMessage, initialImages, initialMessages } = this.options;
-
-		if (migratedProviders && migratedProviders.length > 0) {
-			this.showWarning(`Migrated credentials to auth.json: ${migratedProviders.join(", ")}`);
-		}
+		const { modelFallbackMessage, initialMessage, initialImages, initialMessages } = this.options;
 
 		const modelsJsonError = this.session.modelRegistry.getError();
 		if (modelsJsonError) {

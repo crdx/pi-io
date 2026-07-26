@@ -27,7 +27,6 @@ import { SessionManager } from "./core/session-manager.js";
 import { SettingsManager } from "./core/settings-manager.js";
 import { printTimings, time } from "./core/timings.js";
 import { allTools } from "./core/tools/index.js";
-import { runMigrations, showDeprecationWarnings } from "./migrations.js";
 import { InteractiveMode, runPrintMode } from "./modes/index.js";
 import { initTheme, stopThemeWatcher } from "./modes/interactive/theme/theme.js";
 
@@ -411,9 +410,6 @@ export async function main(args: string[]) {
 		takeOverStdout();
 	}
 
-	// Run migrations (pass cwd for project-local migrations)
-	const { migratedAuthProviders: migratedProviders, deprecationWarnings } = runMigrations(process.cwd());
-
 	// Early load extensions to discover their CLI flags
 	const cwd = process.cwd();
 	const agentDir = getAgentDir();
@@ -525,11 +521,6 @@ export async function main(args: string[]) {
 	const mode = parsed.mode || "text";
 	initTheme(settingsManager.getTheme(), isInteractive);
 
-	// Show deprecation warnings in interactive mode
-	if (isInteractive && deprecationWarnings.length > 0) {
-		await showDeprecationWarnings(deprecationWarnings);
-	}
-
 	let scopedModels: ScopedModel[] = [];
 	const modelPatterns = parsed.models ?? settingsManager.getEnabledModels();
 	if (modelPatterns && modelPatterns.length > 0) {
@@ -615,7 +606,6 @@ export async function main(args: string[]) {
 		}
 
 		const interactiveMode = new InteractiveMode(session, {
-			migratedProviders,
 			modelFallbackMessage,
 			initialMessage,
 			initialImages,

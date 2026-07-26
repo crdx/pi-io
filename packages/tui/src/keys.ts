@@ -472,11 +472,6 @@ interface ParsedKittySequence {
 	eventType: KeyEventType;
 }
 
-interface ParsedModifyOtherKeysSequence {
-	codepoint: number;
-	modifier: number;
-}
-
 // Store the last parsed event type for isKeyRelease() to query
 let _lastEventType: KeyEventType = "press";
 
@@ -644,29 +639,9 @@ function matchesKittySequence(data: string, expectedCodepoint: number, expectedM
 	return false;
 }
 
-function parseModifyOtherKeysSequence(data: string): ParsedModifyOtherKeysSequence | null {
-	const match = data.match(/^\x1b\[27;(\d+);(\d+)~$/);
-	if (!match) return null;
-	const modValue = parseInt(match[1]!, 10);
-	const codepoint = parseInt(match[2]!, 10);
-	return { codepoint, modifier: modValue - 1 };
-}
-
-/**
- * Match xterm modifyOtherKeys format: CSI 27 ; modifiers ; keycode ~
- * This is used by terminals when Kitty protocol is not enabled.
- * Modifier values are 1-indexed: 2=shift, 3=alt, 5=ctrl, etc.
- */
-function matchesModifyOtherKeys(data: string, expectedKeycode: number, expectedModifier: number): boolean {
-	const parsed = parseModifyOtherKeysSequence(data);
-	if (!parsed) return false;
-	return parsed.codepoint === expectedKeycode && parsed.modifier === expectedModifier;
-}
-
 /**
  * Raw 0x08 (BS) is sent by some legacy terminals and tmux setups for plain
- * Backspace. Explicit Kitty / CSI-u / modifyOtherKeys sequences are preferred
- * whenever they are available.
+ * Backspace. Explicit Kitty CSI-u sequences are preferred whenever available.
  */
 function matchesRawBackspace(data: string, expectedModifier: number): boolean {
 	if (data === "\x7f") return expectedModifier === 0;
@@ -702,11 +677,6 @@ function rawCtrlChar(key: string): string | null {
 
 function isDigitKey(key: string): boolean {
 	return key >= "0" && key <= "9";
-}
-
-function matchesPrintableModifyOtherKeys(data: string, expectedKeycode: number, expectedModifier: number): boolean {
-	if (expectedModifier === 0) return false;
-	return matchesModifyOtherKeys(data, expectedKeycode, expectedModifier);
 }
 
 function formatKeyNameWithModifiers(keyName: string, modifier: number): string | undefined {
@@ -762,11 +732,7 @@ export function matchesKey(data: string, keyId: KeyId): boolean {
 		case "escape":
 		case "esc":
 			if (modifier !== 0) return false;
-			return (
-				data === "\x1b" ||
-				matchesKittySequence(data, CODEPOINTS.escape, 0) ||
-				matchesModifyOtherKeys(data, CODEPOINTS.escape, 0)
-			);
+			return data === "\x1b" || matchesKittySequence(data, CODEPOINTS.escape, 0);
 
 		case "space":
 			if (!_kittyProtocolActive) {
@@ -778,32 +744,18 @@ export function matchesKey(data: string, keyId: KeyId): boolean {
 				}
 			}
 			if (modifier === 0) {
-				return (
-					data === " " ||
-					matchesKittySequence(data, CODEPOINTS.space, 0) ||
-					matchesModifyOtherKeys(data, CODEPOINTS.space, 0)
-				);
+				return data === " " || matchesKittySequence(data, CODEPOINTS.space, 0);
 			}
-			return (
-				matchesKittySequence(data, CODEPOINTS.space, modifier) ||
-				matchesModifyOtherKeys(data, CODEPOINTS.space, modifier)
-			);
+			return matchesKittySequence(data, CODEPOINTS.space, modifier);
 
 		case "tab":
 			if (shift && !ctrl && !alt) {
-				return (
-					data === "\x1b[Z" ||
-					matchesKittySequence(data, CODEPOINTS.tab, MODIFIERS.shift) ||
-					matchesModifyOtherKeys(data, CODEPOINTS.tab, MODIFIERS.shift)
-				);
+				return data === "\x1b[Z" || matchesKittySequence(data, CODEPOINTS.tab, MODIFIERS.shift);
 			}
 			if (modifier === 0) {
 				return data === "\t" || matchesKittySequence(data, CODEPOINTS.tab, 0);
 			}
-			return (
-				matchesKittySequence(data, CODEPOINTS.tab, modifier) ||
-				matchesModifyOtherKeys(data, CODEPOINTS.tab, modifier)
-			);
+			return matchesKittySequence(data, CODEPOINTS.tab, modifier);
 
 		case "enter":
 		case "return":
@@ -813,10 +765,6 @@ export function matchesKey(data: string, keyId: KeyId): boolean {
 					matchesKittySequence(data, CODEPOINTS.enter, MODIFIERS.shift) ||
 					matchesKittySequence(data, CODEPOINTS.kpEnter, MODIFIERS.shift)
 				) {
-					return true;
-				}
-				// xterm modifyOtherKeys format (fallback when Kitty protocol not enabled)
-				if (matchesModifyOtherKeys(data, CODEPOINTS.enter, MODIFIERS.shift)) {
 					return true;
 				}
 				// When Kitty protocol is active, legacy sequences are custom terminal mappings
@@ -833,10 +781,6 @@ export function matchesKey(data: string, keyId: KeyId): boolean {
 					matchesKittySequence(data, CODEPOINTS.enter, MODIFIERS.alt) ||
 					matchesKittySequence(data, CODEPOINTS.kpEnter, MODIFIERS.alt)
 				) {
-					return true;
-				}
-				// xterm modifyOtherKeys format (fallback when Kitty protocol not enabled)
-				if (matchesModifyOtherKeys(data, CODEPOINTS.enter, MODIFIERS.alt)) {
 					return true;
 				}
 				// \x1b\r is alt+enter only in legacy mode (no Kitty protocol)
@@ -857,8 +801,7 @@ export function matchesKey(data: string, keyId: KeyId): boolean {
 			}
 			return (
 				matchesKittySequence(data, CODEPOINTS.enter, modifier) ||
-				matchesKittySequence(data, CODEPOINTS.kpEnter, modifier) ||
-				matchesModifyOtherKeys(data, CODEPOINTS.enter, modifier)
+				matchesKittySequence(data, CODEPOINTS.kpEnter, modifier)
 			);
 
 		case "backspace":
@@ -866,32 +809,19 @@ export function matchesKey(data: string, keyId: KeyId): boolean {
 				if (data === "\x1b\x7f" || data === "\x1b\b") {
 					return true;
 				}
-				return (
-					matchesKittySequence(data, CODEPOINTS.backspace, MODIFIERS.alt) ||
-					matchesModifyOtherKeys(data, CODEPOINTS.backspace, MODIFIERS.alt)
-				);
+				return matchesKittySequence(data, CODEPOINTS.backspace, MODIFIERS.alt);
 			}
 			if (ctrl && !alt && !shift) {
 				// Legacy raw 0x08 is ambiguous: it can be Ctrl+Backspace on Windows
 				// Terminal or plain Backspace on other terminals, while also
 				// overlapping with Ctrl+H.
 				if (matchesRawBackspace(data, MODIFIERS.ctrl)) return true;
-				return (
-					matchesKittySequence(data, CODEPOINTS.backspace, MODIFIERS.ctrl) ||
-					matchesModifyOtherKeys(data, CODEPOINTS.backspace, MODIFIERS.ctrl)
-				);
+				return matchesKittySequence(data, CODEPOINTS.backspace, MODIFIERS.ctrl);
 			}
 			if (modifier === 0) {
-				return (
-					matchesRawBackspace(data, 0) ||
-					matchesKittySequence(data, CODEPOINTS.backspace, 0) ||
-					matchesModifyOtherKeys(data, CODEPOINTS.backspace, 0)
-				);
+				return matchesRawBackspace(data, 0) || matchesKittySequence(data, CODEPOINTS.backspace, 0);
 			}
-			return (
-				matchesKittySequence(data, CODEPOINTS.backspace, modifier) ||
-				matchesModifyOtherKeys(data, CODEPOINTS.backspace, modifier)
-			);
+			return matchesKittySequence(data, CODEPOINTS.backspace, modifier);
 
 		case "insert":
 			if (modifier === 0) {
@@ -1095,33 +1025,21 @@ export function matchesKey(data: string, keyId: KeyId): boolean {
 		if (ctrl && !shift && !alt) {
 			// Legacy: ctrl+key sends the control character
 			if (rawCtrl && data === rawCtrl) return true;
-			return (
-				matchesKittySequence(data, codepoint, MODIFIERS.ctrl) ||
-				matchesPrintableModifyOtherKeys(data, codepoint, MODIFIERS.ctrl)
-			);
+			return matchesKittySequence(data, codepoint, MODIFIERS.ctrl);
 		}
 
 		if (ctrl && shift && !alt) {
-			return (
-				matchesKittySequence(data, codepoint, MODIFIERS.shift + MODIFIERS.ctrl) ||
-				matchesPrintableModifyOtherKeys(data, codepoint, MODIFIERS.shift + MODIFIERS.ctrl)
-			);
+			return matchesKittySequence(data, codepoint, MODIFIERS.shift + MODIFIERS.ctrl);
 		}
 
 		if (shift && !ctrl && !alt) {
 			// Legacy: shift+letter produces uppercase
 			if (isLetter && data === key.toUpperCase()) return true;
-			return (
-				matchesKittySequence(data, codepoint, MODIFIERS.shift) ||
-				matchesPrintableModifyOtherKeys(data, codepoint, MODIFIERS.shift)
-			);
+			return matchesKittySequence(data, codepoint, MODIFIERS.shift);
 		}
 
 		if (modifier !== 0) {
-			return (
-				matchesKittySequence(data, codepoint, modifier) ||
-				matchesPrintableModifyOtherKeys(data, codepoint, modifier)
-			);
+			return matchesKittySequence(data, codepoint, modifier);
 		}
 
 		// Check both raw char and Kitty sequence (needed for release events)
@@ -1176,11 +1094,6 @@ export function parseKey(data: string): string | undefined {
 	const kitty = parseKittySequence(data);
 	if (kitty) {
 		return formatParsedKey(kitty.codepoint, kitty.modifier, kitty.baseLayoutKey);
-	}
-
-	const modifyOtherKeys = parseModifyOtherKeysSequence(data);
-	if (modifyOtherKeys) {
-		return formatParsedKey(modifyOtherKeys.codepoint, modifyOtherKeys.modifier);
 	}
 
 	// Mode-aware legacy sequences

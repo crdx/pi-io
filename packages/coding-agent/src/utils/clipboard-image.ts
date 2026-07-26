@@ -7,6 +7,17 @@ export type ClipboardImage = {
 	mimeType: string;
 };
 
+/**
+ * Private sequence kitty sends after a ctrl+v paste, to say "a paste happened,
+ * the clipboard may also hold an image". A private CSI with a `v` final byte,
+ * which kitty never emits for a real key, so it cannot be mistaken for one.
+ *
+ * The other half lives in the kitty config:
+ *
+ *     map ctrl+v combine : paste_from_clipboard : send_text all \x1b[?5522v
+ */
+export const PASTE_SIGNAL = "\x1b[?5522v";
+
 /** Queried in order; PNG first because screenshots dominate. */
 const IMAGE_MIME_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 

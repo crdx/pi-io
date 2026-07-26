@@ -1935,6 +1935,7 @@ export default function (pi: ExtensionAPI) {
 - Call `super.handleInput(data)` for keys you don't handle
 - Factory receives `theme` and `keybindings` from the app
 - Pass `undefined` to restore default: `ctx.ui.setEditorComponent(undefined)`
+- Extending `CustomEditor` also inherits image paste. Anything held for the user, whether an oversized text paste or an image, shows as an atomic marker (`[paste #1 +19 lines]`, `[image #2 128 KB]`) and resolves on submit: text expands back inline, images arrive as the second argument to `onSubmit`. Deleting a marker drops its payload.
 
 See [tui.md](tui.md) Pattern 7 for a complete example with mode indicator.
 

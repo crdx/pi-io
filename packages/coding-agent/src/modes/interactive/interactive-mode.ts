@@ -16,6 +16,7 @@ import type {
 	MarkdownTheme,
 	OverlayHandle,
 	OverlayOptions,
+	PasteImage,
 	SlashCommand,
 } from "@mariozechner/pi-tui";
 import {
@@ -54,7 +55,7 @@ import type { SourceInfo } from "../../core/source-info.js";
 import type { TruncationResult } from "../../core/tools/truncate.js";
 import { findBinary } from "../../utils/binaries.js";
 import { copyToClipboard } from "../../utils/clipboard.js";
-import { readClipboardImage } from "../../utils/clipboard-image.js";
+import { PASTE_SIGNAL, readClipboardImage } from "../../utils/clipboard-image.js";
 import { parseGitUrl } from "../../utils/git.js";
 import { AssistantMessageComponent } from "./components/assistant-message.js";
 import { BashExecutionComponent } from "./components/bash-execution.js";
@@ -133,7 +134,7 @@ export class InteractiveMode {
 	private keybindings: KeybindingsManager;
 	private version: string;
 	private isInitialized = false;
-	private onInputCallback?: (text: string) => void;
+	private onInputCallback?: (text: string, images?: ImageContent[]) => void;
 	private loadingAnimation: Loader | undefined = undefined;
 	private pendingWorkingMessage: string | undefined = undefined;
 	private readonly defaultWorkingMessage = "Working...";
@@ -447,6 +448,7 @@ export class InteractiveMode {
 
 		this.setupKeyHandlers();
 		this.setupEditorSubmitHandler();
+		this.setupClipboardPasteSignal();
 
 		// Start the UI before initializing extensions so session_start handlers can use interactive dialogs
 		this.ui.start();
@@ -549,9 +551,9 @@ export class InteractiveMode {
 
 		// Main interactive loop
 		while (true) {
-			const userInput = await this.getUserInput();
+			const { text, images } = await this.getUserInput();
 			try {
-				await this.session.prompt(userInput);
+				await this.session.prompt(text, images?.length ? { images } : undefined);
 			} catch (error: unknown) {
 				const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
 				this.showError(errorMessage);
@@ -1828,10 +1830,42 @@ export class InteractiveMode {
 		};
 	}
 
+	/**
+	 * kitty binds ctrl+v to `combine : paste_from_clipboard : send_text all <PASTE_SIGNAL>`,
+	 * so the text paste happens natively and this sequence follows it as a pure
+	 * addition. It is the only way to learn a paste occurred when the clipboard
+	 * holds an image and no text, because kitty then pastes nothing at all and
+	 * emits no bracketed paste to notice.
+	 */
+	private setupClipboardPasteSignal(): void {
+		this.ui.addInputListener((data) => {
+			if (!data.includes(PASTE_SIGNAL)) {
+				return undefined;
+			}
+			// Two quick presses can arrive in one read, so honour every signal.
+			const parts = data.split(PASTE_SIGNAL);
+			void this.attachClipboardImages(parts.length - 1);
+			const remaining = parts.join("");
+			return remaining.length > 0 ? { data: remaining } : { consume: true };
+		});
+	}
+
+	/** Queries run one at a time: each is a terminal round-trip on a shared stream. */
+	private async attachClipboardImages(count: number): Promise<void> {
+		for (let i = 0; i < count; i++) {
+			const image = await readClipboardImage(this.ui.terminal);
+			if (!image) {
+				return;
+			}
+			this.editor.pasteImage?.({ data: image.data, mimeType: image.mimeType });
+		}
+	}
+
 	private setupEditorSubmitHandler(): void {
-		this.defaultEditor.onSubmit = async (text: string) => {
+		this.defaultEditor.onSubmit = async (text: string, pastedImages?: PasteImage[]) => {
 			text = text.trim();
-			if (!text) return;
+			const images = pastedImages?.map((image): ImageContent => ({ type: "image", ...image }));
+			if (!text && !images?.length) return;
 
 			// Handle commands
 			if (text === "/settings") {
@@ -1944,7 +1978,7 @@ export class InteractiveMode {
 			if (this.session.isStreaming) {
 				this.editor.addToHistory?.(text);
 				this.editor.setText("");
-				await this.session.prompt(text, { streamingBehavior: "steer" });
+				await this.session.prompt(text, { streamingBehavior: "steer", images });
 				this.updatePendingMessagesDisplay();
 				this.ui.requestRender();
 				return;
@@ -1955,7 +1989,7 @@ export class InteractiveMode {
 			this.flushPendingBashComponents();
 
 			if (this.onInputCallback) {
-				this.onInputCallback(text);
+				this.onInputCallback(text, images);
 			}
 			this.editor.addToHistory?.(text);
 		};
@@ -2394,11 +2428,11 @@ export class InteractiveMode {
 		});
 	}
 
-	async getUserInput(): Promise<string> {
+	async getUserInput(): Promise<{ text: string; images?: ImageContent[] }> {
 		return new Promise((resolve) => {
-			this.onInputCallback = (text: string) => {
+			this.onInputCallback = (text: string, images?: ImageContent[]) => {
 				this.onInputCallback = undefined;
-				resolve(text);
+				resolve({ text, images });
 			};
 		});
 	}

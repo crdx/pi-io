@@ -1,4 +1,5 @@
 import type { AutocompleteProvider } from "./autocomplete.js";
+import type { PasteImage } from "./components/editor.js";
 import type { Component } from "./tui.js";
 
 /**
@@ -26,8 +27,8 @@ export interface EditorComponent extends Component {
 	// Callbacks (required)
 	// =========================================================================
 
-	/** Called when user submits (e.g., Enter key) */
-	onSubmit?: (text: string) => void;
+	/** Called when user submits (e.g., Enter key), with any images pasted into the message */
+	onSubmit?: (text: string, images?: PasteImage[]) => void;
 
 	/** Called when text changes */
 	onChange?: (text: string) => void;
@@ -45,6 +46,12 @@ export interface EditorComponent extends Component {
 
 	/** Insert text at current cursor position */
 	insertTextAtCursor?(text: string): void;
+
+	/**
+	 * Attach an image as a paste, showing a marker in its place. Editors that do
+	 * not implement this simply ignore image pastes.
+	 */
+	pasteImage?(image: PasteImage): void;
 
 	/**
 	 * Get text with any markers expanded (e.g., paste markers).

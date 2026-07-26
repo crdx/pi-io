@@ -357,7 +357,6 @@ function createClient(model: Model<"openai-completions">, apiKey?: string, optio
 function buildParams(model: Model<"openai-completions">, context: Context, options?: OpenAICompletionsOptions) {
 	const compat = getCompat(model);
 	const messages = convertMessages(model, context, compat);
-	maybeAddOpenRouterAnthropicCacheControl(model, messages);
 
 	const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
 		model: model.id,
@@ -396,41 +395,8 @@ function buildParams(model: Model<"openai-completions">, context: Context, optio
 		params.tool_choice = options.toolChoice;
 	}
 
-	if (compat.thinkingFormat === "zai" && model.reasoning) {
-		(params as any).enable_thinking = !!options?.reasoningEffort;
-	} else if (compat.thinkingFormat === "qwen" && model.reasoning) {
-		(params as any).enable_thinking = !!options?.reasoningEffort;
-	} else if (compat.thinkingFormat === "qwen-chat-template" && model.reasoning) {
-		(params as any).chat_template_kwargs = { enable_thinking: !!options?.reasoningEffort };
-	} else if (compat.thinkingFormat === "openrouter" && model.reasoning) {
-		// OpenRouter normalizes reasoning across providers via a nested reasoning object.
-		const openRouterParams = params as typeof params & { reasoning?: { effort?: string } };
-		if (options?.reasoningEffort) {
-			openRouterParams.reasoning = {
-				effort: mapReasoningEffort(options.reasoningEffort, compat.reasoningEffortMap),
-			};
-		} else {
-			openRouterParams.reasoning = { effort: "none" };
-		}
-	} else if (options?.reasoningEffort && model.reasoning && compat.supportsReasoningEffort) {
-		// OpenAI-style reasoning_effort
+	if (options?.reasoningEffort && model.reasoning && compat.supportsReasoningEffort) {
 		(params as any).reasoning_effort = mapReasoningEffort(options.reasoningEffort, compat.reasoningEffortMap);
-	}
-
-	// OpenRouter provider routing preferences
-	if (model.baseUrl.includes("openrouter.ai") && model.compat?.openRouterRouting) {
-		(params as any).provider = model.compat.openRouterRouting;
-	}
-
-	// Vercel AI Gateway provider routing preferences
-	if (model.baseUrl.includes("ai-gateway.vercel.sh") && model.compat?.vercelGatewayRouting) {
-		const routing = model.compat.vercelGatewayRouting;
-		if (routing.only || routing.order) {
-			const gatewayOptions: Record<string, string[]> = {};
-			if (routing.only) gatewayOptions.only = routing.only;
-			if (routing.order) gatewayOptions.order = routing.order;
-			(params as any).providerOptions = { gateway: gatewayOptions };
-		}
 	}
 
 	return params;
@@ -441,39 +407,6 @@ function mapReasoningEffort(
 	reasoningEffortMap: Partial<Record<NonNullable<OpenAICompletionsOptions["reasoningEffort"]>, string>>,
 ): string {
 	return reasoningEffortMap[effort] ?? effort;
-}
-
-function maybeAddOpenRouterAnthropicCacheControl(
-	model: Model<"openai-completions">,
-	messages: ChatCompletionMessageParam[],
-): void {
-	if (model.provider !== "openrouter" || !model.id.startsWith("anthropic/")) return;
-
-	// Anthropic-style caching requires cache_control on a text part. Add a breakpoint
-	// on the last user/assistant message (walking backwards until we find text content).
-	for (let i = messages.length - 1; i >= 0; i--) {
-		const msg = messages[i];
-		if (msg.role !== "user" && msg.role !== "assistant") continue;
-
-		const content = msg.content;
-		if (typeof content === "string") {
-			msg.content = [
-				Object.assign({ type: "text" as const, text: content }, { cache_control: { type: "ephemeral" } }),
-			];
-			return;
-		}
-
-		if (!Array.isArray(content)) continue;
-
-		// Find last text part and add cache_control
-		for (let j = content.length - 1; j >= 0; j--) {
-			const part = content[j];
-			if (part?.type === "text") {
-				Object.assign(part, { cache_control: { type: "ephemeral" } });
-				return;
-			}
-		}
-	}
 }
 
 export function convertMessages(
@@ -783,86 +716,36 @@ function mapStopReason(reason: ChatCompletionChunk.Choice["finish_reason"] | str
 	}
 }
 
-/**
- * Detect compatibility settings from provider and baseUrl for known providers.
- * Provider takes precedence over URL-based detection since it's explicitly configured.
- * Returns a fully resolved OpenAICompletionsCompat object with all fields set.
- */
-function detectCompat(model: Model<"openai-completions">): Required<OpenAICompletionsCompat> {
-	const provider = model.provider;
-	const baseUrl = model.baseUrl;
-
-	const isZai = provider === "zai" || baseUrl.includes("api.z.ai");
-
-	const isNonStandard =
-		provider === "cerebras" ||
-		baseUrl.includes("cerebras.ai") ||
-		provider === "xai" ||
-		baseUrl.includes("api.x.ai") ||
-		baseUrl.includes("chutes.ai") ||
-		baseUrl.includes("deepseek.com") ||
-		isZai ||
-		provider === "opencode" ||
-		baseUrl.includes("opencode.ai");
-
-	const useMaxTokens = baseUrl.includes("chutes.ai");
-
-	const isGrok = provider === "xai" || baseUrl.includes("api.x.ai");
-	const isGroq = provider === "groq" || baseUrl.includes("groq.com");
-
-	const reasoningEffortMap =
-		isGroq && model.id === "qwen/qwen3-32b"
-			? {
-					minimal: "default",
-					low: "default",
-					medium: "default",
-					high: "default",
-					xhigh: "default",
-				}
-			: {};
-	return {
-		supportsStore: !isNonStandard,
-		supportsDeveloperRole: !isNonStandard,
-		supportsReasoningEffort: !isGrok && !isZai,
-		reasoningEffortMap,
-		supportsUsageInStreaming: true,
-		maxTokensField: useMaxTokens ? "max_tokens" : "max_completion_tokens",
-		requiresToolResultName: false,
-		requiresAssistantAfterToolResult: false,
-		requiresThinkingAsText: false,
-		thinkingFormat: isZai
-			? "zai"
-			: provider === "openrouter" || baseUrl.includes("openrouter.ai")
-				? "openrouter"
-				: "openai",
-		openRouterRouting: {},
-		vercelGatewayRouting: {},
-		supportsStrictMode: true,
-	};
-}
+const DEFAULT_COMPAT: Required<OpenAICompletionsCompat> = {
+	supportsStore: true,
+	supportsDeveloperRole: true,
+	supportsReasoningEffort: true,
+	reasoningEffortMap: {},
+	supportsUsageInStreaming: true,
+	maxTokensField: "max_completion_tokens",
+	requiresToolResultName: false,
+	requiresAssistantAfterToolResult: false,
+	requiresThinkingAsText: false,
+	supportsStrictMode: true,
+};
 
 /**
- * Get resolved compatibility settings for a model.
- * Uses explicit model.compat if provided, otherwise auto-detects from provider/URL.
+ * Get resolved compatibility settings for a model, filling any unset field with its default.
  */
 function getCompat(model: Model<"openai-completions">): Required<OpenAICompletionsCompat> {
-	const detected = detectCompat(model);
-	if (!model.compat) return detected;
+	if (!model.compat) return DEFAULT_COMPAT;
 
 	return {
-		supportsStore: model.compat.supportsStore ?? detected.supportsStore,
-		supportsDeveloperRole: model.compat.supportsDeveloperRole ?? detected.supportsDeveloperRole,
-		supportsReasoningEffort: model.compat.supportsReasoningEffort ?? detected.supportsReasoningEffort,
-		reasoningEffortMap: model.compat.reasoningEffortMap ?? detected.reasoningEffortMap,
-		supportsUsageInStreaming: model.compat.supportsUsageInStreaming ?? detected.supportsUsageInStreaming,
-		maxTokensField: model.compat.maxTokensField ?? detected.maxTokensField,
-		requiresToolResultName: model.compat.requiresToolResultName ?? detected.requiresToolResultName,
+		supportsStore: model.compat.supportsStore ?? DEFAULT_COMPAT.supportsStore,
+		supportsDeveloperRole: model.compat.supportsDeveloperRole ?? DEFAULT_COMPAT.supportsDeveloperRole,
+		supportsReasoningEffort: model.compat.supportsReasoningEffort ?? DEFAULT_COMPAT.supportsReasoningEffort,
+		reasoningEffortMap: model.compat.reasoningEffortMap ?? DEFAULT_COMPAT.reasoningEffortMap,
+		supportsUsageInStreaming: model.compat.supportsUsageInStreaming ?? DEFAULT_COMPAT.supportsUsageInStreaming,
+		maxTokensField: model.compat.maxTokensField ?? DEFAULT_COMPAT.maxTokensField,
+		requiresToolResultName: model.compat.requiresToolResultName ?? DEFAULT_COMPAT.requiresToolResultName,
 		requiresAssistantAfterToolResult:
-			model.compat.requiresAssistantAfterToolResult ?? detected.requiresAssistantAfterToolResult,
-		requiresThinkingAsText: model.compat.requiresThinkingAsText ?? detected.requiresThinkingAsText,
-		thinkingFormat: model.compat.thinkingFormat ?? detected.thinkingFormat,
-		openRouterRouting: model.compat.openRouterRouting ?? {},
-		vercelGatewayRouting: model.compat.vercelGatewayRouting ?? detected.vercelGatewayRouting,
-		supportsStrictMode: model.compat.supportsStrictMode ?? detected.supportsStrictMode,
+			model.compat.requiresAssistantAfterToolResult ?? DEFAULT_COMPAT.requiresAssistantAfterToolResult,
+		requiresThinkingAsText: model.compat.requiresThinkingAsText ?? DEFAULT_COMPAT.requiresThinkingAsText,
+		supportsStrictMode: model.compat.supportsStrictMode ?? DEFAULT_COMPAT.supportsStrictMode,
 	};
 }

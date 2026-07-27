@@ -1833,10 +1833,12 @@ export class InteractiveMode {
 		this.defaultEditor.onAction("app.tools.expand", () => this.toggleToolOutputExpansion());
 		this.defaultEditor.onAction("app.thinking.toggle", () => this.toggleThinkingBlockVisibility());
 		this.defaultEditor.onAction("app.editor.external", () => this.openExternalEditor());
-		this.defaultEditor.onAction("app.message.followUp", () => void this.deliverWith("followUp"));
-		this.defaultEditor.onAction("app.message.steer", () => void this.deliverWith("steer"));
-		this.defaultEditor.onAction("app.message.interrupt", () => void this.deliverWith("interrupt"));
-		this.defaultEditor.onAction("app.message.secondary", () => void this.deliverWith(this.secondaryBehavior()));
+		this.defaultEditor.onAction("app.message.followUp", () => this.reportFailure(this.deliverWith("followUp")));
+		this.defaultEditor.onAction("app.message.steer", () => this.reportFailure(this.deliverWith("steer")));
+		this.defaultEditor.onAction("app.message.interrupt", () => this.reportFailure(this.deliverWith("interrupt")));
+		this.defaultEditor.onAction("app.message.secondary", () =>
+			this.reportFailure(this.deliverWith(this.secondaryBehavior())),
+		);
 		this.defaultEditor.onAction("app.message.dequeue", () => this.handleDequeue());
 		this.defaultEditor.onAction("app.session.new", () => this.handleClearCommand());
 		this.defaultEditor.onAction("app.session.tree", () => this.showTreeSelector());
@@ -1924,154 +1926,168 @@ export class InteractiveMode {
 		return { images, notes };
 	}
 
+	/**
+	 * Show the failure from work started by a void callback, which has nothing to
+	 * catch a rejection and would otherwise take the process down.
+	 */
+	private reportFailure(work: Promise<void>): void {
+		work.catch((error: unknown) => {
+			this.showError(error instanceof Error ? error.message : String(error));
+		});
+	}
+
 	private setupEditorSubmitHandler(): void {
-		this.defaultEditor.onSubmit = async (text: string, pastedImages?: PasteImage[]) => {
-			text = text.trim();
-			let images: ImageContent[] | undefined;
-			if (pastedImages?.length) {
-				const prepared = await this.preparePastedImages(pastedImages);
-				images = prepared.images.length > 0 ? prepared.images : undefined;
-				if (prepared.notes.length > 0) {
-					const notes = prepared.notes.join("\n");
-					text = text ? `${text}\n${notes}` : notes;
-				}
-			}
-			if (!text && !images?.length) return;
+		this.defaultEditor.onSubmit = (text: string, pastedImages?: PasteImage[]) => {
+			this.reportFailure(this.handleSubmit(text, pastedImages));
+		};
+	}
 
-			// Handle commands
-			if (text === "/settings") {
-				this.showSettingsSelector();
-				this.editor.setText("");
-				return;
+	private async handleSubmit(text: string, pastedImages?: PasteImage[]): Promise<void> {
+		text = text.trim();
+		let images: ImageContent[] | undefined;
+		if (pastedImages?.length) {
+			const prepared = await this.preparePastedImages(pastedImages);
+			images = prepared.images.length > 0 ? prepared.images : undefined;
+			if (prepared.notes.length > 0) {
+				const notes = prepared.notes.join("\n");
+				text = text ? `${text}\n${notes}` : notes;
 			}
-			if (text === "/scoped-models") {
-				this.editor.setText("");
-				await this.showModelsSelector();
-				return;
-			}
-			if (text === "/model" || text.startsWith("/model ")) {
-				const searchTerm = text.startsWith("/model ") ? text.slice(7).trim() : undefined;
-				this.editor.setText("");
-				await this.handleModelCommand(searchTerm);
-				return;
-			}
-			if (text.startsWith("/export")) {
-				this.handleExportCommand(text);
-				this.editor.setText("");
-				return;
-			}
-			if (text.startsWith("/import")) {
-				await this.handleImportCommand(text);
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/copy") {
-				await this.handleCopyCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/name" || text.startsWith("/name ")) {
-				this.handleNameCommand(text);
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/session") {
-				this.handleSessionCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/version") {
-				this.handleVersionCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/fork") {
-				this.showUserMessageSelector();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/tree") {
-				this.showTreeSelector();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/login") {
-				this.showOAuthSelector("login");
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/logout") {
-				this.showOAuthSelector("logout");
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/new") {
-				this.editor.setText("");
-				await this.handleClearCommand();
-				return;
-			}
-			if (text === "/reload") {
-				this.editor.setText("");
-				await this.handleReloadCommand();
-				return;
-			}
-			if (text === "/debug") {
-				this.handleDebugCommand();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/resume") {
-				this.showSessionSelector();
-				this.editor.setText("");
-				return;
-			}
-			if (text === "/quit") {
-				this.editor.setText("");
-				await this.shutdown();
-				return;
-			}
+		}
+		if (!text && !images?.length) return;
 
-			// Handle bash command (! for normal, !! for excluded from context)
-			if (text.startsWith("!")) {
-				const isExcluded = text.startsWith("!!");
-				const command = isExcluded ? text.slice(2).trim() : text.slice(1).trim();
-				if (command) {
-					if (this.session.isBashRunning) {
-						this.showWarning("A bash command is already running. Press Esc to cancel it first.");
-						this.editor.setText(text);
-						return;
-					}
-					this.editor.addToHistory?.(text);
-					await this.handleBashCommand(command, isExcluded);
-					this.isBashMode = false;
-					this.updateEditorBorderColor();
+		// Handle commands
+		if (text === "/settings") {
+			this.showSettingsSelector();
+			this.editor.setText("");
+			return;
+		}
+		if (text === "/scoped-models") {
+			this.editor.setText("");
+			await this.showModelsSelector();
+			return;
+		}
+		if (text === "/model" || text.startsWith("/model ")) {
+			const searchTerm = text.startsWith("/model ") ? text.slice(7).trim() : undefined;
+			this.editor.setText("");
+			await this.handleModelCommand(searchTerm);
+			return;
+		}
+		if (text.startsWith("/export")) {
+			this.handleExportCommand(text);
+			this.editor.setText("");
+			return;
+		}
+		if (text.startsWith("/import")) {
+			await this.handleImportCommand(text);
+			this.editor.setText("");
+			return;
+		}
+		if (text === "/copy") {
+			await this.handleCopyCommand();
+			this.editor.setText("");
+			return;
+		}
+		if (text === "/name" || text.startsWith("/name ")) {
+			this.handleNameCommand(text);
+			this.editor.setText("");
+			return;
+		}
+		if (text === "/session") {
+			this.handleSessionCommand();
+			this.editor.setText("");
+			return;
+		}
+		if (text === "/version") {
+			this.handleVersionCommand();
+			this.editor.setText("");
+			return;
+		}
+		if (text === "/fork") {
+			this.showUserMessageSelector();
+			this.editor.setText("");
+			return;
+		}
+		if (text === "/tree") {
+			this.showTreeSelector();
+			this.editor.setText("");
+			return;
+		}
+		if (text === "/login") {
+			this.showOAuthSelector("login");
+			this.editor.setText("");
+			return;
+		}
+		if (text === "/logout") {
+			this.showOAuthSelector("logout");
+			this.editor.setText("");
+			return;
+		}
+		if (text === "/new") {
+			this.editor.setText("");
+			await this.handleClearCommand();
+			return;
+		}
+		if (text === "/reload") {
+			this.editor.setText("");
+			await this.handleReloadCommand();
+			return;
+		}
+		if (text === "/debug") {
+			this.handleDebugCommand();
+			this.editor.setText("");
+			return;
+		}
+		if (text === "/resume") {
+			this.showSessionSelector();
+			this.editor.setText("");
+			return;
+		}
+		if (text === "/quit") {
+			this.editor.setText("");
+			await this.shutdown();
+			return;
+		}
+
+		// Handle bash command (! for normal, !! for excluded from context)
+		if (text.startsWith("!")) {
+			const isExcluded = text.startsWith("!!");
+			const command = isExcluded ? text.slice(2).trim() : text.slice(1).trim();
+			if (command) {
+				if (this.session.isBashRunning) {
+					this.showWarning("A bash command is already running. Press Esc to cancel it first.");
+					this.editor.setText(text);
 					return;
 				}
-			}
-
-			// If streaming, deliver however Enter is configured to. prompt() still
-			// handles extension commands and prompt template expansion on the way.
-			if (this.session.isStreaming) {
 				this.editor.addToHistory?.(text);
-				this.editor.setText("");
-				await this.session.prompt(text, {
-					streamingBehavior: this.settingsManager.getEnterBehavior(),
-					images,
-				});
-				this.updatePendingMessagesDisplay();
-				this.ui.requestRender();
+				await this.handleBashCommand(command, isExcluded);
+				this.isBashMode = false;
+				this.updateEditorBorderColor();
 				return;
 			}
+		}
 
-			// Normal message submission
-			// First, move any pending bash components to chat
-			this.flushPendingBashComponents();
-
-			if (this.onInputCallback) {
-				this.onInputCallback(text, images);
-			}
+		// If streaming, deliver however Enter is configured to. prompt() still
+		// handles extension commands and prompt template expansion on the way.
+		if (this.session.isStreaming) {
 			this.editor.addToHistory?.(text);
-		};
+			this.editor.setText("");
+			await this.session.prompt(text, {
+				streamingBehavior: this.settingsManager.getEnterBehavior(),
+				images,
+			});
+			this.updatePendingMessagesDisplay();
+			this.ui.requestRender();
+			return;
+		}
+
+		// Normal message submission
+		// First, move any pending bash components to chat
+		this.flushPendingBashComponents();
+
+		if (this.onInputCallback) {
+			this.onInputCallback(text, images);
+		}
+		this.editor.addToHistory?.(text);
 	}
 
 	private subscribeToAgent(): void {

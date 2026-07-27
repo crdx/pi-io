@@ -148,6 +148,67 @@ describe("AgentSession concurrent prompt guard", () => {
 		await interrupted.catch(() => {});
 	});
 
+	it("delivers an interrupt even when an extension starts a turn mid-send", async () => {
+		createSession();
+
+		// The send path awaits extension handlers and credential lookups, either of
+		// which can yield to the macrotask queue.
+		const sessionWithRunner = session as unknown as {
+			_extensionRunner?: {
+				hasHandlers: () => boolean;
+				emit: () => Promise<void>;
+				emitInput: () => Promise<{ action: "continue" }>;
+				emitBeforeAgentStart: () => Promise<undefined>;
+			};
+		};
+		sessionWithRunner._extensionRunner = {
+			hasHandlers: () => false,
+			emit: async () => {},
+			emitInput: async () => ({ action: "continue" }),
+			emitBeforeAgentStart: async () => {
+				await new Promise((resolve) => setTimeout(resolve, 5));
+				return undefined;
+			},
+		};
+
+		// An extension starting a turn of its own from agent_end, deferred through
+		// the macrotask queue the way the extension suite does.
+		let relaunched = false;
+		session.agent.subscribe((event) => {
+			if (event.type !== "agent_end" || relaunched) return;
+			relaunched = true;
+			setImmediate(() => {
+				void session.agent
+					.prompt([{ role: "user", content: "Extension turn", timestamp: Date.now() }])
+					.catch(() => {});
+			});
+		});
+
+		const firstPrompt = session.prompt("First message");
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(session.isStreaming).toBe(true);
+
+		let sendError: unknown;
+		const interrupted = session
+			.prompt("Second message", { streamingBehavior: "interrupt" })
+			.catch((error: unknown) => {
+				sendError = error;
+			});
+		await new Promise((resolve) => setTimeout(resolve, 50));
+
+		expect(sendError).toBeUndefined();
+		expect(relaunched).toBe(true);
+		const deliveries = session.messages.filter(
+			(message) => message.role === "user" && JSON.stringify(message.content).includes("Second message"),
+		);
+		expect(deliveries).toHaveLength(1);
+		expect(session.isStreaming).toBe(true);
+
+		await session.abort();
+		await firstPrompt.catch(() => {});
+		await interrupted;
+	});
+
 	it("should throw when prompt() called while streaming", async () => {
 		createSession();
 

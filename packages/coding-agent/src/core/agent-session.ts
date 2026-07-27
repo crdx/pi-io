@@ -984,6 +984,19 @@ export class AgentSession {
 			}
 		}
 
+		// Everything above may have awaited, and turns get started from agent_end through the
+		// macrotask queue — by extensions, and by the retry path — so the way has to be cleared
+		// again here. The message is already committed by this point, so it outranks any turn that
+		// raced in front of it. Nothing may be awaited between the last check and the send: the
+		// agent sets isStreaming synchronously as prompt() is entered, and a macrotask cannot run
+		// inside the microtask chain abort() resolves on, which is what makes the check hold.
+		for (let attempt = 0; this.isStreaming; attempt++) {
+			if (attempt === 3) {
+				throw new Error("Could not start a turn: the agent kept streaming through repeated aborts.");
+			}
+			await this.abort();
+		}
+
 		await this.agent.prompt(messages);
 		await this.waitForRetry();
 	}

@@ -14,8 +14,9 @@ import { processFileArguments } from "./cli/file-processor.js";
 import { buildInitialMessage } from "./cli/initial-message.js";
 import { listModels } from "./cli/list-models.js";
 import { selectSession } from "./cli/session-picker.js";
-import { getAgentDir, getModelsPath, loadBuildInfo, VERSION } from "./config.js";
+import { getAgentDir, getModelsPath, VERSION } from "./config.js";
 import { AuthStorage } from "./core/auth-storage.js";
+import { describeBuild } from "./core/build-info.js";
 import type { LoadExtensionsResult } from "./core/extensions/index.js";
 import { ModelRegistry } from "./core/model-registry.js";
 import { resolveCliModel, resolveModelScope, type ScopedModel } from "./core/model-resolver.js";
@@ -29,20 +30,6 @@ import { printTimings, time } from "./core/timings.js";
 import { allTools } from "./core/tools/index.js";
 import { InteractiveMode, runPrintMode } from "./modes/index.js";
 import { initTheme, stopThemeWatcher } from "./modes/interactive/theme/theme.js";
-
-function formatBuildDate(isoDate: string): string {
-	const date = new Date(isoDate);
-	if (Number.isNaN(date.getTime())) return isoDate;
-
-	const day = date.getDate();
-	const suffix = [11, 12, 13].includes(day % 100) ? "th" : ({ 1: "st", 2: "nd", 3: "rd" }[day % 10] ?? "th");
-
-	const month = date.toLocaleString("en-GB", { month: "long" });
-	const year = date.getFullYear();
-	const time = date.toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-
-	return `${day}${suffix} ${month} ${year}, ${time}`;
-}
 
 /**
  * Read all content from piped stdin.
@@ -485,15 +472,10 @@ export async function main(args: string[]) {
 	}
 
 	if (parsed.buildInfo) {
-		const info = loadBuildInfo();
-		if (info) {
-			console.log(`tag:  ${info.tag}`);
-			if (info.sha) console.log(`sha1: ${info.sha}`);
-			if (info.buildDate) console.log(`date: ${formatBuildDate(info.buildDate)}`);
-			if (info.node) console.log(`node: ${info.node}`);
-			if (info.commitUrl) console.log(`link: ${info.commitUrl}`);
-		} else {
-			console.log("No build info available (local development build)");
+		const facts = describeBuild();
+		const width = Math.max(...facts.map((fact) => fact.label.length));
+		for (const fact of facts) {
+			console.log(`${fact.label.padEnd(width)}: ${fact.value}`);
 		}
 		process.exit(0);
 	}

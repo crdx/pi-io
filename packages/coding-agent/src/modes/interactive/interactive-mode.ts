@@ -39,6 +39,7 @@ import {
 import { spawn, spawnSync } from "child_process";
 import { APP_NAME, getAgentDir, getAuthPath, getDebugLogPath, VERSION } from "../../config.js";
 import { type AgentSession, type AgentSessionEvent, parseSkillBlock } from "../../core/agent-session.js";
+import { describeBuild } from "../../core/build-info.js";
 import type {
 	ExtensionContext,
 	ExtensionRunner,
@@ -1935,6 +1936,11 @@ export class InteractiveMode {
 				this.editor.setText("");
 				return;
 			}
+			if (text === "/version") {
+				this.handleVersionCommand();
+				this.editor.setText("");
+				return;
+			}
 			if (text === "/fork") {
 				this.showUserMessageSelector();
 				this.editor.setText("");
@@ -3656,6 +3662,16 @@ export class InteractiveMode {
 			info += `\n${theme.bold("Cost")}\n`;
 			info += `${theme.fg("dim", "Total:")} ${stats.cost.toFixed(4)}`;
 		}
+
+		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(new Text(info, 1, 0));
+		this.ui.requestRender();
+	}
+
+	private handleVersionCommand(): void {
+		const facts = describeBuild();
+		const width = Math.max(...facts.map((fact) => fact.label.length));
+		const info = facts.map((fact) => `${theme.fg("dim", `${fact.label.padEnd(width)}:`)} ${fact.value}`).join("\n");
 
 		this.chatContainer.addChild(new Spacer(1));
 		this.chatContainer.addChild(new Text(info, 1, 0));

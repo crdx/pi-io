@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, statSync } from "fs";
 import { homedir } from "os";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
@@ -102,6 +102,29 @@ export function loadBuildInfo(): BuildInfo | null {
 	try {
 		const infoPath = join(getPackageDir(), "meta.json");
 		return JSON.parse(readFileSync(infoPath, "utf-8"));
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * When the running build was produced.
+ *
+ * Releases record it in `meta.json`. Nothing writes that locally, so fall back
+ * to this file's own timestamp: it is compiled output, so its mtime is the
+ * moment the build ran, which is the question worth answering during
+ * development ("am I running what I just built?").
+ */
+export function getBuildDate(): Date | null {
+	const recorded = loadBuildInfo()?.buildDate;
+	if (recorded) {
+		const date = new Date(recorded);
+		if (!Number.isNaN(date.getTime())) {
+			return date;
+		}
+	}
+	try {
+		return statSync(__filename).mtime;
 	} catch {
 		return null;
 	}

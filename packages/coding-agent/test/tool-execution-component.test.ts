@@ -1,9 +1,13 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Text, type TUI } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import stripAnsi from "strip-ansi";
-import { beforeAll, describe, expect, test } from "vitest";
+import { beforeAll, describe, expect, test, vi } from "vitest";
 import type { ToolDefinition } from "../src/core/extensions/types.js";
 import { type BashOperations, createBashToolDefinition } from "../src/core/tools/bash.js";
+import { createEditToolDefinition } from "../src/core/tools/edit.js";
 import { createReadToolDefinition } from "../src/core/tools/read.js";
 import { createWriteToolDefinition } from "../src/core/tools/write.js";
 import { ToolExecutionComponent } from "../src/modes/interactive/components/tool-execution.js";
@@ -20,6 +24,11 @@ function createBaseToolDefinition(name = "custom_tool"): ToolDefinition {
 			details: {},
 		}),
 	};
+}
+
+/** Word for word what both the edit preview and the edit execution report. */
+function editFailure(path: string): string {
+	return `Could not find the exact text in ${path}. The old text must match exactly including all whitespace and newlines.`;
 }
 
 function createFakeTui(): TUI {
@@ -258,5 +267,35 @@ describe("ToolExecutionComponent parity", () => {
 		expect(rendered).toContain("one");
 		expect(rendered).toContain("two");
 		expect(rendered).not.toContain("two\n\n");
+	});
+
+	test("reports a failed edit once, though both renderers know about it", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "pi-edit-render-"));
+		const path = join(directory, "sample.txt");
+		writeFileSync(path, "hello\n");
+
+		const component = new ToolExecutionComponent(
+			"edit",
+			"tool-9",
+			{ path, oldText: "absent", newText: "x" },
+			{},
+			createEditToolDefinition(directory),
+			createFakeTui(),
+		);
+
+		// The preview runs asynchronously once the arguments stop streaming, and
+		// predicts the same failure the execution then reports.
+		component.setArgsComplete();
+		await vi.waitFor(() => {
+			expect(stripAnsi(component.render(120).join("\n"))).toContain("Could not find the exact text");
+		});
+
+		component.updateResult(
+			{ content: [{ type: "text", text: editFailure(path) }], details: {}, isError: true },
+			false,
+		);
+
+		const rendered = stripAnsi(component.render(120).join("\n"));
+		expect(rendered.split("Could not find the exact text")).toHaveLength(2);
 	});
 });

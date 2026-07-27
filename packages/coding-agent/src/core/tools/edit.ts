@@ -100,11 +100,15 @@ function formatEditResult(
 ): string | undefined {
 	const rawPath = str(args?.file_path ?? args?.path);
 	if (isError) {
+		const previewError = state.preview && "error" in state.preview ? state.preview.error : undefined;
 		const errorText = result.content
 			.filter((c) => c.type === "text")
 			.map((c) => c.text || "")
 			.join("\n");
-		return errorText ? `\n${theme.fg("error", errorText)}` : undefined;
+		if (!errorText || errorText === previewError) {
+			return undefined;
+		}
+		return `\n${theme.fg("error", errorText)}`;
 	}
 
 	const previewDiff = state.preview && !("error" in state.preview) ? state.preview.diff : undefined;

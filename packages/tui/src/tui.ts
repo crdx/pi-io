@@ -221,7 +221,6 @@ export class TUI extends Container {
 	private hardwareCursorRow = 0; // Actual terminal cursor row (may differ due to IME positioning)
 	private inputBuffer = ""; // Buffer for parsing terminal responses
 	private cellSizeQueryPending = false;
-	private clearOnShrink = process.env.PI_CLEAR_ON_SHRINK === "1"; // Clear empty rows when content shrinks (default: off)
 	private maxLinesRendered = 0; // Track terminal's working area (max lines ever rendered)
 	private previousViewportTop = 0; // Track previous viewport top for resize-aware cursor moves
 	private fullRedrawCount = 0;
@@ -244,19 +243,6 @@ export class TUI extends Container {
 
 	get fullRedraws(): number {
 		return this.fullRedrawCount;
-	}
-
-	getClearOnShrink(): boolean {
-		return this.clearOnShrink;
-	}
-
-	/**
-	 * Set whether to trigger full re-render when content shrinks.
-	 * When true (default), empty rows are cleared when content shrinks.
-	 * When false, empty rows remain (reduces redraws on slower terminals).
-	 */
-	setClearOnShrink(enabled: boolean): void {
-		this.clearOnShrink = enabled;
 	}
 
 	setFocus(component: Component | null): void {
@@ -936,9 +922,8 @@ export class TUI extends Container {
 
 		// Content shrunk below the working area and no overlays - re-render to clear empty rows
 		// (overlays need the padding, so only do this when no overlays are active)
-		// Configurable via setClearOnShrink() or PI_CLEAR_ON_SHRINK=0 env var
-		if (this.clearOnShrink && newLines.length < this.maxLinesRendered && this.overlayStack.length === 0) {
-			logRedraw(`clearOnShrink (maxLinesRendered=${this.maxLinesRendered})`);
+		if (newLines.length < this.maxLinesRendered && this.overlayStack.length === 0) {
+			logRedraw(`content shrank (maxLinesRendered=${this.maxLinesRendered})`);
 			fullRender(true);
 			return;
 		}

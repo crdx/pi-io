@@ -75,7 +75,6 @@ describe("TUI content shrinkage", () => {
 	it("clears empty rows when content shrinks significantly", async () => {
 		const terminal = new VirtualTerminal(40, 10);
 		const tui = new TUI(terminal);
-		tui.setClearOnShrink(true); // Explicitly enable (may be disabled via env var)
 		const component = new TestComponent();
 		tui.addChild(component);
 
@@ -107,7 +106,6 @@ describe("TUI content shrinkage", () => {
 	it("handles shrink to single line", async () => {
 		const terminal = new VirtualTerminal(40, 10);
 		const tui = new TUI(terminal);
-		tui.setClearOnShrink(true); // Explicitly enable (may be disabled via env var)
 		const component = new TestComponent();
 		tui.addChild(component);
 
@@ -130,7 +128,6 @@ describe("TUI content shrinkage", () => {
 	it("handles shrink to empty", async () => {
 		const terminal = new VirtualTerminal(40, 10);
 		const tui = new TUI(terminal);
-		tui.setClearOnShrink(true); // Explicitly enable (may be disabled via env var)
 		const component = new TestComponent();
 		tui.addChild(component);
 

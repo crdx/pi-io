@@ -62,6 +62,8 @@ export {
 	parseKey,
 	setKittyProtocolActive,
 } from "./keys.js";
+// Debug logging, written to pi.log when PI_LOG=1
+export { dbg, visible } from "./logger.js";
 // Input buffering for batch splitting
 export {
 	BRACKETED_PASTE_END,

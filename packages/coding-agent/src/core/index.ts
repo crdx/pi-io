@@ -12,7 +12,14 @@ export {
 	type SessionStats,
 } from "./agent-session.js";
 export { type BashExecutorOptions, type BashResult, executeBash, executeBashWithOperations } from "./bash-executor.js";
-export { createEventBus, type EventBus, type EventBusController } from "./event-bus.js";
+export {
+	createEventBus,
+	type EventBus,
+	type EventBusController,
+	type ExtensionEventMap,
+	type ExtensionEventName,
+	type KnownEventName,
+} from "./event-bus.js";
 // Extensions system
 export {
 	type AgentEndEvent,

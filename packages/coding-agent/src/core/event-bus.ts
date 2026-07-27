@@ -1,8 +1,16 @@
 import { EventEmitter } from "node:events";
 
+export interface ExtensionEventMap {
+	[channel: string]: unknown;
+}
+
+export type ExtensionEventName = keyof ExtensionEventMap & string;
+
+export type KnownEventName = keyof { [K in keyof ExtensionEventMap as string extends K ? never : K]: true };
+
 export interface EventBus {
-	emit(channel: string, data: unknown): void;
-	on(channel: string, handler: (data: unknown) => void): () => void;
+	emit<K extends ExtensionEventName>(channel: K, data: ExtensionEventMap[K]): void;
+	on<K extends ExtensionEventName>(channel: K, handler: (data: ExtensionEventMap[K]) => void): () => void;
 }
 
 export interface EventBusController extends EventBus {
@@ -12,10 +20,10 @@ export interface EventBusController extends EventBus {
 export function createEventBus(): EventBusController {
 	const emitter = new EventEmitter();
 	return {
-		emit: (channel, data) => {
+		emit(channel: string, data: unknown) {
 			emitter.emit(channel, data);
 		},
-		on: (channel, handler) => {
+		on(channel: string, handler: (data: unknown) => void) {
 			const safeHandler = async (data: unknown) => {
 				try {
 					await handler(data);
@@ -26,7 +34,7 @@ export function createEventBus(): EventBusController {
 			emitter.on(channel, safeHandler);
 			return () => emitter.off(channel, safeHandler);
 		},
-		clear: () => {
+		clear() {
 			emitter.removeAllListeners();
 		},
 	};

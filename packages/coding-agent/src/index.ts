@@ -32,7 +32,14 @@ export {
 	estimateTokens,
 	getLastAssistantUsage,
 } from "./core/context-tokens.js";
-export { createEventBus, type EventBus, type EventBusController } from "./core/event-bus.js";
+export {
+	createEventBus,
+	type EventBus,
+	type EventBusController,
+	type ExtensionEventMap,
+	type ExtensionEventName,
+	type KnownEventName,
+} from "./core/event-bus.js";
 // Extension system
 export type {
 	AgentEndEvent,

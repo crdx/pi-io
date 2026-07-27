@@ -1210,6 +1210,27 @@ pi.events.on("my:event", (data) => { ... });
 pi.events.emit("my:event", { ... });
 ```
 
+Payloads are `unknown` by default. Declaring a channel on `ExtensionEventMap` type-checks both `on` and `emit` for it:
+
+```typescript
+declare module "@mariozechner/pi-coding-agent" {
+  interface ExtensionEventMap {
+    "my:event": { id: string };
+  }
+}
+
+pi.events.on("my:event", (data) => data.id);
+pi.events.emit("my:event", { id: "x" });
+```
+
+Undeclared channels stay usable and carry an `unknown` payload. `KnownEventName` is the union of declared channel names, for helpers that should reject unknown ones:
+
+```typescript
+function subscribe<K extends KnownEventName>(channel: K, handler: (data: ExtensionEventMap[K]) => void) {
+  return pi.events.on(channel, handler);
+}
+```
+
 ### pi.registerProvider(name, config)
 
 Register or override a model provider dynamically. Useful for proxies, custom endpoints, or team-wide model configurations.

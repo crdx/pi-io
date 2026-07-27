@@ -221,7 +221,6 @@ export class TUI extends Container {
 	private hardwareCursorRow = 0; // Actual terminal cursor row (may differ due to IME positioning)
 	private inputBuffer = ""; // Buffer for parsing terminal responses
 	private cellSizeQueryPending = false;
-	private showHardwareCursor = process.env.PI_HARDWARE_CURSOR === "1";
 	private clearOnShrink = process.env.PI_CLEAR_ON_SHRINK === "1"; // Clear empty rows when content shrinks (default: off)
 	private maxLinesRendered = 0; // Track terminal's working area (max lines ever rendered)
 	private previousViewportTop = 0; // Track previous viewport top for resize-aware cursor moves
@@ -238,29 +237,13 @@ export class TUI extends Container {
 		focusOrder: number;
 	}[] = [];
 
-	constructor(terminal: Terminal, showHardwareCursor?: boolean) {
+	constructor(terminal: Terminal) {
 		super();
 		this.terminal = terminal;
-		if (showHardwareCursor !== undefined) {
-			this.showHardwareCursor = showHardwareCursor;
-		}
 	}
 
 	get fullRedraws(): number {
 		return this.fullRedrawCount;
-	}
-
-	getShowHardwareCursor(): boolean {
-		return this.showHardwareCursor;
-	}
-
-	setShowHardwareCursor(enabled: boolean): void {
-		if (this.showHardwareCursor === enabled) return;
-		this.showHardwareCursor = enabled;
-		if (!enabled) {
-			this.terminal.hideCursor();
-		}
-		this.requestRender();
 	}
 
 	getClearOnShrink(): boolean {
@@ -1210,10 +1193,6 @@ export class TUI extends Container {
 		}
 
 		this.hardwareCursorRow = targetRow;
-		if (this.showHardwareCursor) {
-			this.terminal.showCursor();
-		} else {
-			this.terminal.hideCursor();
-		}
+		this.terminal.hideCursor();
 	}
 }

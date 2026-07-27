@@ -165,8 +165,7 @@ When a `Focusable` component has focus, TUI:
 
 1. Sets `focused = true` on the component
 2. Scans rendered output for `CURSOR_MARKER` (a zero-width APC escape sequence)
-3. Positions the hardware terminal cursor at that location
-4. Shows the hardware cursor
+3. Positions the hardware terminal cursor at that location, keeping it hidden
 
 This enables IME candidate windows to appear at the correct position for CJK input methods. The `Editor` and `Input` built-in components already implement this interface.
 

@@ -5,6 +5,7 @@ export * from "./api-registry.js";
 export * from "./env-api-keys.js";
 export * from "./models.js";
 export type { AnthropicOptions } from "./providers/anthropic.js";
+export { describeAnthropicError } from "./providers/anthropic.js";
 export type { OpenAICodexResponsesOptions } from "./providers/openai-codex-responses.js";
 export type { OpenAICompletionsOptions } from "./providers/openai-completions.js";
 export * from "./providers/register-builtins.js";

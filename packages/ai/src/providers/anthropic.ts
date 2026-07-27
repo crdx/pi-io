@@ -1,10 +1,11 @@
-import Anthropic from "@anthropic-ai/sdk";
+import Anthropic, { APIError } from "@anthropic-ai/sdk";
 import type {
 	CacheControlEphemeral,
 	ContentBlockParam,
 	MessageCreateParamsStreaming,
 	MessageParam,
 } from "@anthropic-ai/sdk/resources/messages.js";
+import type { ErrorResponse } from "@anthropic-ai/sdk/resources/shared.js";
 import { getEnvApiKey } from "../env-api-keys.js";
 import { calculateCost } from "../models.js";
 import {
@@ -423,7 +424,7 @@ export const streamAnthropic: StreamFunction<"anthropic-messages", AnthropicOpti
 				delete (block as { partialJson?: string }).partialJson;
 			}
 			output.stopReason = options?.signal?.aborted ? "aborted" : "error";
-			output.errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+			output.errorMessage = describeAnthropicError(error);
 			stream.push({ type: "error", reason: output.stopReason, error: output });
 			stream.end();
 		}
@@ -474,6 +475,35 @@ export const streamSimpleAnthropic: StreamFunction<"anthropic-messages", SimpleS
 
 function isOAuthToken(apiKey: string): boolean {
 	return apiKey.includes("sk-ant-oat");
+}
+
+export function describeAnthropicError(error: unknown): string {
+	if (!(error instanceof APIError)) {
+		return error instanceof Error ? error.message : JSON.stringify(error);
+	}
+
+	const errorResponse = error.error as ErrorResponse | undefined;
+	const errorType = errorResponse?.error?.type;
+	const providerMessage = errorResponse?.error?.message?.trim();
+	const statusCode = error.status;
+	const detailClause = providerMessage ? ` ${providerMessage}` : "";
+
+	if (statusCode === 429 || errorType === "rate_limit_error") {
+		const retryAfterSeconds = Number(error.headers?.get("retry-after"));
+		const retryClause =
+			Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? ` (retry after ${retryAfterSeconds}s)` : "";
+		return `Anthropic rate limit reached${retryClause}.${detailClause}`;
+	}
+
+	if (statusCode === 529 || errorType === "overloaded_error") {
+		return `Anthropic is overloaded and refusing requests.${detailClause}`;
+	}
+
+	if (statusCode !== undefined && statusCode >= 500) {
+		return `Anthropic server error ${statusCode}.${detailClause}`;
+	}
+
+	return providerMessage || error.message;
 }
 
 function createClient(

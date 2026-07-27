@@ -255,7 +255,7 @@ export class SettingsSelectorComponent extends Container {
 			},
 		];
 
-		// Image auto-resize toggle (always available, affects both attached and read images)
+		// Image auto-resize toggle (affects attached, pasted and read images)
 		items.splice(1, 0, {
 			id: "auto-resize-images",
 			label: "Auto-resize images",

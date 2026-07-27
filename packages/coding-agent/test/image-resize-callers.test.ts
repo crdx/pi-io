@@ -10,7 +10,8 @@ vi.mock("../src/utils/image-resize.js", () => ({
 
 import { processFileArguments } from "../src/cli/file-processor.js";
 import { createReadTool } from "../src/core/tools/read.js";
-import { resizeImage } from "../src/utils/image-resize.js";
+import { InteractiveMode } from "../src/modes/interactive/interactive-mode.js";
+import { formatDimensionNote, resizeImage } from "../src/utils/image-resize.js";
 
 const TINY_PNG_BASE64 =
 	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
@@ -27,6 +28,14 @@ function mockSuccessfulResize(wasResized = false) {
 	});
 }
 
+function preparePastedImages(autoResize: boolean, images: { data: string; mimeType: string }[]) {
+	const fakeThis = { settingsManager: { getImageAutoResize: () => autoResize } };
+	return (InteractiveMode as any).prototype.preparePastedImages.call(fakeThis, images) as Promise<{
+		images: { type: "image"; data: string; mimeType: string }[];
+		notes: string[];
+	}>;
+}
+
 describe("image resize callers", () => {
 	let testDir: string;
 
@@ -35,6 +44,8 @@ describe("image resize callers", () => {
 		mkdirSync(testDir, { recursive: true });
 		vi.mocked(resizeImage).mockReset();
 		vi.mocked(resizeImage).mockResolvedValue(null);
+		vi.mocked(formatDimensionNote).mockReset();
+		vi.mocked(formatDimensionNote).mockReturnValue(undefined);
 	});
 
 	afterEach(() => {
@@ -83,5 +94,32 @@ describe("image resize callers", () => {
 
 		expect(result.images).toHaveLength(1);
 		expect(result.images[0].type).toBe("image");
+	});
+
+	it("pasted images go through the same resize as read and file arguments", async () => {
+		mockSuccessfulResize(true);
+		vi.mocked(formatDimensionNote).mockReturnValue("[Image: original 4000x2000, displayed at 2000x1000.]");
+
+		const result = await preparePastedImages(true, [{ data: "unresized", mimeType: "image/png" }]);
+
+		expect(resizeImage).toHaveBeenCalledOnce();
+		expect(result.images).toHaveLength(1);
+		expect(result.images[0].data).toBe(TINY_PNG_BASE64);
+		expect(result.notes).toEqual(["[Image: original 4000x2000, displayed at 2000x1000.]"]);
+	});
+
+	it("pasted images are dropped with a note when auto-resize cannot produce a safe image", async () => {
+		const result = await preparePastedImages(true, [{ data: "unresized", mimeType: "image/png" }]);
+
+		expect(result.images).toHaveLength(0);
+		expect(result.notes[0]).toContain("Image omitted");
+	});
+
+	it("pasted images are left untouched when auto-resize is off", async () => {
+		const result = await preparePastedImages(false, [{ data: "unresized", mimeType: "image/png" }]);
+
+		expect(resizeImage).not.toHaveBeenCalled();
+		expect(result.images).toEqual([{ type: "image", data: "unresized", mimeType: "image/png" }]);
+		expect(result.notes).toEqual([]);
 	});
 });

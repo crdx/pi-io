@@ -82,9 +82,9 @@ Follow-up has Alt+Enter to itself. Steering and interrupt compete for Enter, so 
 
 ### Images
 
-| Setting             | Type    | Default | Description                    |
-|---------------------|---------|---------|--------------------------------|
-| `images.autoResize` | boolean | `true`  | Resize images to 2000x2000 max |
+| Setting             | Type    | Default | Description                                              |
+|---------------------|---------|---------|----------------------------------------------------------|
+| `images.autoResize` | boolean | `true`  | Resize read, pasted and attached images to 2000x2000 max |
 
 ### Shell
 

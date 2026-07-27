@@ -74,6 +74,7 @@ import {
 	readPastedText,
 } from "../../utils/clipboard-read.js";
 import { parseGitUrl } from "../../utils/git.js";
+import { formatDimensionNote, resizeImage } from "../../utils/image-resize.js";
 import { AssistantMessageComponent } from "./components/assistant-message.js";
 import { BashExecutionComponent } from "./components/bash-execution.js";
 import { BorderedLoader } from "./components/bordered-loader.js";
@@ -1895,10 +1896,45 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
+	/** Pasted images take the same resize path as read and @file attachments. */
+	private async preparePastedImages(pastedImages: PasteImage[]): Promise<{ images: ImageContent[]; notes: string[] }> {
+		const images: ImageContent[] = [];
+		const notes: string[] = [];
+		const autoResize = this.settingsManager.getImageAutoResize();
+
+		for (const pasted of pastedImages) {
+			const image: ImageContent = { type: "image", ...pasted };
+			if (!autoResize) {
+				images.push(image);
+				continue;
+			}
+
+			const resized = await resizeImage(image);
+			if (!resized) {
+				notes.push("[Image omitted: could not be resized below the inline image size limit.]");
+				continue;
+			}
+
+			images.push({ type: "image", data: resized.data, mimeType: resized.mimeType });
+			const note = formatDimensionNote(resized);
+			if (note) notes.push(note);
+		}
+
+		return { images, notes };
+	}
+
 	private setupEditorSubmitHandler(): void {
 		this.defaultEditor.onSubmit = async (text: string, pastedImages?: PasteImage[]) => {
 			text = text.trim();
-			const images = pastedImages?.map((image): ImageContent => ({ type: "image", ...image }));
+			let images: ImageContent[] | undefined;
+			if (pastedImages?.length) {
+				const prepared = await this.preparePastedImages(pastedImages);
+				images = prepared.images.length > 0 ? prepared.images : undefined;
+				if (prepared.notes.length > 0) {
+					const notes = prepared.notes.join("\n");
+					text = text ? `${text}\n${notes}` : notes;
+				}
+			}
 			if (!text && !images?.length) return;
 
 			// Handle commands

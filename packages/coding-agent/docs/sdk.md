@@ -287,7 +287,7 @@ const authStorage = AuthStorage.create();
 const modelRegistry = new ModelRegistry(authStorage);
 
 // Find specific built-in model (doesn't check if API key exists)
-const opus = getModel("anthropic", "claude-opus-4-5");
+const opus = getModel("anthropic", "claude-opus-5");
 if (!opus) throw new Error("Model not found");
 
 // Find any model by provider/id, including custom models from models.json
@@ -784,7 +784,7 @@ const statusTool: ToolDefinition = {
   }),
 };
 
-const model = getModel("anthropic", "claude-opus-4-5");
+const model = getModel("anthropic", "claude-opus-5");
 if (!model) throw new Error("Model not found");
 
 // In-memory settings with overrides

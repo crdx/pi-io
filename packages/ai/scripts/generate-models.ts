@@ -102,8 +102,14 @@ function toModelCost(cost: ModelsDevModel["cost"]): Model<Api>["cost"] {
 // budget. Budget thinking on a model that wants adaptive is accepted and silently under-thinks,
 // which is how claude-sonnet-5 went unnoticed; adaptive on a budget model is a 400. This set only
 // ever shrinks, since a model never moves from adaptive back to budget.
-const ANTHROPIC_BUDGET_THINKING_IDS = [
-	"claude-haiku-4-5",
+const ANTHROPIC_BUDGET_THINKING_IDS = ["claude-haiku-4-5"];
+
+const ANTHROPIC_NO_THINKING_DISABLED_IDS = ["claude-fable-5"];
+
+// Older generations this fork never selects, plus the dated aliases of the models it does. Keeps the
+// registry to what settings.json can actually reach. Checked against the upstream catalog rather
+// than the generated registry, since an entry here is by definition absent from the output.
+const ANTHROPIC_EXCLUDED_IDS = [
 	"claude-haiku-4-5-20251001",
 	"claude-opus-4-1",
 	"claude-opus-4-1-20250805",
@@ -112,8 +118,6 @@ const ANTHROPIC_BUDGET_THINKING_IDS = [
 	"claude-sonnet-4-5",
 	"claude-sonnet-4-5-20250929",
 ];
-
-const ANTHROPIC_NO_THINKING_DISABLED_IDS = ["claude-fable-5"];
 
 function getEffortValues(model: ModelsDevModel): string[] | undefined {
 	return (model.reasoning_options ?? []).find(option => option.type === "effort")?.values;
@@ -142,8 +146,15 @@ function toThinkingLevelMap(model: ModelsDevModel): ThinkingLevelMap | undefined
 function buildAnthropicModels(catalog: ModelsDevApi): Model<any>[] {
 	const models: Model<any>[] = [];
 
+	const catalogIds = new Set(Object.keys(catalog.anthropic?.models ?? {}));
+	const staleExclusions = ANTHROPIC_EXCLUDED_IDS.filter(id => !catalogIds.has(id));
+	if (staleExclusions.length > 0) {
+		throw new Error(`Excluded anthropic models are no longer published upstream: ${staleExclusions.join(", ")}`);
+	}
+
 	for (const [modelId, m] of Object.entries(catalog.anthropic?.models ?? {})) {
 		if (m.tool_call !== true) continue;
+		if (ANTHROPIC_EXCLUDED_IDS.includes(modelId)) continue;
 
 		models.push({
 			id: modelId,
@@ -212,7 +223,7 @@ function buildCodexModels(catalog: ModelsDevApi): Model<"openai-codex-responses"
 }
 
 /** A models.dev response that parses but carries almost nothing would otherwise gut the registry. */
-const MINIMUM_ANTHROPIC_MODELS = 10;
+const MINIMUM_ANTHROPIC_MODELS = 8;
 
 function assertRegistryIsPlausible(providers: Record<string, Record<string, Model<any>>>) {
 	const anthropicCount = Object.keys(providers.anthropic ?? {}).length;
@@ -238,14 +249,6 @@ function assertRegistryIsPlausible(providers: Record<string, Record<string, Mode
 async function generateModels() {
 	const catalog = await fetchModelsDevCatalog();
 	const allModels = buildAnthropicModels(catalog);
-
-	// Fix incorrect cache pricing for Claude Opus 4.5 from models.dev
-	// models.dev has 3x the correct pricing (1.5/18.75 instead of 0.5/6.25)
-	const opus45 = allModels.find(m => m.provider === "anthropic" && m.id === "claude-opus-4-5");
-	if (opus45) {
-		opus45.cost.cacheRead = 0.5;
-		opus45.cost.cacheWrite = 6.25;
-	}
 
 	// Temporary overrides until upstream model metadata is corrected.
 	for (const candidate of allModels) {

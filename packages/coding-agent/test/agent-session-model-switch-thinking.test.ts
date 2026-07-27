@@ -8,7 +8,7 @@ import { SessionManager } from "../src/core/session-manager.js";
 import { SettingsManager } from "../src/core/settings-manager.js";
 import { createTestResourceLoader } from "./utilities.js";
 
-const reasoningModel = getModel("anthropic", "claude-sonnet-4-5")!;
+const reasoningModel = getModel("anthropic", "claude-sonnet-5")!;
 const nonReasoningModel = {
 	...reasoningModel,
 	id: "non-reasoning-model",

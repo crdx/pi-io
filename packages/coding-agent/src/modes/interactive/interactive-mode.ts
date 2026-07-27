@@ -2274,6 +2274,11 @@ export class InteractiveMode {
 		return textBlocks.map((c) => (c as { text: string }).text).join("");
 	}
 
+	private getUserMessageImages(message: Message): ImageContent[] {
+		if (message.role !== "user" || typeof message.content === "string") return [];
+		return message.content.filter((block): block is ImageContent => block.type === "image");
+	}
+
 	/**
 	 * Show a status message in the chat.
 	 *
@@ -2327,7 +2332,8 @@ export class InteractiveMode {
 			}
 			case "user": {
 				const textContent = this.getUserMessageText(message);
-				if (textContent) {
+				const images = this.getUserMessageImages(message);
+				if (textContent || images.length > 0) {
 					const skillBlock = parseSkillBlock(textContent);
 					if (skillBlock) {
 						// Render skill block (collapsible)
@@ -2342,15 +2348,22 @@ export class InteractiveMode {
 						if (skillBlock.userMessage) {
 							const userComponent = new UserMessageComponent(
 								skillBlock.userMessage,
+								images,
 								this.getMarkdownThemeWithSettings(),
+								this.ui,
 							);
 							this.chatContainer.addChild(userComponent);
 						}
 					} else {
-						const userComponent = new UserMessageComponent(textContent, this.getMarkdownThemeWithSettings());
+						const userComponent = new UserMessageComponent(
+							textContent,
+							images,
+							this.getMarkdownThemeWithSettings(),
+							this.ui,
+						);
 						this.chatContainer.addChild(userComponent);
 					}
-					if (options?.populateHistory) {
+					if (options?.populateHistory && textContent) {
 						this.editor.addToHistory?.(textContent);
 					}
 				}

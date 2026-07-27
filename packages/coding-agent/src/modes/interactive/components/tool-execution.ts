@@ -1,8 +1,9 @@
+import type { ImageContent } from "@mariozechner/pi-ai";
 import { Box, type Component, Container, getCapabilities, Image, Spacer, Text, type TUI } from "@mariozechner/pi-tui";
 import type { ToolDefinition, ToolRenderContext } from "../../../core/extensions/types.js";
 import { allToolDefinitions } from "../../../core/tools/index.js";
 import { getTextOutput as getRenderedTextOutput } from "../../../core/tools/render-utils.js";
-import { convertToPng } from "../../../utils/image-convert.js";
+import { KittyImageConverter } from "../../../utils/kitty-images.js";
 import { theme } from "../theme/theme.js";
 
 export interface ToolExecutionOptions {
@@ -34,7 +35,10 @@ export class ToolExecutionComponent extends Container {
 		isError: boolean;
 		details?: any;
 	};
-	private convertedImages: Map<number, { data: string; mimeType: string }> = new Map();
+	private readonly imageConverter = new KittyImageConverter(() => {
+		this.updateDisplay();
+		this.ui.requestRender();
+	});
 	private hideComponent = false;
 
 	constructor(
@@ -164,30 +168,6 @@ export class ToolExecutionComponent extends Container {
 		this.result = result;
 		this.isPartial = isPartial;
 		this.updateDisplay();
-		this.maybeConvertImagesForKitty();
-	}
-
-	private maybeConvertImagesForKitty(): void {
-		const caps = getCapabilities();
-		if (caps.images !== "kitty") return;
-		if (!this.result) return;
-
-		const imageBlocks = this.result.content.filter((c) => c.type === "image");
-		for (let i = 0; i < imageBlocks.length; i++) {
-			const img = imageBlocks[i];
-			if (!img.data || !img.mimeType) continue;
-			if (img.mimeType === "image/png") continue;
-			if (this.convertedImages.has(i)) continue;
-
-			const index = i;
-			convertToPng(img.data, img.mimeType).then((converted) => {
-				if (converted) {
-					this.convertedImages.set(index, converted);
-					this.updateDisplay();
-					this.ui.requestRender();
-				}
-			});
-		}
 	}
 
 	setExpanded(expanded: boolean): void {
@@ -287,28 +267,24 @@ export class ToolExecutionComponent extends Container {
 		this.imageSpacers = [];
 
 		if (this.result) {
-			const imageBlocks = this.result.content.filter((c) => c.type === "image");
+			const imageBlocks = this.result.content.filter((block): block is ImageContent => block.type === "image");
 			const caps = getCapabilities();
 			for (let i = 0; i < imageBlocks.length; i++) {
-				const img = imageBlocks[i];
-				if (caps.images && this.showImages && img.data && img.mimeType) {
-					const converted = this.convertedImages.get(i);
-					const imageData = converted?.data ?? img.data;
-					const imageMimeType = converted?.mimeType ?? img.mimeType;
-					if (caps.images === "kitty" && imageMimeType !== "image/png") continue;
+				if (!caps.images || !this.showImages) continue;
+				const renderable = this.imageConverter.resolve(String(i), imageBlocks[i]);
+				if (!renderable) continue;
 
-					const spacer = new Spacer(1);
-					this.addChild(spacer);
-					this.imageSpacers.push(spacer);
-					const imageComponent = new Image(
-						imageData,
-						imageMimeType,
-						{ fallbackColor: (s: string) => theme.fg("toolOutput", s) },
-						{ maxWidthCells: 9999 },
-					);
-					this.imageComponents.push(imageComponent);
-					this.addChild(imageComponent);
-				}
+				const spacer = new Spacer(1);
+				this.addChild(spacer);
+				this.imageSpacers.push(spacer);
+				const imageComponent = new Image(
+					renderable.data,
+					renderable.mimeType,
+					{ fallbackColor: (s: string) => theme.fg("toolOutput", s) },
+					{ maxWidthCells: 9999 },
+				);
+				this.imageComponents.push(imageComponent);
+				this.addChild(imageComponent);
 			}
 		}
 

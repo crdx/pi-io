@@ -516,7 +516,7 @@ describe("ModelRegistry", () => {
 						supportsStrictMode: false,
 					},
 					modelOverrides: {
-						"gpt-5.4": {
+						"gpt-5.6-terra": {
 							compat: {
 								supportsUsageInStreaming: false,
 							},
@@ -526,7 +526,7 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = new ModelRegistry(authStorage, modelsJsonPath);
-			const compat = registry.find("openai-codex", "gpt-5.4")?.compat as OpenAICompletionsCompat | undefined;
+			const compat = registry.find("openai-codex", "gpt-5.6-terra")?.compat as OpenAICompletionsCompat | undefined;
 
 			// Should have the per-model setting AND preserve the provider-level one
 			expect(compat?.supportsUsageInStreaming).toBe(false);

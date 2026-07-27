@@ -245,7 +245,7 @@ ${chalk.bold("Examples:")}
   ${APP_NAME} --continue "What did we discuss?"
 
   # Use different model
-  ${APP_NAME} --provider openai-codex --model gpt-5.4 "Help me refactor this code"
+  ${APP_NAME} --provider openai-codex --model gpt-5.6-terra "Help me refactor this code"
 
   # Use model with provider prefix (no --provider needed)
   ${APP_NAME} --model anthropic/claude-sonnet-4-6 "Help me refactor this code"

@@ -10,10 +10,12 @@ import { isValidThinkingLevel } from "../cli/args.js";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.js";
 import type { ModelRegistry } from "./model-registry.js";
 
-/** Default model IDs for each known provider */
-export const defaultModelPerProvider: Record<KnownProvider, string> = {
+/**
+ * Preferred model per provider, used only where nothing else has selected one. Providers absent here
+ * fall back to the first model the registry lists for them.
+ */
+export const defaultModelPerProvider: Partial<Record<KnownProvider, string>> = {
 	anthropic: "claude-opus-4-6",
-	"openai-codex": "gpt-5.4",
 };
 
 export interface ScopedModel {

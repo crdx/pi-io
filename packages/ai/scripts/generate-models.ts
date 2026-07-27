@@ -23,6 +23,16 @@ interface ModelsDevModel {
 		output?: number;
 		cache_read?: number;
 		cache_write?: number;
+		tiers?: {
+			input?: number;
+			output?: number;
+			cache_read?: number;
+			cache_write?: number;
+			tier?: {
+				type?: string;
+				size?: number;
+			};
+		}[];
 	};
 	modalities?: {
 		input?: string[];
@@ -32,57 +42,137 @@ interface ModelsDevModel {
 	};
 }
 
-/** Only the anthropic slice is consumed; every other provider was dropped from the fork. */
+/** Only the anthropic and openai slices are consumed; every other provider was dropped from the fork. */
 interface ModelsDevApi {
 	anthropic?: {
 		models?: Record<string, ModelsDevModel>;
 	};
+	openai?: {
+		models?: Record<string, ModelsDevModel>;
+	};
 }
 
-async function loadModelsDevData(): Promise<Model<any>[]> {
-	try {
-		console.log("Fetching models from models.dev API...");
-		const response = await fetch("https://models.dev/api.json");
-		const data = (await response.json()) as ModelsDevApi;
+async function fetchModelsDevCatalog(): Promise<ModelsDevApi> {
+	console.log("Fetching models from models.dev API...");
+	const response = await fetch("https://models.dev/api.json");
+	if (!response.ok) throw new Error(`models.dev API returned ${response.status} ${response.statusText}`);
+	return (await response.json()) as ModelsDevApi;
+}
 
-		const models: Model<any>[] = [];
+function toModelInput(model: ModelsDevModel): Model<Api>["input"] {
+	return model.modalities?.input?.includes("image") ? ["text", "image"] : ["text"];
+}
 
-		// Process Anthropic models
-		if (data.anthropic?.models) {
-			for (const [modelId, m] of Object.entries(data.anthropic.models)) {
-				if (m.tool_call !== true) continue;
-
-				models.push({
-					id: modelId,
-					name: m.name || modelId,
-					api: "anthropic-messages",
-					provider: "anthropic",
-					baseUrl: "https://api.anthropic.com",
-					reasoning: m.reasoning === true,
-					input: m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"],
-					cost: {
-						input: m.cost?.input || 0,
-						output: m.cost?.output || 0,
-						cacheRead: m.cost?.cache_read || 0,
-						cacheWrite: m.cost?.cache_write || 0,
+/** models.dev expresses request-wide pricing bands as `cost.tiers[].tier = {type: "context", size}`. */
+function toModelCost(cost: ModelsDevModel["cost"]): Model<Api>["cost"] {
+	const tiers = (cost?.tiers ?? []).flatMap(tier =>
+		tier.tier?.type === "context" && tier.tier.size !== undefined
+			? [
+					{
+						inputTokensAbove: tier.tier.size,
+						input: tier.input || 0,
+						output: tier.output || 0,
+						cacheRead: tier.cache_read || 0,
+						cacheWrite: tier.cache_write || 0,
 					},
-					contextWindow: m.limit?.context || 4096,
-					maxTokens: m.limit?.output || 4096,
-				});
-			}
-		}
+				]
+			: [],
+	);
 
-		console.log(`Loaded ${models.length} tool-capable models from models.dev`);
-		return models;
-	} catch (error) {
-		console.error("Failed to load models.dev data:", error);
-		return [];
+	return {
+		input: cost?.input || 0,
+		output: cost?.output || 0,
+		cacheRead: cost?.cache_read || 0,
+		cacheWrite: cost?.cache_write || 0,
+		...(tiers.length > 0 ? { tiers } : {}),
+	};
+}
+
+function buildAnthropicModels(catalog: ModelsDevApi): Model<any>[] {
+	const models: Model<any>[] = [];
+
+	for (const [modelId, m] of Object.entries(catalog.anthropic?.models ?? {})) {
+		if (m.tool_call !== true) continue;
+
+		models.push({
+			id: modelId,
+			name: m.name || modelId,
+			api: "anthropic-messages",
+			provider: "anthropic",
+			baseUrl: "https://api.anthropic.com",
+			reasoning: m.reasoning === true,
+			input: toModelInput(m),
+			cost: toModelCost(m.cost),
+			contextWindow: m.limit?.context || 4096,
+			maxTokens: m.limit?.output || 4096,
+		});
+	}
+
+	console.log(`Loaded ${models.length} tool-capable anthropic models from models.dev`);
+	return models;
+}
+
+// OpenAI Codex (ChatGPT OAuth) models. models.dev has no codex provider, but it publishes these under
+// plain `openai`, so pricing, naming, modalities and output limits are all derived from that slice and
+// only the api/provider/baseUrl are swapped. Nothing here is hand-priced.
+//
+// Context window is the one thing not derived: the ChatGPT backend caps at ~272k regardless of the
+// published API limit (400s above it), so it stays pinned. models.dev reports 922k input for the 5.5
+// and 5.6 models, which is the API's number and not the one Codex honours.
+//
+// Codex serves aliases with no models.dev counterpart (gpt-5.1-codex-max, gpt-5.2-codex and so on).
+// Adding one means hand-writing its pricing, which the daily regeneration will never correct, so the
+// list is deliberately confined to models that models.dev covers.
+const CODEX_BASE_URL = "https://chatgpt.com/backend-api";
+const CODEX_CONTEXT = 272000;
+const CODEX_MODEL_IDS = ["gpt-5.4-mini", "gpt-5.5", "gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra"];
+
+function buildCodexModels(catalog: ModelsDevApi): Model<"openai-codex-responses">[] {
+	const openaiModels = catalog.openai?.models ?? {};
+	const missing = CODEX_MODEL_IDS.filter(id => !openaiModels[id]);
+	if (missing.length > 0) {
+		throw new Error(`models.dev no longer publishes openai models: ${missing.join(", ")}`);
+	}
+
+	const models = CODEX_MODEL_IDS.map((id): Model<"openai-codex-responses"> => {
+		const m = openaiModels[id];
+		return {
+			id,
+			name: m.name || id,
+			api: "openai-codex-responses",
+			provider: "openai-codex",
+			baseUrl: CODEX_BASE_URL,
+			reasoning: m.reasoning === true,
+			input: toModelInput(m),
+			cost: toModelCost(m.cost),
+			contextWindow: CODEX_CONTEXT,
+			maxTokens: m.limit?.output || 4096,
+		};
+	});
+
+	console.log(`Derived ${models.length} openai-codex models from models.dev`);
+	return models;
+}
+
+/** A models.dev response that parses but carries almost nothing would otherwise gut the registry. */
+const MINIMUM_ANTHROPIC_MODELS = 10;
+
+function assertRegistryIsPlausible(providers: Record<string, Record<string, Model<any>>>) {
+	const anthropicCount = Object.keys(providers.anthropic ?? {}).length;
+	if (anthropicCount < MINIMUM_ANTHROPIC_MODELS) {
+		throw new Error(`Only ${anthropicCount} anthropic models resolved, expected at least ${MINIMUM_ANTHROPIC_MODELS}`);
+	}
+
+	const expectedCodexIds = [...CODEX_MODEL_IDS].sort();
+	const actualCodexIds = Object.keys(providers["openai-codex"] ?? {}).sort();
+	if (actualCodexIds.join(",") !== expectedCodexIds.join(",")) {
+		throw new Error(`openai-codex models are [${actualCodexIds.join(", ")}], expected [${expectedCodexIds.join(", ")}]`);
 	}
 }
 
 async function generateModels() {
-	// Anthropic comes from models.dev; openai-codex is the hand-maintained list below.
-	const allModels = await loadModelsDevData();
+	const catalog = await fetchModelsDevCatalog();
+	const allModels = buildAnthropicModels(catalog);
 
 	// Fix incorrect cache pricing for Claude Opus 4.5 from models.dev
 	// models.dev has 3x the correct pricing (1.5/18.75 instead of 0.5/6.25)
@@ -167,172 +257,7 @@ async function generateModels() {
 		});
 	}
 
-	// OpenAI Codex (ChatGPT OAuth) models
-	// NOTE: These are not fetched from models.dev; we keep a small, explicit list to avoid aliases.
-	// Context window is based on observed server limits (400s above ~272k), not marketing numbers.
-	const CODEX_BASE_URL = "https://chatgpt.com/backend-api";
-	const CODEX_CONTEXT = 272000;
-	const CODEX_MAX_TOKENS = 128000;
-	// OpenAI doubles input and adds 50% to output once a request exceeds the short-context window.
-	const withLongContextPricing = (cost: Model<Api>["cost"]): Model<Api>["cost"] => ({
-		...cost,
-		tiers: [
-			{
-				inputTokensAbove: CODEX_CONTEXT,
-				input: cost.input * 2,
-				output: cost.output * 1.5,
-				cacheRead: cost.cacheRead * 2,
-				cacheWrite: cost.cacheWrite * 2,
-			},
-		],
-	});
-	const codexModels: Model<"openai-codex-responses">[] = [
-		{
-			id: "gpt-5.1",
-			name: "GPT-5.1",
-			api: "openai-codex-responses",
-			provider: "openai-codex",
-			baseUrl: CODEX_BASE_URL,
-			reasoning: true,
-			input: ["text", "image"],
-			cost: { input: 1.25, output: 10, cacheRead: 0.125, cacheWrite: 0 },
-			contextWindow: CODEX_CONTEXT,
-			maxTokens: CODEX_MAX_TOKENS,
-		},
-		{
-			id: "gpt-5.1-codex-max",
-			name: "GPT-5.1 Codex Max",
-			api: "openai-codex-responses",
-			provider: "openai-codex",
-			baseUrl: CODEX_BASE_URL,
-			reasoning: true,
-			input: ["text", "image"],
-			cost: { input: 1.25, output: 10, cacheRead: 0.125, cacheWrite: 0 },
-			contextWindow: CODEX_CONTEXT,
-			maxTokens: CODEX_MAX_TOKENS,
-		},
-		{
-			id: "gpt-5.1-codex-mini",
-			name: "GPT-5.1 Codex Mini",
-			api: "openai-codex-responses",
-			provider: "openai-codex",
-			baseUrl: CODEX_BASE_URL,
-			reasoning: true,
-			input: ["text", "image"],
-			cost: { input: 0.25, output: 2, cacheRead: 0.025, cacheWrite: 0 },
-			contextWindow: CODEX_CONTEXT,
-			maxTokens: CODEX_MAX_TOKENS,
-		},
-		{
-			id: "gpt-5.2",
-			name: "GPT-5.2",
-			api: "openai-codex-responses",
-			provider: "openai-codex",
-			baseUrl: CODEX_BASE_URL,
-			reasoning: true,
-			input: ["text", "image"],
-			cost: { input: 1.75, output: 14, cacheRead: 0.175, cacheWrite: 0 },
-			contextWindow: CODEX_CONTEXT,
-			maxTokens: CODEX_MAX_TOKENS,
-		},
-		{
-			id: "gpt-5.2-codex",
-			name: "GPT-5.2 Codex",
-			api: "openai-codex-responses",
-			provider: "openai-codex",
-			baseUrl: CODEX_BASE_URL,
-			reasoning: true,
-			input: ["text", "image"],
-			cost: { input: 1.75, output: 14, cacheRead: 0.175, cacheWrite: 0 },
-			contextWindow: CODEX_CONTEXT,
-			maxTokens: CODEX_MAX_TOKENS,
-		},
-		{
-			id: "gpt-5.3-codex",
-			name: "GPT-5.3 Codex",
-			api: "openai-codex-responses",
-			provider: "openai-codex",
-			baseUrl: CODEX_BASE_URL,
-			reasoning: true,
-			input: ["text", "image"],
-			cost: { input: 1.75, output: 14, cacheRead: 0.175, cacheWrite: 0 },
-			contextWindow: CODEX_CONTEXT,
-			maxTokens: CODEX_MAX_TOKENS,
-		},
-		{
-			id: "gpt-5.4",
-			name: "GPT-5.4",
-			api: "openai-codex-responses",
-			provider: "openai-codex",
-			baseUrl: CODEX_BASE_URL,
-			reasoning: true,
-			input: ["text", "image"],
-			cost: withLongContextPricing({ input: 2.5, output: 15, cacheRead: 0.25, cacheWrite: 0 }),
-			contextWindow: CODEX_CONTEXT,
-			maxTokens: CODEX_MAX_TOKENS,
-		},
-		{
-			id: "gpt-5.4-mini",
-			name: "GPT-5.4 Mini",
-			api: "openai-codex-responses",
-			provider: "openai-codex",
-			baseUrl: CODEX_BASE_URL,
-			reasoning: true,
-			input: ["text", "image"],
-			cost: { input: 0.75, output: 4.5, cacheRead: 0.075, cacheWrite: 0 },
-			contextWindow: CODEX_CONTEXT,
-			maxTokens: CODEX_MAX_TOKENS,
-		},
-		{
-			id: "gpt-5.6-luna",
-			name: "GPT-5.6 Luna",
-			api: "openai-codex-responses",
-			provider: "openai-codex",
-			baseUrl: CODEX_BASE_URL,
-			reasoning: true,
-			input: ["text", "image"],
-			cost: withLongContextPricing({ input: 1, output: 6, cacheRead: 0.1, cacheWrite: 1.25 }),
-			contextWindow: CODEX_CONTEXT,
-			maxTokens: CODEX_MAX_TOKENS,
-		},
-		{
-			id: "gpt-5.6-sol",
-			name: "GPT-5.6 Sol",
-			api: "openai-codex-responses",
-			provider: "openai-codex",
-			baseUrl: CODEX_BASE_URL,
-			reasoning: true,
-			input: ["text", "image"],
-			cost: withLongContextPricing({ input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 }),
-			contextWindow: CODEX_CONTEXT,
-			maxTokens: CODEX_MAX_TOKENS,
-		},
-		{
-			id: "gpt-5.6-terra",
-			name: "GPT-5.6 Terra",
-			api: "openai-codex-responses",
-			provider: "openai-codex",
-			baseUrl: CODEX_BASE_URL,
-			reasoning: true,
-			input: ["text", "image"],
-			cost: withLongContextPricing({ input: 2.5, output: 15, cacheRead: 0.25, cacheWrite: 3.125 }),
-			contextWindow: CODEX_CONTEXT,
-			maxTokens: CODEX_MAX_TOKENS,
-		},
-		{
-			id: "gpt-5.3-codex-spark",
-			name: "GPT-5.3 Codex Spark",
-			api: "openai-codex-responses",
-			provider: "openai-codex",
-			baseUrl: CODEX_BASE_URL,
-			reasoning: true,
-			input: ["text"],
-			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-			contextWindow: 128000,
-			maxTokens: CODEX_MAX_TOKENS,
-		},
-	];
-	allModels.push(...codexModels);
+	allModels.push(...buildCodexModels(catalog));
 
 	// Group by provider and deduplicate by model ID
 	const providers: Record<string, Record<string, Model<any>>> = {};
@@ -345,6 +270,8 @@ async function generateModels() {
 			providers[model.provider][model.id] = model;
 		}
 	}
+
+	assertRegistryIsPlausible(providers);
 
 	// Generate TypeScript file
 	let output = `// This file is auto-generated by scripts/generate-models.ts
@@ -429,4 +356,7 @@ export const MODELS = {
 }
 
 // Run the generator
-generateModels().catch(console.error);
+generateModels().catch(error => {
+	console.error(error);
+	process.exitCode = 1;
+});

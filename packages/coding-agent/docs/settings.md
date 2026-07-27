@@ -80,12 +80,11 @@ Follow-up has Alt+Enter to itself. Steering and interrupt compete for Enter, so 
 | `followUpMode`  | string | `"one-at-a-time"` | How follow-up messages are sent: `"all"` or `"one-at-a-time"`                                           |
 | `transport`     | string | `"sse"`           | Preferred transport for providers that support multiple transports: `"sse"`, `"websocket"`, or `"auto"` |
 
-### Terminal & Images
+### Images
 
-| Setting               | Type    | Default | Description                            |
-|-----------------------|---------|---------|----------------------------------------|
-| `terminal.showImages` | boolean | `true`  | Show images in terminal (if supported) |
-| `images.autoResize`   | boolean | `true`  | Resize images to 2000x2000 max         |
+| Setting             | Type    | Default | Description                    |
+|---------------------|---------|---------|--------------------------------|
+| `images.autoResize` | boolean | `true`  | Resize images to 2000x2000 max |
 
 ### Shell
 

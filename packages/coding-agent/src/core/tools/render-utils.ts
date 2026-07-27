@@ -29,7 +29,6 @@ export function normalizeDisplayText(text: string): string {
 
 export function getTextOutput(
 	result: { content: Array<{ type: string; text?: string; data?: string; mimeType?: string }> } | undefined,
-	showImages: boolean,
 ): string {
 	if (!result) return "";
 
@@ -39,7 +38,7 @@ export function getTextOutput(
 	let output = textBlocks.map((c) => sanitizeBinaryOutput(stripAnsi(c.text || "")).replace(/\r/g, "")).join("\n");
 
 	const caps = getCapabilities();
-	if (imageBlocks.length > 0 && (!caps.images || !showImages)) {
+	if (imageBlocks.length > 0 && !caps.images) {
 		const imageIndicators = imageBlocks
 			.map((img) => {
 				const mimeType = img.mimeType ?? "image/unknown";

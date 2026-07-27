@@ -49,7 +49,7 @@ describe("ToolExecutionComponent parity", () => {
 			renderResult: () => new Text("custom result", 0, 0),
 		};
 
-		const component = new ToolExecutionComponent("custom_tool", "tool-1", {}, {}, toolDefinition, createFakeTui());
+		const component = new ToolExecutionComponent("custom_tool", "tool-1", {}, toolDefinition, createFakeTui());
 		expect(stripAnsi(component.render(120).join("\n"))).toContain("custom call");
 
 		component.updateResult(
@@ -75,7 +75,6 @@ describe("ToolExecutionComponent parity", () => {
 			"edit",
 			"tool-2",
 			{ path: "README.md", oldText: "before", newText: "after" },
-			{},
 			overrideDefinition,
 			createFakeTui(),
 		);
@@ -91,7 +90,6 @@ describe("ToolExecutionComponent parity", () => {
 			"read",
 			"tool-3",
 			{ file_path: "README.md" },
-			{},
 			undefined,
 			createFakeTui(),
 		);
@@ -125,7 +123,6 @@ describe("ToolExecutionComponent parity", () => {
 			"read",
 			"tool-4",
 			{ path: "README.md" },
-			{},
 			createReadToolDefinition(process.cwd()),
 			createFakeTui(),
 		);
@@ -144,7 +141,6 @@ describe("ToolExecutionComponent parity", () => {
 			"read",
 			"tool-4b",
 			{ path: "README.md" },
-			{},
 			overrideDefinition,
 			createFakeTui(),
 		);
@@ -164,7 +160,6 @@ describe("ToolExecutionComponent parity", () => {
 			"read",
 			"tool-4c",
 			{ path: "README.md" },
-			{},
 			overrideDefinition,
 			createFakeTui(),
 		);
@@ -188,7 +183,7 @@ describe("ToolExecutionComponent parity", () => {
 			},
 		};
 
-		const component = new ToolExecutionComponent("custom_tool", "tool-5", {}, {}, toolDefinition, createFakeTui());
+		const component = new ToolExecutionComponent("custom_tool", "tool-5", {}, toolDefinition, createFakeTui());
 		component.updateResult({ content: [{ type: "text", text: "done" }], details: {}, isError: false }, false);
 		const rendered = stripAnsi(component.render(120).join("\n"));
 		expect(rendered).toContain("custom call shared-token");
@@ -207,7 +202,6 @@ describe("ToolExecutionComponent parity", () => {
 			"custom_tool",
 			"tool-5b",
 			{ foo: "bar" },
-			{},
 			toolDefinition,
 			createFakeTui(),
 		);
@@ -225,7 +219,6 @@ describe("ToolExecutionComponent parity", () => {
 			"custom_tool",
 			"tool-6",
 			{ foo: "bar" },
-			{},
 			toolDefinition,
 			createFakeTui(),
 		);
@@ -240,7 +233,6 @@ describe("ToolExecutionComponent parity", () => {
 			"write",
 			"tool-7",
 			{ path: "README.md", content: "one\ntwo\n" },
-			{},
 			createWriteToolDefinition(process.cwd()),
 			createFakeTui(),
 		);
@@ -255,7 +247,6 @@ describe("ToolExecutionComponent parity", () => {
 			"read",
 			"tool-8",
 			{ path: "README.md" },
-			{},
 			createReadToolDefinition(process.cwd()),
 			createFakeTui(),
 		);
@@ -278,7 +269,6 @@ describe("ToolExecutionComponent parity", () => {
 			"edit",
 			"tool-9",
 			{ path, oldText: "absent", newText: "x" },
-			{},
 			createEditToolDefinition(directory),
 			createFakeTui(),
 		);

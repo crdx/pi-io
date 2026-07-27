@@ -18,7 +18,7 @@ export { type ModelsCallbacks, type ModelsConfig, ScopedModelsSelectorComponent 
 export { SessionSelectorComponent } from "./session-selector.js";
 export { type SettingsCallbacks, type SettingsConfig, SettingsSelectorComponent } from "./settings-selector.js";
 export { SkillInvocationMessageComponent } from "./skill-invocation-message.js";
-export { ToolExecutionComponent, type ToolExecutionOptions } from "./tool-execution.js";
+export { ToolExecutionComponent } from "./tool-execution.js";
 export { TreeSelectorComponent } from "./tree-selector.js";
 export { UserMessageComponent } from "./user-message.js";
 export { UserMessageSelectorComponent } from "./user-message-selector.js";

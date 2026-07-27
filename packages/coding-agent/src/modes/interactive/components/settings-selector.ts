@@ -2,7 +2,6 @@ import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { Transport } from "@mariozechner/pi-ai";
 import {
 	Container,
-	getCapabilities,
 	type SelectItem,
 	SelectList,
 	type SelectListLayoutOptions,
@@ -30,7 +29,6 @@ const THINKING_DESCRIPTIONS: Record<ThinkingLevel, string> = {
 };
 
 export interface SettingsConfig {
-	showImages: boolean;
 	autoResizeImages: boolean;
 	enableSkillCommands: boolean;
 	steeringMode: "all" | "one-at-a-time";
@@ -50,7 +48,6 @@ export interface SettingsConfig {
 }
 
 export interface SettingsCallbacks {
-	onShowImagesChange: (enabled: boolean) => void;
 	onAutoResizeImagesChange: (enabled: boolean) => void;
 	onEnableSkillCommandsChange: (enabled: boolean) => void;
 	onSteeringModeChange: (mode: "all" | "one-at-a-time") => void;
@@ -144,8 +141,6 @@ export class SettingsSelectorComponent extends Container {
 
 	constructor(config: SettingsConfig, callbacks: SettingsCallbacks) {
 		super();
-
-		const supportsImages = getCapabilities().images;
 
 		const items: SettingItem[] = [
 			{
@@ -260,20 +255,8 @@ export class SettingsSelectorComponent extends Container {
 			},
 		];
 
-		// Only show image toggle if terminal supports it
-		if (supportsImages) {
-			// Insert after autocompact
-			items.splice(1, 0, {
-				id: "show-images",
-				label: "Show images",
-				description: "Render images inline in terminal",
-				currentValue: config.showImages ? "true" : "false",
-				values: ["true", "false"],
-			});
-		}
-
 		// Image auto-resize toggle (always available, affects both attached and read images)
-		items.splice(supportsImages ? 2 : 1, 0, {
+		items.splice(1, 0, {
 			id: "auto-resize-images",
 			label: "Auto-resize images",
 			description: "Resize large images to 2000x2000 max for better model compatibility",
@@ -320,9 +303,6 @@ export class SettingsSelectorComponent extends Container {
 			getSettingsListTheme(),
 			(id, newValue) => {
 				switch (id) {
-					case "show-images":
-						callbacks.onShowImagesChange(newValue === "true");
-						break;
 					case "auto-resize-images":
 						callbacks.onAutoResizeImagesChange(newValue === "true");
 						break;

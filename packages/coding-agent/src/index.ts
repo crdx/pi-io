@@ -274,7 +274,6 @@ export {
 	SettingsSelectorComponent,
 	SkillInvocationMessageComponent,
 	ToolExecutionComponent,
-	type ToolExecutionOptions,
 	TreeSelectorComponent,
 	truncateToVisualLines,
 	UserMessageComponent,

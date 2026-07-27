@@ -2116,9 +2116,6 @@ export class InteractiveMode {
 									content.name,
 									content.id,
 									content.arguments,
-									{
-										showImages: this.settingsManager.getShowImages(),
-									},
 									this.getRegisteredToolDefinition(content.name),
 									this.ui,
 								);
@@ -2186,9 +2183,6 @@ export class InteractiveMode {
 						event.toolName,
 						event.toolCallId,
 						event.args,
-						{
-							showImages: this.settingsManager.getShowImages(),
-						},
 						this.getRegisteredToolDefinition(event.toolName),
 						this.ui,
 					);
@@ -2432,7 +2426,6 @@ export class InteractiveMode {
 							content.name,
 							content.id,
 							content.arguments,
-							{ showImages: this.settingsManager.getShowImages() },
 							this.getRegisteredToolDefinition(content.name),
 							this.ui,
 						);
@@ -2868,7 +2861,6 @@ export class InteractiveMode {
 		this.showSelector((done) => {
 			const selector = new SettingsSelectorComponent(
 				{
-					showImages: this.settingsManager.getShowImages(),
 					autoResizeImages: this.settingsManager.getImageAutoResize(),
 					enableSkillCommands: this.settingsManager.getEnableSkillCommands(),
 					steeringMode: this.session.steeringMode,
@@ -2887,14 +2879,6 @@ export class InteractiveMode {
 					quietStartup: this.settingsManager.getQuietStartup(),
 				},
 				{
-					onShowImagesChange: (enabled) => {
-						this.settingsManager.setShowImages(enabled);
-						for (const child of this.chatContainer.children) {
-							if (child instanceof ToolExecutionComponent) {
-								child.setShowImages(enabled);
-							}
-						}
-					},
 					onAutoResizeImagesChange: (enabled) => {
 						this.settingsManager.setImageAutoResize(enabled);
 					},

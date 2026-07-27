@@ -6,10 +6,6 @@ import { getTextOutput as getRenderedTextOutput } from "../../../core/tools/rend
 import { KittyImageConverter } from "../../../utils/kitty-images.js";
 import { theme } from "../theme/theme.js";
 
-export interface ToolExecutionOptions {
-	showImages?: boolean;
-}
-
 export class ToolExecutionComponent extends Container {
 	private contentBox: Box;
 	private contentText: Text;
@@ -22,7 +18,6 @@ export class ToolExecutionComponent extends Container {
 	private toolCallId: string;
 	private args: any;
 	private expanded = false;
-	private showImages: boolean;
 	private isPartial = true;
 	private toolDefinition?: ToolDefinition<any, any>;
 	private builtInToolDefinition?: ToolDefinition<any, any>;
@@ -45,7 +40,6 @@ export class ToolExecutionComponent extends Container {
 		toolName: string,
 		toolCallId: string,
 		args: any,
-		options: ToolExecutionOptions = {},
 		toolDefinition: ToolDefinition<any, any> | undefined,
 		ui: TUI,
 		cwd: string = process.cwd(),
@@ -56,7 +50,6 @@ export class ToolExecutionComponent extends Container {
 		this.args = args;
 		this.toolDefinition = toolDefinition;
 		this.builtInToolDefinition = allToolDefinitions[toolName as keyof typeof allToolDefinitions];
-		this.showImages = options.showImages ?? true;
 		this.ui = ui;
 		this.cwd = cwd;
 
@@ -123,7 +116,6 @@ export class ToolExecutionComponent extends Container {
 			argsComplete: this.argsComplete,
 			isPartial: this.isPartial,
 			expanded: this.expanded,
-			showImages: this.showImages,
 			isError: this.result?.isError ?? false,
 		};
 	}
@@ -172,11 +164,6 @@ export class ToolExecutionComponent extends Container {
 
 	setExpanded(expanded: boolean): void {
 		this.expanded = expanded;
-		this.updateDisplay();
-	}
-
-	setShowImages(show: boolean): void {
-		this.showImages = show;
 		this.updateDisplay();
 	}
 
@@ -270,7 +257,7 @@ export class ToolExecutionComponent extends Container {
 			const imageBlocks = this.result.content.filter((block): block is ImageContent => block.type === "image");
 			const caps = getCapabilities();
 			for (let i = 0; i < imageBlocks.length; i++) {
-				if (!caps.images || !this.showImages) continue;
+				if (!caps.images) continue;
 				const renderable = this.imageConverter.resolve(String(i), imageBlocks[i]);
 				if (!renderable) continue;
 
@@ -294,7 +281,7 @@ export class ToolExecutionComponent extends Container {
 	}
 
 	private getTextOutput(): string {
-		return getRenderedTextOutput(this.result, this.showImages);
+		return getRenderedTextOutput(this.result);
 	}
 
 	private formatToolExecution(): string {

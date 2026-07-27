@@ -11,10 +11,6 @@ export interface RetrySettings {
 	maxDelayMs?: number; // default: 60000 (max server-requested delay before failing)
 }
 
-export interface TerminalSettings {
-	showImages?: boolean; // default: true (only relevant if terminal supports images)
-}
-
 export interface ImageSettings {
 	autoResize?: boolean; // default: true (resize images to 2000x2000 max for better model compatibility)
 }
@@ -75,7 +71,6 @@ export interface Settings {
 	prompts?: string[]; // Array of local prompt template paths or directories
 	themes?: string[]; // Array of local theme file paths or directories
 	enableSkillCommands?: boolean; // default: true - register skills as /skill:name commands
-	terminal?: TerminalSettings;
 	images?: ImageSettings;
 	enabledModels?: string[]; // Model patterns for cycling (same format as --models CLI flag)
 	doubleEscapeAction?: "fork" | "tree" | "none"; // Action for double-escape with empty editor (default: "tree")
@@ -710,19 +705,6 @@ export class SettingsManager {
 
 	getThinkingBudgets(): ThinkingBudgetsSettings | undefined {
 		return this.settings.thinkingBudgets;
-	}
-
-	getShowImages(): boolean {
-		return this.settings.terminal?.showImages ?? true;
-	}
-
-	setShowImages(show: boolean): void {
-		if (!this.globalSettings.terminal) {
-			this.globalSettings.terminal = {};
-		}
-		this.globalSettings.terminal.showImages = show;
-		this.markModified("terminal", "showImages");
-		this.save();
 	}
 
 	getImageAutoResize(): boolean {

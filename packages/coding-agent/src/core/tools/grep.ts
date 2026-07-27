@@ -91,9 +91,8 @@ function formatGrepResult(
 	},
 	options: ToolRenderResultOptions,
 	theme: typeof import("../../modes/interactive/theme/theme.js").theme,
-	showImages: boolean,
 ): string {
-	const output = getTextOutput(result, showImages).trim();
+	const output = getTextOutput(result).trim();
 	let text = "";
 	if (output) {
 		const lines = output.split("\n");
@@ -373,7 +372,7 @@ export function createGrepToolDefinition(
 		},
 		renderResult(result, options, theme, context) {
 			const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
-			text.setText(formatGrepResult(result as any, options, theme, context.showImages));
+			text.setText(formatGrepResult(result as any, options, theme));
 			return text;
 		},
 	};

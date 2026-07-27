@@ -110,6 +110,9 @@ import {
 	theme,
 } from "./theme/theme.js";
 
+const EDITOR_PADDING_X = 1;
+const AUTOCOMPLETE_MAX_VISIBLE = 10;
+
 /** Interface for components that can be expanded/collapsed */
 interface Expandable {
 	setExpanded(expanded: boolean): void;
@@ -251,11 +254,9 @@ export class InteractiveMode {
 		this.widgetContainerBelow = new Container();
 		this.keybindings = KeybindingsManager.create();
 		setKeybindings(this.keybindings);
-		const editorPaddingX = this.settingsManager.getEditorPaddingX();
-		const autocompleteMaxVisible = this.settingsManager.getAutocompleteMaxVisible();
 		this.defaultEditor = new CustomEditor(this.ui, getEditorTheme(), this.keybindings, {
-			paddingX: editorPaddingX,
-			autocompleteMaxVisible,
+			paddingX: EDITOR_PADDING_X,
+			autocompleteMaxVisible: AUTOCOMPLETE_MAX_VISIBLE,
 		});
 		this.editor = this.defaultEditor;
 		this.editorContainer = new Container();
@@ -1631,7 +1632,7 @@ export class InteractiveMode {
 				newEditor.borderColor = this.defaultEditor.borderColor;
 			}
 			if (newEditor.setPaddingX !== undefined) {
-				newEditor.setPaddingX(this.defaultEditor.getPaddingX());
+				newEditor.setPaddingX(EDITOR_PADDING_X);
 			}
 
 			// Set autocomplete if supported
@@ -2910,8 +2911,6 @@ export class InteractiveMode {
 					hideThinkingBlock: this.hideThinkingBlock,
 					doubleEscapeAction: this.settingsManager.getDoubleEscapeAction(),
 					treeFilterMode: this.settingsManager.getTreeFilterMode(),
-					editorPaddingX: this.settingsManager.getEditorPaddingX(),
-					autocompleteMaxVisible: this.settingsManager.getAutocompleteMaxVisible(),
 					quietStartup: this.settingsManager.getQuietStartup(),
 				},
 				{
@@ -2974,20 +2973,6 @@ export class InteractiveMode {
 					},
 					onTreeFilterModeChange: (mode) => {
 						this.settingsManager.setTreeFilterMode(mode);
-					},
-					onEditorPaddingXChange: (padding) => {
-						this.settingsManager.setEditorPaddingX(padding);
-						this.defaultEditor.setPaddingX(padding);
-						if (this.editor !== this.defaultEditor && this.editor.setPaddingX !== undefined) {
-							this.editor.setPaddingX(padding);
-						}
-					},
-					onAutocompleteMaxVisibleChange: (maxVisible) => {
-						this.settingsManager.setAutocompleteMaxVisible(maxVisible);
-						this.defaultEditor.setAutocompleteMaxVisible(maxVisible);
-						if (this.editor !== this.defaultEditor && this.editor.setAutocompleteMaxVisible !== undefined) {
-							this.editor.setAutocompleteMaxVisible(maxVisible);
-						}
 					},
 					onCancel: () => {
 						done();
@@ -3521,14 +3506,6 @@ export class InteractiveMode {
 			const themeResult = themeName ? setTheme(themeName, true) : { success: true };
 			if (!themeResult.success) {
 				this.showError(`Failed to load theme "${themeName}": ${themeResult.error}\nFell back to dark theme.`);
-			}
-			const editorPaddingX = this.settingsManager.getEditorPaddingX();
-			const autocompleteMaxVisible = this.settingsManager.getAutocompleteMaxVisible();
-			this.defaultEditor.setPaddingX(editorPaddingX);
-			this.defaultEditor.setAutocompleteMaxVisible(autocompleteMaxVisible);
-			if (this.editor !== this.defaultEditor) {
-				this.editor.setPaddingX?.(editorPaddingX);
-				this.editor.setAutocompleteMaxVisible?.(autocompleteMaxVisible);
 			}
 			this.setupAutocomplete(this.fdPath);
 			const runner = this.session.extensionRunner;

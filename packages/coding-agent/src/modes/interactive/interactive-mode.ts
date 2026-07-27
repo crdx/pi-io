@@ -2870,7 +2870,6 @@ export class InteractiveMode {
 				{
 					showImages: this.settingsManager.getShowImages(),
 					autoResizeImages: this.settingsManager.getImageAutoResize(),
-					blockImages: this.settingsManager.getBlockImages(),
 					enableSkillCommands: this.settingsManager.getEnableSkillCommands(),
 					steeringMode: this.session.steeringMode,
 					followUpMode: this.session.followUpMode,
@@ -2898,9 +2897,6 @@ export class InteractiveMode {
 					},
 					onAutoResizeImagesChange: (enabled) => {
 						this.settingsManager.setImageAutoResize(enabled);
-					},
-					onBlockImagesChange: (blocked) => {
-						this.settingsManager.setBlockImages(blocked);
 					},
 					onEnableSkillCommandsChange: (enabled) => {
 						this.settingsManager.setEnableSkillCommands(enabled);

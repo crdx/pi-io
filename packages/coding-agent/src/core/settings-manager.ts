@@ -17,7 +17,6 @@ export interface TerminalSettings {
 
 export interface ImageSettings {
 	autoResize?: boolean; // default: true (resize images to 2000x2000 max for better model compatibility)
-	blockImages?: boolean; // default: false - when true, prevents all images from being sent to LLM providers
 }
 
 export interface ThinkingBudgetsSettings {
@@ -736,19 +735,6 @@ export class SettingsManager {
 		}
 		this.globalSettings.images.autoResize = enabled;
 		this.markModified("images", "autoResize");
-		this.save();
-	}
-
-	getBlockImages(): boolean {
-		return this.settings.images?.blockImages ?? false;
-	}
-
-	setBlockImages(blocked: boolean): void {
-		if (!this.globalSettings.images) {
-			this.globalSettings.images = {};
-		}
-		this.globalSettings.images.blockImages = blocked;
-		this.markModified("images", "blockImages");
 		this.save();
 	}
 

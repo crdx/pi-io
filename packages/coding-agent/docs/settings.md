@@ -82,11 +82,10 @@ Follow-up has Alt+Enter to itself. Steering and interrupt compete for Enter, so 
 
 ### Terminal & Images
 
-| Setting               | Type    | Default | Description                             |
-|-----------------------|---------|---------|-----------------------------------------|
-| `terminal.showImages` | boolean | `true`  | Show images in terminal (if supported)  |
-| `images.autoResize`   | boolean | `true`  | Resize images to 2000x2000 max          |
-| `images.blockImages`  | boolean | `false` | Block all images from being sent to LLM |
+| Setting               | Type    | Default | Description                            |
+|-----------------------|---------|---------|----------------------------------------|
+| `terminal.showImages` | boolean | `true`  | Show images in terminal (if supported) |
+| `images.autoResize`   | boolean | `true`  | Resize images to 2000x2000 max         |
 
 ### Shell
 

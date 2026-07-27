@@ -32,7 +32,6 @@ const THINKING_DESCRIPTIONS: Record<ThinkingLevel, string> = {
 export interface SettingsConfig {
 	showImages: boolean;
 	autoResizeImages: boolean;
-	blockImages: boolean;
 	enableSkillCommands: boolean;
 	steeringMode: "all" | "one-at-a-time";
 	followUpMode: "all" | "one-at-a-time";
@@ -53,7 +52,6 @@ export interface SettingsConfig {
 export interface SettingsCallbacks {
 	onShowImagesChange: (enabled: boolean) => void;
 	onAutoResizeImagesChange: (enabled: boolean) => void;
-	onBlockImagesChange: (blocked: boolean) => void;
 	onEnableSkillCommandsChange: (enabled: boolean) => void;
 	onSteeringModeChange: (mode: "all" | "one-at-a-time") => void;
 	onFollowUpModeChange: (mode: "all" | "one-at-a-time") => void;
@@ -283,19 +281,9 @@ export class SettingsSelectorComponent extends Container {
 			values: ["true", "false"],
 		});
 
-		// Block images toggle (always available, insert after auto-resize-images)
+		// Skill commands toggle (insert after auto-resize-images)
 		const autoResizeIndex = items.findIndex((item) => item.id === "auto-resize-images");
 		items.splice(autoResizeIndex + 1, 0, {
-			id: "block-images",
-			label: "Block images",
-			description: "Prevent images from being sent to LLM providers",
-			currentValue: config.blockImages ? "true" : "false",
-			values: ["true", "false"],
-		});
-
-		// Skill commands toggle (insert after block-images)
-		const blockImagesIndex = items.findIndex((item) => item.id === "block-images");
-		items.splice(blockImagesIndex + 1, 0, {
 			id: "skill-commands",
 			label: "Skill commands",
 			description: "Register skills as /skill:name commands",
@@ -337,9 +325,6 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "auto-resize-images":
 						callbacks.onAutoResizeImagesChange(newValue === "true");
-						break;
-					case "block-images":
-						callbacks.onBlockImagesChange(newValue === "true");
 						break;
 					case "skill-commands":
 						callbacks.onEnableSkillCommandsChange(newValue === "true");

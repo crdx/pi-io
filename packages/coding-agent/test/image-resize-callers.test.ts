@@ -15,6 +15,18 @@ import { resizeImage } from "../src/utils/image-resize.js";
 const TINY_PNG_BASE64 =
 	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
 
+function mockSuccessfulResize(wasResized = false) {
+	vi.mocked(resizeImage).mockResolvedValue({
+		data: TINY_PNG_BASE64,
+		mimeType: "image/png",
+		originalWidth: wasResized ? 4000 : 1,
+		originalHeight: wasResized ? 2000 : 1,
+		width: wasResized ? 2000 : 1,
+		height: wasResized ? 1000 : 1,
+		wasResized,
+	});
+}
+
 describe("image resize callers", () => {
 	let testDir: string;
 
@@ -49,5 +61,27 @@ describe("image resize callers", () => {
 
 		expect(result.images).toHaveLength(0);
 		expect(result.text).toContain("Image omitted");
+	});
+
+	it("read tool attaches the image when auto-resize succeeds", async () => {
+		mockSuccessfulResize();
+		const imagePath = join(testDir, "test.png");
+		writeFileSync(imagePath, Buffer.from(TINY_PNG_BASE64, "base64"));
+
+		const tool = createReadTool(testDir);
+		const result = await tool.execute("test-read-image", { path: imagePath });
+
+		expect(result.content.some((block) => block.type === "image")).toBe(true);
+	});
+
+	it("file processor attaches the image when auto-resize succeeds", async () => {
+		mockSuccessfulResize();
+		const imagePath = join(testDir, "test.png");
+		writeFileSync(imagePath, Buffer.from(TINY_PNG_BASE64, "base64"));
+
+		const result = await processFileArguments([imagePath]);
+
+		expect(result.images).toHaveLength(1);
+		expect(result.images[0].type).toBe("image");
 	});
 });

@@ -21,6 +21,9 @@ export const MODELS = {
 			},
 			contextWindow: 1000000,
 			maxTokens: 128000,
+			thinkingLevelMap: {"minimal":"low","low":"low","medium":"medium","high":"high","xhigh":"xhigh"},
+			supportsTemperature: false,
+			supportsThinkingDisabled: false,
 		} satisfies Model<"anthropic-messages">,
 		"claude-haiku-4-5": {
 			id: "claude-haiku-4-5",
@@ -38,6 +41,9 @@ export const MODELS = {
 			},
 			contextWindow: 200000,
 			maxTokens: 64000,
+			thinkingMode: "budget",
+			supportsTemperature: true,
+			supportsThinkingDisabled: true,
 		} satisfies Model<"anthropic-messages">,
 		"claude-haiku-4-5-20251001": {
 			id: "claude-haiku-4-5-20251001",
@@ -55,6 +61,9 @@ export const MODELS = {
 			},
 			contextWindow: 200000,
 			maxTokens: 64000,
+			thinkingMode: "budget",
+			supportsTemperature: true,
+			supportsThinkingDisabled: true,
 		} satisfies Model<"anthropic-messages">,
 		"claude-opus-4-1": {
 			id: "claude-opus-4-1",
@@ -72,6 +81,9 @@ export const MODELS = {
 			},
 			contextWindow: 200000,
 			maxTokens: 32000,
+			thinkingMode: "budget",
+			supportsTemperature: true,
+			supportsThinkingDisabled: true,
 		} satisfies Model<"anthropic-messages">,
 		"claude-opus-4-1-20250805": {
 			id: "claude-opus-4-1-20250805",
@@ -89,6 +101,9 @@ export const MODELS = {
 			},
 			contextWindow: 200000,
 			maxTokens: 32000,
+			thinkingMode: "budget",
+			supportsTemperature: true,
+			supportsThinkingDisabled: true,
 		} satisfies Model<"anthropic-messages">,
 		"claude-opus-4-5": {
 			id: "claude-opus-4-5",
@@ -106,6 +121,10 @@ export const MODELS = {
 			},
 			contextWindow: 200000,
 			maxTokens: 64000,
+			thinkingLevelMap: {"minimal":"low","low":"low","medium":"medium","high":"high","xhigh":"high"},
+			thinkingMode: "budget",
+			supportsTemperature: true,
+			supportsThinkingDisabled: true,
 		} satisfies Model<"anthropic-messages">,
 		"claude-opus-4-5-20251101": {
 			id: "claude-opus-4-5-20251101",
@@ -123,6 +142,10 @@ export const MODELS = {
 			},
 			contextWindow: 200000,
 			maxTokens: 64000,
+			thinkingLevelMap: {"minimal":"low","low":"low","medium":"medium","high":"high","xhigh":"high"},
+			thinkingMode: "budget",
+			supportsTemperature: true,
+			supportsThinkingDisabled: true,
 		} satisfies Model<"anthropic-messages">,
 		"claude-opus-4-6": {
 			id: "claude-opus-4-6",
@@ -140,6 +163,9 @@ export const MODELS = {
 			},
 			contextWindow: 1000000,
 			maxTokens: 128000,
+			thinkingLevelMap: {"minimal":"low","low":"low","medium":"medium","high":"high","xhigh":"max"},
+			supportsTemperature: true,
+			supportsThinkingDisabled: true,
 		} satisfies Model<"anthropic-messages">,
 		"claude-opus-4-7": {
 			id: "claude-opus-4-7",
@@ -157,6 +183,9 @@ export const MODELS = {
 			},
 			contextWindow: 1000000,
 			maxTokens: 128000,
+			thinkingLevelMap: {"minimal":"low","low":"low","medium":"medium","high":"high","xhigh":"xhigh"},
+			supportsTemperature: false,
+			supportsThinkingDisabled: true,
 		} satisfies Model<"anthropic-messages">,
 		"claude-opus-4-8": {
 			id: "claude-opus-4-8",
@@ -174,6 +203,9 @@ export const MODELS = {
 			},
 			contextWindow: 1000000,
 			maxTokens: 128000,
+			thinkingLevelMap: {"minimal":"low","low":"low","medium":"medium","high":"high","xhigh":"xhigh"},
+			supportsTemperature: false,
+			supportsThinkingDisabled: true,
 		} satisfies Model<"anthropic-messages">,
 		"claude-opus-5": {
 			id: "claude-opus-5",
@@ -191,6 +223,9 @@ export const MODELS = {
 			},
 			contextWindow: 1000000,
 			maxTokens: 128000,
+			thinkingLevelMap: {"minimal":"low","low":"low","medium":"medium","high":"high","xhigh":"xhigh"},
+			supportsTemperature: false,
+			supportsThinkingDisabled: true,
 		} satisfies Model<"anthropic-messages">,
 		"claude-sonnet-4-5": {
 			id: "claude-sonnet-4-5",
@@ -208,6 +243,9 @@ export const MODELS = {
 			},
 			contextWindow: 1000000,
 			maxTokens: 64000,
+			thinkingMode: "budget",
+			supportsTemperature: true,
+			supportsThinkingDisabled: true,
 		} satisfies Model<"anthropic-messages">,
 		"claude-sonnet-4-5-20250929": {
 			id: "claude-sonnet-4-5-20250929",
@@ -225,6 +263,9 @@ export const MODELS = {
 			},
 			contextWindow: 1000000,
 			maxTokens: 64000,
+			thinkingMode: "budget",
+			supportsTemperature: true,
+			supportsThinkingDisabled: true,
 		} satisfies Model<"anthropic-messages">,
 		"claude-sonnet-4-6": {
 			id: "claude-sonnet-4-6",
@@ -242,6 +283,9 @@ export const MODELS = {
 			},
 			contextWindow: 1000000,
 			maxTokens: 128000,
+			thinkingLevelMap: {"minimal":"low","low":"low","medium":"medium","high":"high","xhigh":"max"},
+			supportsTemperature: true,
+			supportsThinkingDisabled: true,
 		} satisfies Model<"anthropic-messages">,
 		"claude-sonnet-5": {
 			id: "claude-sonnet-5",
@@ -259,6 +303,9 @@ export const MODELS = {
 			},
 			contextWindow: 1000000,
 			maxTokens: 128000,
+			thinkingLevelMap: {"minimal":"low","low":"low","medium":"medium","high":"high","xhigh":"xhigh"},
+			supportsTemperature: false,
+			supportsThinkingDisabled: true,
 		} satisfies Model<"anthropic-messages">,
 	},
 	"openai-codex": {
@@ -278,6 +325,8 @@ export const MODELS = {
 			},
 			contextWindow: 272000,
 			maxTokens: 128000,
+			thinkingLevelMap: {"minimal":"low","low":"low","medium":"medium","high":"high","xhigh":"xhigh","off":"none"},
+			supportsTemperature: false,
 		} satisfies Model<"openai-codex-responses">,
 		"gpt-5.5": {
 			id: "gpt-5.5",
@@ -304,6 +353,8 @@ export const MODELS = {
 			},
 			contextWindow: 272000,
 			maxTokens: 128000,
+			thinkingLevelMap: {"minimal":"low","low":"low","medium":"medium","high":"high","xhigh":"xhigh","off":"none"},
+			supportsTemperature: false,
 		} satisfies Model<"openai-codex-responses">,
 		"gpt-5.6-luna": {
 			id: "gpt-5.6-luna",
@@ -330,6 +381,8 @@ export const MODELS = {
 			},
 			contextWindow: 272000,
 			maxTokens: 128000,
+			thinkingLevelMap: {"minimal":"low","low":"low","medium":"medium","high":"high","xhigh":"xhigh","off":"none"},
+			supportsTemperature: false,
 		} satisfies Model<"openai-codex-responses">,
 		"gpt-5.6-sol": {
 			id: "gpt-5.6-sol",
@@ -356,6 +409,8 @@ export const MODELS = {
 			},
 			contextWindow: 272000,
 			maxTokens: 128000,
+			thinkingLevelMap: {"minimal":"low","low":"low","medium":"medium","high":"high","xhigh":"xhigh","off":"none"},
+			supportsTemperature: false,
 		} satisfies Model<"openai-codex-responses">,
 		"gpt-5.6-terra": {
 			id: "gpt-5.6-terra",
@@ -382,6 +437,8 @@ export const MODELS = {
 			},
 			contextWindow: 272000,
 			maxTokens: 128000,
+			thinkingLevelMap: {"minimal":"low","low":"low","medium":"medium","high":"high","xhigh":"xhigh","off":"none"},
+			supportsTemperature: false,
 		} satisfies Model<"openai-codex-responses">,
 	},
 } as const;

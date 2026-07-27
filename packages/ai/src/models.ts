@@ -1,5 +1,4 @@
 import { MODELS } from "./models.generated.js";
-import { supportsXhigh as anthropicSupportsXhigh } from "./providers/anthropic-thinking.js";
 import type { Api, Model, ModelCost, ModelCostRates, Usage } from "./types.js";
 
 const modelRegistry: Map<string, Map<string, Model<Api>>> = new Map();
@@ -70,18 +69,12 @@ export function calculateCost<TApi extends Api>(model: Model<TApi>, usage: Usage
 }
 
 /**
- * Check if a model supports xhigh thinking level.
- *
- * Supported today:
- * - GPT-5.4 / GPT-5.5 / GPT-5.6 model families
- * - Anthropic models per providers/anthropic-thinking.ts (Opus 4.6/4.7/4.8)
+ * Check if a model supports the xhigh thinking level, from the effort its thinking level map
+ * resolves xhigh to. Models declared by hand in models.json get it only by declaring a map.
  */
 export function supportsXhigh<TApi extends Api>(model: Model<TApi>): boolean {
-	if (model.id.includes("gpt-5.4") || model.id.includes("gpt-5.5") || model.id.includes("gpt-5.6")) {
-		return true;
-	}
-
-	return anthropicSupportsXhigh(model.id);
+	const effort = model.thinkingLevelMap?.xhigh;
+	return effort === "xhigh" || effort === "max";
 }
 
 /**

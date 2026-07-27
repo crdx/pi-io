@@ -22,6 +22,7 @@ import type {
 	AssistantMessage,
 	Context,
 	Model,
+	ModelThinkingLevel,
 	SimpleStreamOptions,
 	StreamFunction,
 	StreamOptions,
@@ -329,7 +330,7 @@ function buildRequestBody(
 
 	if (options?.reasoningEffort !== undefined) {
 		body.reasoning = {
-			effort: clampReasoningEffort(model.id, options.reasoningEffort),
+			effort: resolveCodexEffort(model, options.reasoningEffort),
 			summary: options.reasoningSummary ?? "auto",
 		};
 	}
@@ -337,16 +338,9 @@ function buildRequestBody(
 	return body;
 }
 
-function clampReasoningEffort(modelId: string, effort: string): string {
-	const id = modelId.includes("/") ? modelId.split("/").pop()! : modelId;
-	if (
-		(id.startsWith("gpt-5.2") || id.startsWith("gpt-5.3") || id.startsWith("gpt-5.4") || id.startsWith("gpt-5.6")) &&
-		effort === "minimal"
-	)
-		return "low";
-	if (id === "gpt-5.1" && effort === "xhigh") return "high";
-	if (id === "gpt-5.1-codex-mini") return effort === "high" || effort === "xhigh" ? "high" : "medium";
-	return effort;
+/** Resolve pi's thinking level to an effort the model publishes, per its declared map. */
+function resolveCodexEffort(model: Model<"openai-codex-responses">, effort: string): string {
+	return model.thinkingLevelMap?.[effort as ModelThinkingLevel] ?? effort;
 }
 
 function resolveCodexUrl(baseUrl?: string): string {

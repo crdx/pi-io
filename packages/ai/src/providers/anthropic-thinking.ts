@@ -1,64 +1,42 @@
-import type { SimpleStreamOptions } from "../types.js";
+import type { Api, Model, SimpleStreamOptions } from "../types.js";
 
 export type AnthropicEffort = "low" | "medium" | "high" | "xhigh" | "max";
 
-const ADAPTIVE_THINKING_MODELS = [
-	"opus-4-6",
-	"opus-4.6",
-	"opus-4-7",
-	"opus-4.7",
-	"opus-4-8",
-	"opus-4.8",
-	"opus-5",
-	"sonnet-4-6",
-	"sonnet-4.6",
-	"sonnet-5",
-	"fable-5",
-];
-
-const XHIGH_MAX_MODELS = ["opus-4-6", "opus-4.6"];
-const XHIGH_EFFORT_MODELS = ["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8", "opus-5", "sonnet-5", "fable-5"];
-const XHIGH_MODELS = [...XHIGH_MAX_MODELS, ...XHIGH_EFFORT_MODELS];
-const NO_TEMPERATURE_MODELS = ["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8", "opus-5"];
-const NO_THINKING_DISABLED_MODELS = ["fable-5"];
-
-function matchesAny(modelId: string, fragments: string[]): boolean {
-	return fragments.some((fragment) => modelId.includes(fragment));
+/**
+ * Whether the model expects `thinking: {type: "adaptive"}` rather than a token budget.
+ * Undeclared models are treated as modern, since budget thinking is what 4.7+ reject.
+ */
+export function supportsAdaptiveThinking(model: Model<Api>): boolean {
+	return (model.thinkingMode ?? "adaptive") === "adaptive";
 }
 
-export function supportsAdaptiveThinking(modelId: string): boolean {
-	return matchesAny(modelId, ADAPTIVE_THINKING_MODELS);
+/**
+ * Whether the model accepts a temperature. Sending one to a modern Anthropic model errors,
+ * while omitting it never does, so anthropic-messages defaults to false and everything else to true.
+ */
+export function supportsTemperature(model: Model<Api>): boolean {
+	return model.supportsTemperature ?? model.api !== "anthropic-messages";
 }
 
-export function supportsXhigh(modelId: string): boolean {
-	return matchesAny(modelId, XHIGH_MODELS);
+/** Whether the model accepts `thinking: {type: "disabled"}`. Fable 5 is the one that does not. */
+export function supportsThinkingDisabled(model: Model<Api>): boolean {
+	return model.supportsThinkingDisabled ?? true;
 }
 
-export function supportsTemperature(modelId: string): boolean {
-	return !matchesAny(modelId, NO_TEMPERATURE_MODELS);
-}
+/**
+ * Resolve pi's thinking level to the effort string the model publishes. The map is generated total,
+ * so the fallbacks only apply to models declared by hand in models.json.
+ */
+export function mapThinkingLevelToEffort(level: SimpleStreamOptions["reasoning"], model: Model<Api>): AnthropicEffort {
+	const effort = level ? model.thinkingLevelMap?.[level] : undefined;
+	if (effort !== undefined) return effort as AnthropicEffort;
 
-export function supportsThinkingDisabled(modelId: string): boolean {
-	return !matchesAny(modelId, NO_THINKING_DISABLED_MODELS);
-}
-
-export function mapThinkingLevelToEffort(level: SimpleStreamOptions["reasoning"], modelId: string): AnthropicEffort {
 	switch (level) {
 		case "minimal":
 		case "low":
 			return "low";
 		case "medium":
 			return "medium";
-		case "high":
-			return "high";
-		case "xhigh":
-			if (matchesAny(modelId, XHIGH_MAX_MODELS)) {
-				return "max";
-			}
-			if (matchesAny(modelId, XHIGH_EFFORT_MODELS)) {
-				return "xhigh";
-			}
-			return "high";
 		default:
 			return "high";
 	}

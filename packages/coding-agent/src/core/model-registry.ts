@@ -60,6 +60,24 @@ const CostTierSchema = Type.Object({
 	cacheWrite: Type.Number(),
 });
 
+const ThinkingLevelMapSchema = Type.Object({
+	off: Type.Optional(Type.String()),
+	minimal: Type.Optional(Type.String()),
+	low: Type.Optional(Type.String()),
+	medium: Type.Optional(Type.String()),
+	high: Type.Optional(Type.String()),
+	xhigh: Type.Optional(Type.String()),
+});
+
+// Declared model capabilities. Undeclared means modern behaviour, except xhigh, which a model only
+// gets by declaring a thinkingLevelMap that resolves it.
+const CapabilityFields = {
+	thinkingLevelMap: Type.Optional(ThinkingLevelMapSchema),
+	thinkingMode: Type.Optional(Type.Union([Type.Literal("adaptive"), Type.Literal("budget")])),
+	supportsTemperature: Type.Optional(Type.Boolean()),
+	supportsThinkingDisabled: Type.Optional(Type.Boolean()),
+};
+
 const ModelDefinitionSchema = Type.Object({
 	id: Type.String({ minLength: 1 }),
 	name: Type.Optional(Type.String({ minLength: 1 })),
@@ -80,6 +98,7 @@ const ModelDefinitionSchema = Type.Object({
 	maxTokens: Type.Optional(Type.Number()),
 	headers: Type.Optional(Type.Record(Type.String(), Type.String())),
 	compat: Type.Optional(OpenAICompatSchema),
+	...CapabilityFields,
 });
 
 // Schema for per-model overrides (all fields optional, merged with built-in model)
@@ -100,6 +119,7 @@ const ModelOverrideSchema = Type.Object({
 	maxTokens: Type.Optional(Type.Number()),
 	headers: Type.Optional(Type.Record(Type.String(), Type.String())),
 	compat: Type.Optional(OpenAICompatSchema),
+	...CapabilityFields,
 });
 
 type ModelOverride = Static<typeof ModelOverrideSchema>;
@@ -166,6 +186,12 @@ function applyModelOverride(model: Model<Api>, override: ModelOverride): Model<A
 	if (override.input !== undefined) result.input = override.input as ("text" | "image")[];
 	if (override.contextWindow !== undefined) result.contextWindow = override.contextWindow;
 	if (override.maxTokens !== undefined) result.maxTokens = override.maxTokens;
+	if (override.thinkingLevelMap !== undefined) result.thinkingLevelMap = override.thinkingLevelMap;
+	if (override.thinkingMode !== undefined) result.thinkingMode = override.thinkingMode;
+	if (override.supportsTemperature !== undefined) result.supportsTemperature = override.supportsTemperature;
+	if (override.supportsThinkingDisabled !== undefined) {
+		result.supportsThinkingDisabled = override.supportsThinkingDisabled;
+	}
 
 	// Merge cost (partial override)
 	if (override.cost) {
@@ -465,6 +491,10 @@ export class ModelRegistry {
 					cost: modelDef.cost ?? defaultCost,
 					contextWindow: modelDef.contextWindow ?? 128000,
 					maxTokens: modelDef.maxTokens ?? 16384,
+					thinkingLevelMap: modelDef.thinkingLevelMap,
+					thinkingMode: modelDef.thinkingMode,
+					supportsTemperature: modelDef.supportsTemperature,
+					supportsThinkingDisabled: modelDef.supportsThinkingDisabled,
 					headers,
 					compat,
 				} as Model<Api>);

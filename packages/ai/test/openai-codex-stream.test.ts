@@ -123,6 +123,7 @@ describe("openai-codex streaming", () => {
 			},
 		});
 
+		let capturedHeaders: Headers | undefined;
 		const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
 			const url = typeof input === "string" ? input : input.toString();
 			if (url === "https://api.github.com/repos/openai/codex/releases/latest") {
@@ -132,13 +133,7 @@ describe("openai-codex streaming", () => {
 				return new Response("PROMPT", { status: 200, headers: { etag: '"etag"' } });
 			}
 			if (url === "https://chatgpt.com/backend-api/codex/responses") {
-				const headers = init?.headers instanceof Headers ? init.headers : undefined;
-				expect(headers?.get("Authorization")).toBe(`Bearer ${token}`);
-				expect(headers?.get("chatgpt-account-id")).toBe("acc_test");
-				expect(headers?.get("OpenAI-Beta")).toBe("responses=experimental");
-				expect(headers?.get("originator")).toBe("pi");
-				expect(headers?.get("accept")).toBe("text/event-stream");
-				expect(headers?.has("x-api-key")).toBe(false);
+				capturedHeaders = init?.headers instanceof Headers ? init.headers : undefined;
 				return new Response(stream, {
 					status: 200,
 					headers: { "content-type": "text/event-stream" },
@@ -183,6 +178,12 @@ describe("openai-codex streaming", () => {
 
 		expect(sawTextDelta).toBe(true);
 		expect(sawDone).toBe(true);
+		expect(capturedHeaders?.get("Authorization")).toBe(`Bearer ${token}`);
+		expect(capturedHeaders?.get("chatgpt-account-id")).toBe("acc_test");
+		expect(capturedHeaders?.get("OpenAI-Beta")).toBe("responses=experimental");
+		expect(capturedHeaders?.get("originator")).toBe("pi");
+		expect(capturedHeaders?.get("accept")).toBe("text/event-stream");
+		expect(capturedHeaders?.has("x-api-key")).toBe(false);
 	});
 
 	it("completes after response.completed even when the SSE body stays open", async () => {
@@ -353,6 +354,8 @@ describe("openai-codex streaming", () => {
 		});
 
 		const sessionId = "test-session-123";
+		let capturedHeaders: Headers | undefined;
+		let capturedBody: Record<string, unknown> | undefined;
 		const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
 			const url = typeof input === "string" ? input : input.toString();
 			if (url === "https://api.github.com/repos/openai/codex/releases/latest") {
@@ -362,15 +365,9 @@ describe("openai-codex streaming", () => {
 				return new Response("PROMPT", { status: 200, headers: { etag: '"etag"' } });
 			}
 			if (url === "https://chatgpt.com/backend-api/codex/responses") {
-				const headers = init?.headers instanceof Headers ? init.headers : undefined;
-				// Verify sessionId is set in headers
-				expect(headers?.get("session_id")).toBe(sessionId);
-				expect(headers?.get("x-client-request-id")).toBe(sessionId);
-
-				// Verify sessionId is set in request body as prompt_cache_key
-				const body = typeof init?.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : null;
-				expect(body?.prompt_cache_key).toBe(sessionId);
-
+				capturedHeaders = init?.headers instanceof Headers ? init.headers : undefined;
+				capturedBody =
+					typeof init?.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : undefined;
 				return new Response(stream, {
 					status: 200,
 					headers: { "content-type": "text/event-stream" },
@@ -401,50 +398,30 @@ describe("openai-codex streaming", () => {
 
 		const streamResult = streamOpenAICodexResponses(model, context, { apiKey: token, sessionId });
 		await streamResult.result();
+
+		expect(capturedHeaders?.get("session_id")).toBe(sessionId);
+		expect(capturedHeaders?.get("x-client-request-id")).toBe(sessionId);
+		expect(capturedBody?.prompt_cache_key).toBe(sessionId);
 	});
 
-	it.each(["gpt-5.3-codex", "gpt-5.4"])("clamps %s minimal reasoning effort to low", async (modelId) => {
+	it.each([
+		{
+			name: "resolves the effort through the model's thinking level map",
+			thinkingLevelMap: { minimal: "low", low: "low", medium: "medium", high: "high", xhigh: "xhigh" },
+			expected: "low",
+		},
+		{
+			name: "sends the effort unchanged when the model declares no map",
+			thinkingLevelMap: undefined,
+			expected: "minimal",
+		},
+	])("$name", async ({ thinkingLevelMap, expected }) => {
 		const tempDir = mkdtempSync(join(tmpdir(), "pi-codex-stream-"));
 		process.env.PI_CODING_AGENT_DIR = tempDir;
-
-		const payload = Buffer.from(
-			JSON.stringify({ "https://api.openai.com/auth": { chatgpt_account_id: "acc_test" } }),
-			"utf8",
-		).toString("base64");
-		const token = `aaa.${payload}.bbb`;
-
-		const sse = `${[
-			`data: ${JSON.stringify({
-				type: "response.output_item.added",
-				item: { type: "message", id: "msg_1", role: "assistant", status: "in_progress", content: [] },
-			})}`,
-			`data: ${JSON.stringify({ type: "response.content_part.added", part: { type: "output_text", text: "" } })}`,
-			`data: ${JSON.stringify({ type: "response.output_text.delta", delta: "Hello" })}`,
-			`data: ${JSON.stringify({
-				type: "response.output_item.done",
-				item: {
-					type: "message",
-					id: "msg_1",
-					role: "assistant",
-					status: "completed",
-					content: [{ type: "output_text", text: "Hello" }],
-				},
-			})}`,
-			`data: ${JSON.stringify({
-				type: "response.completed",
-				response: {
-					status: "completed",
-					usage: {
-						input_tokens: 5,
-						output_tokens: 3,
-						total_tokens: 8,
-						input_tokens_details: { cached_tokens: 0 },
-					},
-				},
-			})}`,
-		].join("\n\n")}\n\n`;
-
+		const token = mockToken();
 		const encoder = new TextEncoder();
+		const sse = buildSSEPayload({ status: "completed" });
+
 		const stream = new ReadableStream<Uint8Array>({
 			start(controller) {
 				controller.enqueue(encoder.encode(sse));
@@ -452,6 +429,7 @@ describe("openai-codex streaming", () => {
 			},
 		});
 
+		let capturedBody: Record<string, unknown> | undefined;
 		const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
 			const url = typeof input === "string" ? input : input.toString();
 			if (url === "https://api.github.com/repos/openai/codex/releases/latest") {
@@ -461,9 +439,8 @@ describe("openai-codex streaming", () => {
 				return new Response("PROMPT", { status: 200, headers: { etag: '"etag"' } });
 			}
 			if (url === "https://chatgpt.com/backend-api/codex/responses") {
-				const body = typeof init?.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : null;
-				expect(body?.reasoning).toEqual({ effort: "low", summary: "auto" });
-
+				capturedBody =
+					typeof init?.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : undefined;
 				return new Response(stream, {
 					status: 200,
 					headers: { "content-type": "text/event-stream" },
@@ -475,8 +452,8 @@ describe("openai-codex streaming", () => {
 		global.fetch = fetchMock as typeof fetch;
 
 		const model: Model<"openai-codex-responses"> = {
-			id: modelId,
-			name: modelId,
+			id: "gpt-5.6-terra",
+			name: "GPT-5.6 Terra",
 			api: "openai-codex-responses",
 			provider: "openai-codex",
 			baseUrl: "https://chatgpt.com/backend-api",
@@ -485,6 +462,7 @@ describe("openai-codex streaming", () => {
 			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 			contextWindow: 400000,
 			maxTokens: 128000,
+			thinkingLevelMap,
 		};
 
 		const context: Context = {
@@ -497,6 +475,8 @@ describe("openai-codex streaming", () => {
 			reasoningEffort: "minimal",
 		});
 		await streamResult.result();
+
+		expect(capturedBody?.reasoning).toEqual({ effort: expected, summary: "auto" });
 	});
 
 	it("does not set session_id/x-client-request-id headers when sessionId is not provided", async () => {
@@ -548,6 +528,7 @@ describe("openai-codex streaming", () => {
 			},
 		});
 
+		let capturedHeaders: Headers | undefined;
 		const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
 			const url = typeof input === "string" ? input : input.toString();
 			if (url === "https://api.github.com/repos/openai/codex/releases/latest") {
@@ -557,11 +538,7 @@ describe("openai-codex streaming", () => {
 				return new Response("PROMPT", { status: 200, headers: { etag: '"etag"' } });
 			}
 			if (url === "https://chatgpt.com/backend-api/codex/responses") {
-				const headers = init?.headers instanceof Headers ? init.headers : undefined;
-				// Verify headers are not set when sessionId is not provided
-				expect(headers?.has("session_id")).toBe(false);
-				expect(headers?.has("x-client-request-id")).toBe(false);
-
+				capturedHeaders = init?.headers instanceof Headers ? init.headers : undefined;
 				return new Response(stream, {
 					status: 200,
 					headers: { "content-type": "text/event-stream" },
@@ -593,5 +570,8 @@ describe("openai-codex streaming", () => {
 		// No sessionId provided
 		const streamResult = streamOpenAICodexResponses(model, context, { apiKey: token });
 		await streamResult.result();
+
+		expect(capturedHeaders?.has("session_id")).toBe(false);
+		expect(capturedHeaders?.has("x-client-request-id")).toBe(false);
 	});
 });

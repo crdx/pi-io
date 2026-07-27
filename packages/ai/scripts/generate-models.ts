@@ -3,7 +3,7 @@
 import { writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { Api, Model } from "../src/types.js";
+import { Api, Model, ThinkingLevelMap } from "../src/types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -40,6 +40,12 @@ interface ModelsDevModel {
 	provider?: {
 		npm?: string;
 	};
+	temperature?: boolean;
+	reasoning_options?: {
+		type?: string;
+		values?: string[];
+		min?: number;
+	}[];
 }
 
 /** Only the anthropic and openai slices are consumed; every other provider was dropped from the fork. */
@@ -88,6 +94,51 @@ function toModelCost(cost: ModelsDevModel["cost"]): Model<Api>["cost"] {
 	};
 }
 
+// models.dev publishes which effort values each model accepts, but not which thinking mode the
+// Anthropic API expects, and not whether thinking can be disabled. Those two stay listed by hand.
+// claude-opus-4-5 is why: it publishes `effort` yet rejects `thinking: {type: "adaptive"}` with a 400.
+//
+// Listed the legacy way round deliberately, so an unrecognised model gets adaptive rather than
+// budget. Budget thinking on a model that wants adaptive is accepted and silently under-thinks,
+// which is how claude-sonnet-5 went unnoticed; adaptive on a budget model is a 400. This set only
+// ever shrinks, since a model never moves from adaptive back to budget.
+const ANTHROPIC_BUDGET_THINKING_IDS = [
+	"claude-haiku-4-5",
+	"claude-haiku-4-5-20251001",
+	"claude-opus-4-1",
+	"claude-opus-4-1-20250805",
+	"claude-opus-4-5",
+	"claude-opus-4-5-20251101",
+	"claude-sonnet-4-5",
+	"claude-sonnet-4-5-20250929",
+];
+
+const ANTHROPIC_NO_THINKING_DISABLED_IDS = ["claude-fable-5"];
+
+function getEffortValues(model: ModelsDevModel): string[] | undefined {
+	return (model.reasoning_options ?? []).find(option => option.type === "effort")?.values;
+}
+
+/**
+ * Resolve every pi thinking level to a published effort string, so the runtime never has to guess.
+ * `xhigh` falls back to `max` because Opus 4.6 and Sonnet 4.6 offer `max` without `xhigh`.
+ */
+function toThinkingLevelMap(model: ModelsDevModel): ThinkingLevelMap | undefined {
+	const values = getEffortValues(model);
+	if (!values || values.length === 0) return undefined;
+
+	const has = (value: string) => values.includes(value);
+	const map: ThinkingLevelMap = {
+		minimal: has("minimal") ? "minimal" : "low",
+		low: "low",
+		medium: "medium",
+		high: "high",
+		xhigh: has("xhigh") ? "xhigh" : has("max") ? "max" : "high",
+	};
+	if (has("none")) map.off = "none";
+	return map;
+}
+
 function buildAnthropicModels(catalog: ModelsDevApi): Model<any>[] {
 	const models: Model<any>[] = [];
 
@@ -105,6 +156,10 @@ function buildAnthropicModels(catalog: ModelsDevApi): Model<any>[] {
 			cost: toModelCost(m.cost),
 			contextWindow: m.limit?.context || 4096,
 			maxTokens: m.limit?.output || 4096,
+			thinkingLevelMap: toThinkingLevelMap(m),
+			thinkingMode: ANTHROPIC_BUDGET_THINKING_IDS.includes(modelId) ? "budget" : undefined,
+			supportsTemperature: m.temperature === true,
+			supportsThinkingDisabled: !ANTHROPIC_NO_THINKING_DISABLED_IDS.includes(modelId),
 		});
 	}
 
@@ -147,6 +202,8 @@ function buildCodexModels(catalog: ModelsDevApi): Model<"openai-codex-responses"
 			cost: toModelCost(m.cost),
 			contextWindow: CODEX_CONTEXT,
 			maxTokens: m.limit?.output || 4096,
+			thinkingLevelMap: toThinkingLevelMap(m),
+			supportsTemperature: m.temperature === true,
 		};
 	});
 
@@ -161,6 +218,14 @@ function assertRegistryIsPlausible(providers: Record<string, Record<string, Mode
 	const anthropicCount = Object.keys(providers.anthropic ?? {}).length;
 	if (anthropicCount < MINIMUM_ANTHROPIC_MODELS) {
 		throw new Error(`Only ${anthropicCount} anthropic models resolved, expected at least ${MINIMUM_ANTHROPIC_MODELS}`);
+	}
+
+	const anthropicIds = new Set(Object.keys(providers.anthropic ?? {}));
+	const staleIds = [...ANTHROPIC_BUDGET_THINKING_IDS, ...ANTHROPIC_NO_THINKING_DISABLED_IDS].filter(
+		id => !anthropicIds.has(id),
+	);
+	if (staleIds.length > 0) {
+		throw new Error(`Hand-maintained anthropic capability lists name models that no longer exist: ${staleIds.join(", ")}`);
 	}
 
 	const expectedCodexIds = [...CODEX_MODEL_IDS].sort();
@@ -212,6 +277,9 @@ async function generateModels() {
 			},
 			contextWindow: 1000000,
 			maxTokens: 128000,
+			thinkingLevelMap: { minimal: "low", low: "low", medium: "medium", high: "high", xhigh: "max" },
+			supportsTemperature: true,
+			supportsThinkingDisabled: true,
 		});
 	}
 
@@ -233,6 +301,9 @@ async function generateModels() {
 			},
 			contextWindow: 1000000,
 			maxTokens: 128000,
+			thinkingLevelMap: { minimal: "low", low: "low", medium: "medium", high: "high", xhigh: "xhigh" },
+			supportsTemperature: false,
+			supportsThinkingDisabled: true,
 		});
 	}
 
@@ -254,6 +325,9 @@ async function generateModels() {
 			},
 			contextWindow: 1000000,
 			maxTokens: 64000,
+			thinkingLevelMap: { minimal: "low", low: "low", medium: "medium", high: "high", xhigh: "max" },
+			supportsTemperature: true,
+			supportsThinkingDisabled: true,
 		});
 	}
 
@@ -329,6 +403,18 @@ export const MODELS = {
 			output += `\t\t\t},\n`;
 			output += `\t\t\tcontextWindow: ${model.contextWindow},\n`;
 			output += `\t\t\tmaxTokens: ${model.maxTokens},\n`;
+			if (model.thinkingLevelMap) {
+				output += `\t\t\tthinkingLevelMap: ${JSON.stringify(model.thinkingLevelMap)},\n`;
+			}
+			if (model.thinkingMode !== undefined) {
+				output += `\t\t\tthinkingMode: "${model.thinkingMode}",\n`;
+			}
+			if (model.supportsTemperature !== undefined) {
+				output += `\t\t\tsupportsTemperature: ${model.supportsTemperature},\n`;
+			}
+			if (model.supportsThinkingDisabled !== undefined) {
+				output += `\t\t\tsupportsThinkingDisabled: ${model.supportsThinkingDisabled},\n`;
+			}
 			output += `\t\t} satisfies Model<"${model.api}">,\n`;
 		}
 

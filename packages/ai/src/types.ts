@@ -11,6 +11,16 @@ export type Provider = KnownProvider | string;
 
 export type ThinkingLevel = "minimal" | "low" | "medium" | "high" | "xhigh";
 
+/** Thinking levels a model can be configured with, including fully disabled. */
+export type ModelThinkingLevel = "off" | ThinkingLevel;
+
+/**
+ * Maps pi's thinking level to the effort string the provider expects. Generated total, with
+ * fallbacks already resolved, so the runtime is a plain lookup. An absent `off` key means the
+ * provider has no "no reasoning" effort value and thinking is disabled another way.
+ */
+export type ThinkingLevelMap = Partial<Record<ModelThinkingLevel, string>>;
+
 /** Token budgets for each thinking level (token-based providers only) */
 export interface ThinkingBudgets {
 	minimal?: number;
@@ -271,6 +281,14 @@ export interface Model<TApi extends Api> {
 	cost: ModelCost;
 	contextWindow: number;
 	maxTokens: number;
+	/** Provider effort string per thinking level. Absent means the model takes no effort parameter. */
+	thinkingLevelMap?: ThinkingLevelMap;
+	/** Anthropic thinking mode. Absent defaults to "adaptive". */
+	thinkingMode?: "adaptive" | "budget";
+	/** Whether the model accepts a temperature. Absent defaults to false on anthropic-messages, true elsewhere. */
+	supportsTemperature?: boolean;
+	/** Whether the model accepts `thinking: {type: "disabled"}`. Absent defaults to true. */
+	supportsThinkingDisabled?: boolean;
 	headers?: Record<string, string>;
 	/** Compatibility overrides for OpenAI-compatible APIs. If not set, auto-detected from baseUrl. */
 	compat?: TApi extends "openai-completions" ? OpenAICompletionsCompat : never;

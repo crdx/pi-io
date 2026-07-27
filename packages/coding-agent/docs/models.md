@@ -173,6 +173,19 @@ Current behavior:
 - `/model` and `--list-models` list entries by model `id`.
 - The configured `name` is used for model matching and detail/status text.
 
+## Thinking Capabilities
+
+Built-in models declare these from models.dev data. Custom models may declare them too.
+
+| Field                      | Default                                      | Description                                                |
+|----------------------------|----------------------------------------------|------------------------------------------------------------|
+| `thinkingLevelMap`         | none                                         | Effort string per thinking level, e.g. `{"xhigh": "max"}`  |
+| `thinkingMode`             | `adaptive`                                   | `adaptive` sends an effort, `budget` sends a token budget  |
+| `supportsTemperature`      | `false` on `anthropic-messages`, else `true` | Whether the model accepts a temperature                    |
+| `supportsThinkingDisabled` | `true`                                       | Whether the model accepts `thinking: {"type": "disabled"}` |
+
+`thinkingLevelMap` keys are `off`, `minimal`, `low`, `medium`, `high` and `xhigh`; values are whatever effort string the provider expects. An absent `off` key means thinking is turned off some other way, which is how every Anthropic model behaves. A model is offered `xhigh` only if its map resolves `xhigh` to `xhigh` or `max`, so a custom model without a map never gets it.
+
 ## Overriding Built-in Providers
 
 Route a built-in provider through a proxy without redefining models:
@@ -230,7 +243,7 @@ Use `modelOverrides` to customize specific built-in models without replacing the
 }
 ```
 
-`modelOverrides` supports these fields per model: `name`, `reasoning`, `input`, `cost` (partial), `contextWindow`, `maxTokens`, `headers`, `compat`.
+`modelOverrides` supports these fields per model: `name`, `reasoning`, `input`, `cost` (partial), `contextWindow`, `maxTokens`, `headers`, `compat`, and the thinking capability fields above.
 
 Behavior notes:
 

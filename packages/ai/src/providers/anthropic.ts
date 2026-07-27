@@ -165,24 +165,16 @@ function convertContentBlocks(content: (TextContent | ImageContent)[]):
 
 export interface AnthropicOptions extends StreamOptions {
 	/**
-	 * Enable extended thinking.
-	 * For Opus 4.6 and Sonnet 4.6: uses adaptive thinking (model decides when/how much to think).
-	 * For older models: uses budget-based thinking with thinkingBudgetTokens.
+	 * Enable extended thinking. Adaptive models decide when and how much to think; budget models
+	 * think on every request within thinkingBudgetTokens.
 	 */
 	thinkingEnabled?: boolean;
-	/**
-	 * Token budget for extended thinking (older models only).
-	 * Ignored for Opus 4.6 and Sonnet 4.6, which use adaptive thinking.
-	 */
+	/** Token budget for extended thinking. Ignored by adaptive models, which have no budget. */
 	thinkingBudgetTokens?: number;
 	/**
-	 * Effort level for adaptive thinking (Opus 4.6 and Sonnet 4.6).
-	 * Controls how much thinking Claude allocates:
-	 * - "max": Always thinks with no constraints (Opus 4.6 only)
-	 * - "high": Always thinks, deep reasoning (default)
-	 * - "medium": Moderate thinking, may skip for simple queries
-	 * - "low": Minimal thinking, skips for simple tasks
-	 * Ignored for older models.
+	 * Effort level for adaptive thinking, from the model's thinkingLevelMap. Controls how much
+	 * thinking Claude allocates, from "low" (skips it for simple tasks) up to "max" (no constraints).
+	 * Ignored by budget models.
 	 */
 	effort?: AnthropicEffort;
 	interleavedThinking?: boolean;
@@ -455,10 +447,9 @@ export const streamSimpleAnthropic: StreamFunction<"anthropic-messages", SimpleS
 		return streamAnthropic(model, context, { ...base, thinkingEnabled: false } satisfies AnthropicOptions);
 	}
 
-	// For Opus 4.6 and Sonnet 4.6: use adaptive thinking with effort level
-	// For older models: use budget-based thinking
-	if (supportsAdaptiveThinking(model.id)) {
-		const effort = mapThinkingLevelToEffort(options.reasoning, model.id);
+	// Adaptive models take an effort level, budget models a token budget, per model.thinkingMode.
+	if (supportsAdaptiveThinking(model)) {
+		const effort = mapThinkingLevelToEffort(options.reasoning, model);
 		return streamAnthropic(model, context, {
 			...base,
 			thinkingEnabled: true,
@@ -491,9 +482,9 @@ function createClient(
 	interleavedThinking: boolean,
 	optionsHeaders?: Record<string, string>,
 ): { client: Anthropic; isOAuthToken: boolean } {
-	// Adaptive thinking models (Opus 4.6, Sonnet 4.6) have interleaved thinking built-in.
-	// The beta header is deprecated on Opus 4.6 and redundant on Sonnet 4.6, so skip it.
-	const needsInterleavedBeta = interleavedThinking && !supportsAdaptiveThinking(model.id);
+	// Adaptive thinking models have interleaved thinking built-in, where the beta header is either
+	// deprecated or redundant, so skip it for them.
+	const needsInterleavedBeta = interleavedThinking && !supportsAdaptiveThinking(model);
 
 	const betaFeatures = ["fine-grained-tool-streaming-2025-05-14"];
 	if (needsInterleavedBeta) {
@@ -583,7 +574,7 @@ function buildParams(
 		];
 	}
 
-	if (options?.temperature !== undefined && !options?.thinkingEnabled && supportsTemperature(model.id)) {
+	if (options?.temperature !== undefined && !options?.thinkingEnabled && supportsTemperature(model)) {
 		params.temperature = options.temperature;
 	}
 
@@ -591,11 +582,10 @@ function buildParams(
 		params.tools = convertTools(context.tools, isOAuthToken, cacheControl);
 	}
 
-	// Configure thinking mode: adaptive (Opus 4.6 and Sonnet 4.6),
-	// budget-based (older models), or explicitly disabled.
+	// Configure thinking mode from model.thinkingMode: adaptive, budget-based, or explicitly disabled.
 	if (model.reasoning) {
 		if (options?.thinkingEnabled) {
-			if (supportsAdaptiveThinking(model.id)) {
+			if (supportsAdaptiveThinking(model)) {
 				// Adaptive thinking: Claude decides when and how much to think.
 				// display "summarized" is required because Opus 4.7+ default to "omitted",
 				// which returns thinking blocks with an empty thinking field (signature only).
@@ -611,7 +601,7 @@ function buildParams(
 					budget_tokens: options.thinkingBudgetTokens || 1024,
 				};
 			}
-		} else if (options?.thinkingEnabled === false && supportsThinkingDisabled(model.id)) {
+		} else if (options?.thinkingEnabled === false && supportsThinkingDisabled(model)) {
 			params.thinking = { type: "disabled" };
 		}
 	}

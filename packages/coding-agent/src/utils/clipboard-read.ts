@@ -51,6 +51,8 @@ const STRING_TERMINATOR = "\x1b\\";
 const BELL = "\x07";
 const PACKET_PREFIX = "5522;";
 const STATUS_MARKER = ":status=";
+/** Longer than any status the protocol defines, so one can never be truncated. */
+const MAX_STATUS_LENGTH = 16;
 const EVENT_OPENER = `${OSC_OPENER}${PACKET_PREFIX}`;
 const MAX_EVENT_BYTES = 64 * 1024;
 
@@ -173,7 +175,11 @@ function createReplyCompleteCheck(): (reply: string) => boolean {
 			}
 
 			const valueStart = marker + STATUS_MARKER.length;
-			const status = reply.slice(valueStart).match(/^([A-Z]+)[:;]/)?.[1];
+			// The status ends the packet whenever no field follows it, which is the
+			// usual shape of an OK or DONE, so the terminator counts as a delimiter.
+			// A window is enough to hold any status, and avoids copying the tail.
+			const window = reply.slice(valueStart, valueStart + MAX_STATUS_LENGTH);
+			const status = window.match(/^([A-Z]+)(?:[:;\x1b\x07]|$)/)?.[1];
 			if (status === undefined) {
 				scanFrom = marker;
 				return false;

@@ -14,8 +14,14 @@ const ESC = "\x1b";
 const ST = `${ESC}\\`;
 const BEL = "\x07";
 
+/**
+ * Shaped as the terminal really sends them: a status with no payload is the
+ * last field in the packet, so nothing delimits it but the terminator.
+ */
 function packet(status: string, payload = "", terminator = ST): string {
-	return `${ESC}]5522;type=read:status=${status}:mime=;${payload}${terminator}`;
+	const mime = payload ? `:mime=${Buffer.from("image/png").toString("base64")}` : "";
+	const body = payload ? `;${payload}` : "";
+	return `${ESC}]5522;type=read:status=${status}${mime}${body}${terminator}`;
 }
 
 /** Split a string into fixed-size chunks, as the terminal would deliver it. */

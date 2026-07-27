@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getModel, supportsXhigh } from "../src/models.js";
+import { getModel, getModels, supportsXhigh } from "../src/models.js";
 
 describe("supportsXhigh", () => {
 	it("returns true for Anthropic Opus 4.6 on anthropic-messages API", () => {
@@ -20,9 +20,9 @@ describe("supportsXhigh", () => {
 		expect(supportsXhigh(model!)).toBe(false);
 	});
 
-	it("returns true for GPT-5.4 models", () => {
-		const model = getModel("openai-codex", "gpt-5.4");
-		expect(model).toBeDefined();
-		expect(supportsXhigh(model!)).toBe(true);
+	it("returns true for every openai-codex model", () => {
+		for (const model of getModels("openai-codex")) {
+			expect(supportsXhigh(model), model.id).toBe(true);
+		}
 	});
 });

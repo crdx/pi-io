@@ -73,16 +73,11 @@ export function calculateCost<TApi extends Api>(model: Model<TApi>, usage: Usage
  * Check if a model supports xhigh thinking level.
  *
  * Supported today:
- * - GPT-5.2 / GPT-5.3 / GPT-5.4 model families
+ * - GPT-5.4 / GPT-5.5 / GPT-5.6 model families
  * - Anthropic models per providers/anthropic-thinking.ts (Opus 4.6/4.7/4.8)
  */
 export function supportsXhigh<TApi extends Api>(model: Model<TApi>): boolean {
-	if (
-		model.id.includes("gpt-5.2") ||
-		model.id.includes("gpt-5.3") ||
-		model.id.includes("gpt-5.4") ||
-		model.id.includes("gpt-5.6")
-	) {
+	if (model.id.includes("gpt-5.4") || model.id.includes("gpt-5.5") || model.id.includes("gpt-5.6")) {
 		return true;
 	}
 

@@ -12,11 +12,12 @@ const ADAPTIVE_THINKING_MODELS = [
 	"opus-5",
 	"sonnet-4-6",
 	"sonnet-4.6",
+	"sonnet-5",
 	"fable-5",
 ];
 
 const XHIGH_MAX_MODELS = ["opus-4-6", "opus-4.6"];
-const XHIGH_EFFORT_MODELS = ["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8", "opus-5", "fable-5"];
+const XHIGH_EFFORT_MODELS = ["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8", "opus-5", "sonnet-5", "fable-5"];
 const XHIGH_MODELS = [...XHIGH_MAX_MODELS, ...XHIGH_EFFORT_MODELS];
 const NO_TEMPERATURE_MODELS = ["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8", "opus-5"];
 const NO_THINKING_DISABLED_MODELS = ["fable-5"];

@@ -20,8 +20,8 @@
 import { EventEmitter } from "events";
 
 const ESC = "\x1b";
-const BRACKETED_PASTE_START = "\x1b[200~";
-const BRACKETED_PASTE_END = "\x1b[201~";
+export const BRACKETED_PASTE_START = "\x1b[200~";
+export const BRACKETED_PASTE_END = "\x1b[201~";
 
 /**
  * Check if a string is a complete escape sequence or needs more data

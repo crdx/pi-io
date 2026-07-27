@@ -20,6 +20,8 @@ import type {
 	SlashCommand,
 } from "@mariozechner/pi-tui";
 import {
+	BRACKETED_PASTE_END,
+	BRACKETED_PASTE_START,
 	CombinedAutocompleteProvider,
 	type Component,
 	Container,
@@ -55,7 +57,15 @@ import type { SourceInfo } from "../../core/source-info.js";
 import type { TruncationResult } from "../../core/tools/truncate.js";
 import { findBinary } from "../../utils/binaries.js";
 import { copyToClipboard } from "../../utils/clipboard.js";
-import { PASTE_SIGNAL, readClipboardImage } from "../../utils/clipboard-image.js";
+import {
+	PASTE_EVENTS_OFF,
+	PASTE_EVENTS_ON,
+	type PasteEvent,
+	PasteEventReader,
+	readClipboardImage,
+	readPastedImage,
+	readPastedText,
+} from "../../utils/clipboard-read.js";
 import { parseGitUrl } from "../../utils/git.js";
 import { AssistantMessageComponent } from "./components/assistant-message.js";
 import { BashExecutionComponent } from "./components/bash-execution.js";
@@ -134,6 +144,8 @@ export class InteractiveMode {
 	private keybindings: KeybindingsManager;
 	private version: string;
 	private isInitialized = false;
+	/** Pastes are read one at a time: each is a round-trip on the shared terminal stream. */
+	private pasteQueue: Promise<void> = Promise.resolve();
 	private onInputCallback?: (text: string, images?: ImageContent[]) => void;
 	private loadingAnimation: Loader | undefined = undefined;
 	private pendingWorkingMessage: string | undefined = undefined;
@@ -448,7 +460,7 @@ export class InteractiveMode {
 
 		this.setupKeyHandlers();
 		this.setupEditorSubmitHandler();
-		this.setupClipboardPasteSignal();
+		this.setupClipboardPasteEvents();
 
 		// Start the UI before initializing extensions so session_start handlers can use interactive dialogs
 		this.ui.start();
@@ -1831,34 +1843,48 @@ export class InteractiveMode {
 	}
 
 	/**
-	 * kitty binds ctrl+v to `combine : paste_from_clipboard : send_text all <PASTE_SIGNAL>`,
-	 * so the text paste happens natively and this sequence follows it as a pure
-	 * addition. It is the only way to learn a paste occurred when the clipboard
-	 * holds an image and no text, because kitty then pastes nothing at all and
-	 * emits no bracketed paste to notice.
+	 * Take over pasting from the terminal, so that a paste can carry an image
+	 * rather than only text. The terminal now reports what the clipboard holds
+	 * and leaves the pasting to us.
+	 *
+	 * The mode is left enabled for the process lifetime and turned off from an
+	 * exit hook, because it outlives us otherwise: the terminal would keep
+	 * reporting pastes to whatever runs next, and nothing would paste at all.
 	 */
-	private setupClipboardPasteSignal(): void {
+	private setupClipboardPasteEvents(): void {
+		const reader = new PasteEventReader();
+
 		this.ui.addInputListener((data) => {
-			if (!data.includes(PASTE_SIGNAL)) {
+			const { data: remaining, events } = reader.feed(data);
+			for (const event of events) {
+				this.pasteQueue = this.pasteQueue.then(() => this.paste(event));
+			}
+			if (remaining === data) {
 				return undefined;
 			}
-			// Two quick presses can arrive in one read, so honour every signal.
-			const parts = data.split(PASTE_SIGNAL);
-			void this.attachClipboardImages(parts.length - 1);
-			const remaining = parts.join("");
 			return remaining.length > 0 ? { data: remaining } : { consume: true };
 		});
+
+		this.ui.terminal.write(PASTE_EVENTS_ON);
+		process.on("exit", () => process.stdout.write(PASTE_EVENTS_OFF));
 	}
 
-	/** Queries run one at a time: each is a terminal round-trip on a shared stream. */
-	private async attachClipboardImages(count: number): Promise<void> {
-		for (let i = 0; i < count; i++) {
-			const image = await readClipboardImage(this.ui.terminal);
-			if (!image) {
-				return;
-			}
+	/**
+	 * Images become an attachment, and anything else is pasted as text through
+	 * the bracketed paste form the editor already understands, so oversized
+	 * pastes still collapse to a marker.
+	 */
+	private async paste(event: PasteEvent): Promise<void> {
+		const image = await readPastedImage(this.ui.terminal, event);
+		if (image) {
 			this.editor.pasteImage?.({ data: image.data, mimeType: image.mimeType });
+		} else {
+			const text = await readPastedText(this.ui.terminal, event);
+			if (text) {
+				this.editor.handleInput(`${BRACKETED_PASTE_START}${text}${BRACKETED_PASTE_END}`);
+			}
 		}
+		this.ui.requestRender();
 	}
 
 	private setupEditorSubmitHandler(): void {

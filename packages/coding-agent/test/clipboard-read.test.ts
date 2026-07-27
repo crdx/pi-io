@@ -1,6 +1,6 @@
 import type { Terminal, TerminalQueryOptions } from "@mariozechner/pi-tui";
 import { describe, expect, test } from "vitest";
-import { readClipboardImage } from "../src/utils/clipboard-image.js";
+import { PasteEventReader, readClipboardImage } from "../src/utils/clipboard-read.js";
 
 // 2x2 red PNG, shared with image-processing.test.ts
 const TINY_PNG =
@@ -130,5 +130,103 @@ describe("readClipboardImage", () => {
 		const image = await readClipboardImage(terminal);
 
 		expect(image!.data).toBe(TINY_PNG);
+	});
+});
+
+const base64 = (value: string) => Buffer.from(value).toString("base64");
+
+/** A paste event as kitty sends it: the types in one whitespace-separated payload. */
+function pasteEvent(types: string[], { password = "secret", primary = false } = {}): string {
+	const pw = `:pw=${base64(password)}`;
+	const loc = primary ? ":loc=primary" : "";
+	return [
+		`${ESC}]5522;type=read:status=OK${loc}${pw}${ST}`,
+		`${ESC}]5522;type=read:status=DATA:mime=${base64(".")}${pw};${base64(`${types.join(" ")}\n`)}${ST}`,
+		`${ESC}]5522;type=read:status=DONE${pw}${ST}`,
+	].join("");
+}
+
+describe("PasteEventReader", () => {
+	test("passes input through untouched when there is no event", () => {
+		const result = new PasteEventReader().feed("hello\x1b[200~pasted\x1b[201~");
+
+		expect(result.data).toBe("hello\x1b[200~pasted\x1b[201~");
+		expect(result.events).toEqual([]);
+	});
+
+	test("reads the types, password and location from a listing", () => {
+		const result = new PasteEventReader().feed(pasteEvent(["image/png", "text/plain"]));
+
+		expect(result.data).toBe("");
+		expect(result.events).toEqual([
+			{ mimeTypes: ["image/png", "text/plain"], password: "secret", location: "clipboard" },
+		]);
+	});
+
+	test("reads a listing sent as one empty packet per type", () => {
+		const spec = [
+			`${ESC}]5522;type=read:status=OK:pw=${base64("pw1")}${ST}`,
+			`${ESC}]5522;type=read:status=DATA:mime=${base64("image/png")}${ST}`,
+			`${ESC}]5522;type=read:status=DATA:mime=${base64("text/plain")}${ST}`,
+			`${ESC}]5522;type=read:status=DONE${ST}`,
+		].join("");
+
+		const result = new PasteEventReader().feed(spec);
+
+		expect(result.events[0]!.mimeTypes).toEqual(["image/png", "text/plain"]);
+		expect(result.events[0]!.password).toBe("pw1");
+	});
+
+	test("reports a paste from the primary selection", () => {
+		const result = new PasteEventReader().feed(pasteEvent(["text/plain"], { primary: true }));
+
+		expect(result.events[0]!.location).toBe("primary");
+	});
+
+	test("reassembles a listing split across reads", () => {
+		const reader = new PasteEventReader();
+		const event = pasteEvent(["image/png"]);
+		const collected: string[] = [];
+		let events = 0;
+
+		for (const chunk of chunked(event, 7)) {
+			const result = reader.feed(chunk);
+			collected.push(result.data);
+			events += result.events.length;
+		}
+
+		expect(collected.join("")).toBe("");
+		expect(events).toBe(1);
+	});
+
+	test("keeps surrounding keystrokes, in order", () => {
+		const result = new PasteEventReader().feed(`ab${pasteEvent(["text/plain"])}cd`);
+
+		expect(result.data).toBe("abcd");
+		expect(result.events).toHaveLength(1);
+	});
+
+	test("reports both events when two arrive in one read", () => {
+		const result = new PasteEventReader().feed(pasteEvent(["image/png"]) + pasteEvent(["text/plain"]));
+
+		expect(result.events.map((event) => event.mimeTypes)).toEqual([["image/png"], ["text/plain"]]);
+	});
+
+	test("consumes a refusal without reporting an event", () => {
+		const result = new PasteEventReader().feed(`${ESC}]5522;type=read:status=EPERM${ST}x`);
+
+		expect(result.data).toBe("x");
+		expect(result.events).toEqual([]);
+	});
+
+	test("releases a partial event that grows past any plausible listing", () => {
+		const reader = new PasteEventReader();
+		const opener = `${ESC}]5522;type=read:status=OK${ST}`;
+
+		expect(reader.feed(opener).data).toBe("");
+		const result = reader.feed("x".repeat(64 * 1024));
+
+		expect(result.data).toContain("x");
+		expect(reader.feed("y")).toEqual({ data: "y", events: [] });
 	});
 });

@@ -63,7 +63,13 @@ export {
 	setKittyProtocolActive,
 } from "./keys.js";
 // Input buffering for batch splitting
-export { StdinBuffer, type StdinBufferEventMap, type StdinBufferOptions } from "./stdin-buffer.js";
+export {
+	BRACKETED_PASTE_END,
+	BRACKETED_PASTE_START,
+	StdinBuffer,
+	type StdinBufferEventMap,
+	type StdinBufferOptions,
+} from "./stdin-buffer.js";
 // Terminal interface and implementations
 export { ProcessTerminal, type Terminal, type TerminalQueryOptions } from "./terminal.js";
 // Terminal image support

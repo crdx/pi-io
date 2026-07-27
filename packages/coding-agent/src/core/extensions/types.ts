@@ -39,7 +39,7 @@ import type {
 } from "@mariozechner/pi-tui";
 import type { Static, TSchema } from "@sinclair/typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.js";
-import type { ClipboardImage } from "../../utils/clipboard-image.js";
+import type { ClipboardImage } from "../../utils/clipboard-read.js";
 import type { BashResult } from "../bash-executor.js";
 import type { EventBus } from "../event-bus.js";
 import type { ExecOptions, ExecResult } from "../exec.js";

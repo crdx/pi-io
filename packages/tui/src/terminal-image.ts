@@ -303,13 +303,23 @@ export function renderImage(
 	}
 
 	const maxWidth = options.maxWidthCells ?? 80;
-	const rows = calculateImageRows(imageDimensions, maxWidth, getCellDimensions());
+	const cellDimensions = getCellDimensions();
+	// A cell is the smallest unit the image can be sized in, so an image whose
+	// width is not a whole number of cells has to be resampled to fill them.
+	// Below that boundary it is left alone and drawn pixel for pixel.
+	const fits = imageDimensions.widthPx <= maxWidth * cellDimensions.widthPx;
+	const rows = fits
+		? Math.max(1, Math.ceil(imageDimensions.heightPx / cellDimensions.heightPx))
+		: calculateImageRows(imageDimensions, maxWidth, cellDimensions);
 
 	if (caps.images === "kitty") {
+		// Only constrain the width when the image is too wide to fit, since any
+		// value of `c` scales the image to exactly that many cells. Height is
+		// never given: with both, kitty fills the rectangle and distorts by up to
+		// the rounding in `rows`; with width alone it keeps the aspect ratio.
 		// Only use imageId if explicitly provided - static images don't need IDs
 		const sequence = encodeKitty(base64Data, {
-			columns: maxWidth,
-			rows,
+			columns: fits ? undefined : maxWidth,
 			imageId: options.imageId,
 			suppressCursorMovement: true,
 		});

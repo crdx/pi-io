@@ -40,6 +40,7 @@ import type {
 import type { Static, TSchema } from "@sinclair/typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.js";
 import type { ClipboardImage } from "../../utils/clipboard-read.js";
+import type { StreamingBehavior } from "../agent-session.js";
 import type { BashResult } from "../bash-executor.js";
 import type { EventBus } from "../event-bus.js";
 import type { ExecOptions, ExecResult } from "../exec.js";
@@ -610,7 +611,7 @@ export interface InputEvent {
 	/** Where the input came from */
 	source: InputSource;
 	/** How the message will be delivered during streaming */
-	streamingBehavior?: "steer" | "followUp";
+	streamingBehavior?: StreamingBehavior;
 }
 
 /** Result from input event handler */
@@ -1021,7 +1022,7 @@ export interface ExtensionAPI {
 	 */
 	sendUserMessage(
 		content: string | (TextContent | ImageContent)[],
-		options?: { deliverAs?: "steer" | "followUp"; expandPromptTemplates?: boolean },
+		options?: { deliverAs?: StreamingBehavior; expandPromptTemplates?: boolean },
 	): void;
 
 	/** Append a custom entry to the session for state persistence (not sent to LLM). */
@@ -1240,7 +1241,7 @@ export type SendMessageHandler = <T = unknown>(
 
 export type SendUserMessageHandler = (
 	content: string | (TextContent | ImageContent)[],
-	options?: { deliverAs?: "steer" | "followUp"; expandPromptTemplates?: boolean },
+	options?: { deliverAs?: StreamingBehavior; expandPromptTemplates?: boolean },
 ) => void;
 
 export type AppendEntryHandler = <T = unknown>(customType: string, data?: T) => void;

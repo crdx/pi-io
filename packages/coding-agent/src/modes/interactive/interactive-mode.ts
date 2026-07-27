@@ -38,7 +38,12 @@ import {
 } from "@mariozechner/pi-tui";
 import { spawn, spawnSync } from "child_process";
 import { APP_NAME, getAgentDir, getAuthPath, getDebugLogPath, VERSION } from "../../config.js";
-import { type AgentSession, type AgentSessionEvent, parseSkillBlock } from "../../core/agent-session.js";
+import {
+	type AgentSession,
+	type AgentSessionEvent,
+	parseSkillBlock,
+	type StreamingBehavior,
+} from "../../core/agent-session.js";
 import { describeBuild } from "../../core/build-info.js";
 import type {
 	ExtensionContext,
@@ -53,6 +58,7 @@ import { findExactModelReferenceMatch, resolveModelScope } from "../../core/mode
 import { DefaultPackageManager } from "../../core/package-manager.js";
 import type { ResourceDiagnostic } from "../../core/resource-loader.js";
 import { type SessionContext, SessionManager } from "../../core/session-manager.js";
+import type { EnterBehavior } from "../../core/settings-manager.js";
 import { BUILTIN_SLASH_COMMANDS } from "../../core/slash-commands.js";
 import type { SourceInfo } from "../../core/source-info.js";
 import type { TruncationResult } from "../../core/tools/truncate.js";
@@ -1826,8 +1832,10 @@ export class InteractiveMode {
 		this.defaultEditor.onAction("app.tools.expand", () => this.toggleToolOutputExpansion());
 		this.defaultEditor.onAction("app.thinking.toggle", () => this.toggleThinkingBlockVisibility());
 		this.defaultEditor.onAction("app.editor.external", () => this.openExternalEditor());
-		this.defaultEditor.onAction("app.message.followUp", () => this.handleFollowUp());
-		this.defaultEditor.onAction("app.message.steer", () => this.handleSteer());
+		this.defaultEditor.onAction("app.message.followUp", () => void this.deliverWith("followUp"));
+		this.defaultEditor.onAction("app.message.steer", () => void this.deliverWith("steer"));
+		this.defaultEditor.onAction("app.message.interrupt", () => void this.deliverWith("interrupt"));
+		this.defaultEditor.onAction("app.message.secondary", () => void this.deliverWith(this.secondaryBehavior()));
 		this.defaultEditor.onAction("app.message.dequeue", () => this.handleDequeue());
 		this.defaultEditor.onAction("app.session.new", () => this.handleClearCommand());
 		this.defaultEditor.onAction("app.session.tree", () => this.showTreeSelector());
@@ -2005,12 +2013,15 @@ export class InteractiveMode {
 				}
 			}
 
-			// If streaming, use prompt() with steer behavior
-			// This handles extension commands (execute immediately), prompt template expansion, and queueing
+			// If streaming, deliver however Enter is configured to. prompt() still
+			// handles extension commands and prompt template expansion on the way.
 			if (this.session.isStreaming) {
 				this.editor.addToHistory?.(text);
 				this.editor.setText("");
-				await this.session.prompt(text, { streamingBehavior: "steer", images });
+				await this.session.prompt(text, {
+					streamingBehavior: this.settingsManager.getEnterBehavior(),
+					images,
+				});
 				this.updatePendingMessagesDisplay();
 				this.ui.requestRender();
 				return;
@@ -2577,38 +2588,32 @@ export class InteractiveMode {
 		}
 	}
 
-	private async handleFollowUp(): Promise<void> {
+	/**
+	 * Deliver what is in the editor to an agent that is already working.
+	 *
+	 * With nothing in flight there is nothing to queue behind or abandon, so
+	 * every one of these keys falls back to an ordinary submit. `prompt()` still
+	 * handles extension commands and template expansion on the way through.
+	 */
+	private async deliverWith(behavior: StreamingBehavior): Promise<void> {
 		const text = (this.editor.getExpandedText?.() ?? this.editor.getText()).trim();
 		if (!text) return;
 
-		// Alt+Enter queues a follow-up message (waits until agent finishes)
-		// This handles extension commands (execute immediately), prompt template expansion, and queueing
-		if (this.session.isStreaming) {
-			this.editor.addToHistory?.(text);
-			this.editor.setText("");
-			await this.session.prompt(text, { streamingBehavior: "followUp" });
-			this.updatePendingMessagesDisplay();
-			this.ui.requestRender();
+		if (!this.session.isStreaming) {
+			this.editor.onSubmit?.(text);
+			return;
 		}
-		// If not streaming, Alt+Enter acts like regular Enter (trigger onSubmit)
-		else if (this.editor.onSubmit) {
-			this.editor.onSubmit(text);
-		}
+
+		this.editor.addToHistory?.(text);
+		this.editor.setText("");
+		await this.session.prompt(text, { streamingBehavior: behavior, source: "keybinding" });
+		this.updatePendingMessagesDisplay();
+		this.ui.requestRender();
 	}
 
-	private async handleSteer(): Promise<void> {
-		const text = (this.editor.getExpandedText?.() ?? this.editor.getText()).trim();
-		if (!text) return;
-
-		if (this.session.isStreaming) {
-			this.editor.addToHistory?.(text);
-			this.editor.setText("");
-			await this.session.prompt(text, { streamingBehavior: "steer", source: "keybinding" });
-			this.updatePendingMessagesDisplay();
-			this.ui.requestRender();
-		} else if (this.editor.onSubmit) {
-			this.editor.onSubmit(text);
-		}
+	/** Whichever of the two Enter is not set to, so both stay one key away. */
+	private secondaryBehavior(): EnterBehavior {
+		return this.settingsManager.getEnterBehavior() === "interrupt" ? "steer" : "interrupt";
 	}
 
 	private handleDequeue(): void {
@@ -2870,6 +2875,7 @@ export class InteractiveMode {
 					enableSkillCommands: this.settingsManager.getEnableSkillCommands(),
 					steeringMode: this.session.steeringMode,
 					followUpMode: this.session.followUpMode,
+					enterBehavior: this.settingsManager.getEnterBehavior(),
 					transport: this.settingsManager.getTransport(),
 					thinkingLevel: this.session.thinkingLevel,
 					availableThinkingLevels: this.session.getAvailableThinkingLevels(),
@@ -2908,6 +2914,9 @@ export class InteractiveMode {
 					},
 					onFollowUpModeChange: (mode) => {
 						this.session.setFollowUpMode(mode);
+					},
+					onEnterBehaviorChange: (behavior) => {
+						this.settingsManager.setEnterBehavior(behavior);
 					},
 					onTransportChange: (transport) => {
 						this.settingsManager.setTransport(transport);

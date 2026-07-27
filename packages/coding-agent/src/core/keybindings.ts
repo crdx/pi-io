@@ -25,6 +25,8 @@ export interface AppKeybindings {
 	"app.editor.external": true;
 	"app.message.followUp": true;
 	"app.message.steer": true;
+	"app.message.interrupt": true;
+	"app.message.secondary": true;
 	"app.message.dequeue": true;
 	"app.session.new": true;
 	"app.session.tree": true;
@@ -84,6 +86,14 @@ export const KEYBINDINGS = {
 	"app.message.steer": {
 		defaultKeys: [],
 		description: "Steer agent with message",
+	},
+	"app.message.interrupt": {
+		defaultKeys: [],
+		description: "Abandon the current turn and send the message",
+	},
+	"app.message.secondary": {
+		defaultKeys: "ctrl+alt+enter",
+		description: "Send whichever of steer or interrupt Enter is not set to",
 	},
 	"app.message.dequeue": {
 		defaultKeys: "alt+up",

@@ -49,6 +49,14 @@ export type PackageSource =
 			themes?: string[];
 	  };
 
+/**
+ * Which delivery Enter uses while the agent is busy. Follow-up is deliberately
+ * not offered: it already has its own key, whereas steering and interrupting
+ * are the two that compete for Enter. Whichever one is not chosen here is
+ * reachable through `app.message.secondary`.
+ */
+export type EnterBehavior = "steer" | "interrupt";
+
 export interface Settings {
 	defaultProvider?: string;
 	defaultModel?: string;
@@ -56,6 +64,7 @@ export interface Settings {
 	transport?: TransportSetting; // default: "sse"
 	steeringMode?: "all" | "one-at-a-time";
 	followUpMode?: "all" | "one-at-a-time";
+	enterBehavior?: EnterBehavior; // default: "steer"
 	theme?: string;
 	retry?: RetrySettings;
 	hideThinkingBlock?: boolean;
@@ -504,6 +513,16 @@ export class SettingsManager {
 	setFollowUpMode(mode: "all" | "one-at-a-time"): void {
 		this.globalSettings.followUpMode = mode;
 		this.markModified("followUpMode");
+		this.save();
+	}
+
+	getEnterBehavior(): EnterBehavior {
+		return this.settings.enterBehavior || "steer";
+	}
+
+	setEnterBehavior(behavior: EnterBehavior): void {
+		this.globalSettings.enterBehavior = behavior;
+		this.markModified("enterBehavior");
 		this.save();
 	}
 

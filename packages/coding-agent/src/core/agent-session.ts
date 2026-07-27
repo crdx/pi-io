@@ -157,14 +157,23 @@ function buildUserContent(text: string, images?: ImageContent[]): (TextContent |
 	return content;
 }
 
+/**
+ * How a message typed while the agent is busy reaches it.
+ *
+ * - `steer` waits for the current assistant turn to finish its tool calls
+ * - `followUp` waits for the agent to run out of work entirely
+ * - `interrupt` waits for nothing: it abandons the turn in flight and starts a new one
+ */
+export type StreamingBehavior = "steer" | "followUp" | "interrupt";
+
 /** Options for AgentSession.prompt() */
 export interface PromptOptions {
 	/** Whether to expand file-based prompt templates (default: true) */
 	expandPromptTemplates?: boolean;
 	/** Image attachments */
 	images?: ImageContent[];
-	/** When streaming, how to queue the message: "steer" (interrupt) or "followUp" (wait). Required if streaming. */
-	streamingBehavior?: "steer" | "followUp";
+	/** When streaming, how to deliver the message. Required if streaming. */
+	streamingBehavior?: StreamingBehavior;
 	/** Source of input for extension input event handlers. Defaults to "interactive". */
 	source?: InputSource;
 }
@@ -878,19 +887,26 @@ export class AgentSession {
 			expandedText = expandPromptTemplate(expandedText, [...this.promptTemplates]);
 		}
 
-		// If streaming, queue via steer() or followUp() based on option
+		// If streaming, either queue the message or clear the way for it.
 		if (this.isStreaming) {
 			if (!options?.streamingBehavior) {
 				throw new Error(
-					"Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.",
+					"Agent is already processing. Specify streamingBehavior ('steer', 'followUp' or 'interrupt') to deliver the message.",
 				);
 			}
 			if (options.streamingBehavior === "followUp") {
 				await this._queueFollowUp(expandedText, currentImages);
-			} else {
-				await this._queueSteer(expandedText, currentImages);
+				return;
 			}
-			return;
+			if (options.streamingBehavior === "steer") {
+				await this._queueSteer(expandedText, currentImages);
+				return;
+			}
+			// Interrupt: abandon the turn in flight and carry on into the normal
+			// send path below, so the message arrives as an ordinary new turn.
+			// It must not be queued as well — the turn this starts drains the
+			// queues on its way in, which would deliver the message twice.
+			await this.abort();
 		}
 
 		// Flush any pending bash messages before the new prompt
@@ -1172,7 +1188,7 @@ export class AgentSession {
 	 */
 	async sendUserMessage(
 		content: string | (TextContent | ImageContent)[],
-		options?: { deliverAs?: "steer" | "followUp"; expandPromptTemplates?: boolean },
+		options?: { deliverAs?: StreamingBehavior; expandPromptTemplates?: boolean },
 	): Promise<void> {
 		// Normalize content to text string + optional images
 		let text: string;

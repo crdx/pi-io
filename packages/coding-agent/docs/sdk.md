@@ -132,9 +132,10 @@ await session.prompt("What's in this image?", {
   images: [{ type: "image", source: { type: "base64", mediaType: "image/png", data: "..." } }]
 });
 
-// During streaming: must specify how to queue the message
-await session.prompt("Stop and do this instead", { streamingBehavior: "steer" });
+// During streaming: must specify how the message is delivered
+await session.prompt("Also bear this in mind", { streamingBehavior: "steer" });
 await session.prompt("After you're done, also check X", { streamingBehavior: "followUp" });
+await session.prompt("Stop, do this instead", { streamingBehavior: "interrupt" });
 ```
 
 **Behavior:**
@@ -142,6 +143,7 @@ await session.prompt("After you're done, also check X", { streamingBehavior: "fo
 - **Extension commands** (e.g., `/mycommand`): Execute immediately, even during streaming. They manage their own LLM interaction via `pi.sendMessage()`.
 - **File-based prompt templates** (from `.md` files): Expanded to their content before sending/queueing.
 - **During streaming without `streamingBehavior`**: Throws an error. Use `steer()` or `followUp()` directly, or specify the option.
+- **`"interrupt"`**: Aborts the turn in flight, waits for the agent to settle, then sends the message as an ordinary new turn. Unlike the other two it queues nothing, so there is no drain to wait for.
 
 For explicit queueing during streaming:
 

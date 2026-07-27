@@ -11,6 +11,7 @@ import {
 	Spacer,
 	Text,
 } from "@mariozechner/pi-tui";
+import type { EnterBehavior } from "../../../core/settings-manager.js";
 import { getSelectListTheme, getSettingsListTheme, theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 
@@ -35,6 +36,7 @@ export interface SettingsConfig {
 	enableSkillCommands: boolean;
 	steeringMode: "all" | "one-at-a-time";
 	followUpMode: "all" | "one-at-a-time";
+	enterBehavior: EnterBehavior;
 	transport: Transport;
 	thinkingLevel: ThinkingLevel;
 	availableThinkingLevels: ThinkingLevel[];
@@ -57,6 +59,7 @@ export interface SettingsCallbacks {
 	onEnableSkillCommandsChange: (enabled: boolean) => void;
 	onSteeringModeChange: (mode: "all" | "one-at-a-time") => void;
 	onFollowUpModeChange: (mode: "all" | "one-at-a-time") => void;
+	onEnterBehaviorChange: (behavior: EnterBehavior) => void;
 	onTransportChange: (transport: Transport) => void;
 	onThinkingLevelChange: (level: ThinkingLevel) => void;
 	onThemeChange: (theme: string) => void;
@@ -152,10 +155,18 @@ export class SettingsSelectorComponent extends Container {
 
 		const items: SettingItem[] = [
 			{
+				id: "enter-behavior",
+				label: "Enter while streaming",
+				description:
+					"'steer': queue the message for after the current turn. 'interrupt': abandon the turn and send it now. Ctrl+Alt+Enter always sends the other one.",
+				currentValue: config.enterBehavior,
+				values: ["steer", "interrupt"],
+			},
+			{
 				id: "steering-mode",
 				label: "Steering mode",
 				description:
-					"Enter while streaming queues steering messages. 'one-at-a-time': deliver one, wait for response. 'all': deliver all at once.",
+					"How queued steering messages are delivered. 'one-at-a-time': deliver one, wait for response. 'all': deliver all at once.",
 				currentValue: config.steeringMode,
 				values: ["one-at-a-time", "all"],
 			},
@@ -356,6 +367,9 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "skill-commands":
 						callbacks.onEnableSkillCommandsChange(newValue === "true");
+						break;
+					case "enter-behavior":
+						callbacks.onEnterBehaviorChange(newValue as EnterBehavior);
 						break;
 					case "steering-mode":
 						callbacks.onSteeringModeChange(newValue as "all" | "one-at-a-time");

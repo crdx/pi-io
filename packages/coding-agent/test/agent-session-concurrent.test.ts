@@ -117,6 +117,37 @@ describe("AgentSession concurrent prompt guard", () => {
 		return session;
 	}
 
+	it("delivers an interrupt as a fresh turn rather than queueing it", async () => {
+		createSession();
+
+		const firstPrompt = session.prompt("First message");
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(session.isStreaming).toBe(true);
+
+		// Not awaited: the interrupt starts a turn of its own, which this mock
+		// only ever ends by being aborted.
+		const interrupted = session.prompt("Second message", { streamingBehavior: "interrupt" });
+		await new Promise((resolve) => setTimeout(resolve, 30));
+
+		// Queueing is how steer and followUp defer a message, and interrupt must use
+		// neither. Queueing it as well as sending it delivers it twice, because the
+		// turn the interrupt starts drains the queue on its way in; queueing it
+		// instead of sending strands it, because an aborted turn returns before any
+		// drain. Counting occurrences catches both.
+		const deliveries = session.messages.filter(
+			(message) => message.role === "user" && JSON.stringify(message.content).includes("Second message"),
+		);
+		expect(deliveries).toHaveLength(1);
+		expect(session.agent.hasQueuedMessages()).toBe(false);
+
+		// The first turn is gone and a new one is running in its place.
+		await firstPrompt.catch(() => {});
+		expect(session.isStreaming).toBe(true);
+
+		await session.abort();
+		await interrupted.catch(() => {});
+	});
+
 	it("should throw when prompt() called while streaming", async () => {
 		createSession();
 
@@ -131,7 +162,7 @@ describe("AgentSession concurrent prompt guard", () => {
 
 		// Second prompt should reject
 		await expect(session.prompt("Second message")).rejects.toThrow(
-			"Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.",
+			"Agent is already processing. Specify streamingBehavior ('steer', 'followUp' or 'interrupt') to deliver the message.",
 		);
 
 		// Cleanup

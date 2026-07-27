@@ -70,11 +70,16 @@ When a provider requests a retry delay longer than `maxDelayMs` (e.g., Google's 
 
 ### Message Delivery
 
-| Setting        | Type   | Default           | Description                                                                                             |
-|----------------|--------|-------------------|---------------------------------------------------------------------------------------------------------|
-| `steeringMode` | string | `"one-at-a-time"` | How steering messages are sent: `"all"` or `"one-at-a-time"`                                            |
-| `followUpMode` | string | `"one-at-a-time"` | How follow-up messages are sent: `"all"` or `"one-at-a-time"`                                           |
-| `transport`    | string | `"sse"`           | Preferred transport for providers that support multiple transports: `"sse"`, `"websocket"`, or `"auto"` |
+A message typed while the agent is working can reach it three ways. **Steering** queues it until the current assistant turn has finished its tool calls. **Follow-up** queues it until the agent runs out of work entirely. **Interrupt** abandons the turn in flight and sends the message as a new one.
+
+Follow-up has Alt+Enter to itself. Steering and interrupt compete for Enter, so `enterBehavior` decides which one gets it, and `app.message.secondary` (Ctrl+Alt+Enter) always sends the other.
+
+| Setting         | Type   | Default           | Description                                                                                             |
+|-----------------|--------|-------------------|---------------------------------------------------------------------------------------------------------|
+| `enterBehavior` | string | `"steer"`         | What Enter does while the agent is busy: `"steer"` or `"interrupt"`                                     |
+| `steeringMode`  | string | `"one-at-a-time"` | How steering messages are sent: `"all"` or `"one-at-a-time"`                                            |
+| `followUpMode`  | string | `"one-at-a-time"` | How follow-up messages are sent: `"all"` or `"one-at-a-time"`                                           |
+| `transport`     | string | `"sse"`           | Preferred transport for providers that support multiple transports: `"sse"`, `"websocket"`, or `"auto"` |
 
 ### Terminal & Images
 

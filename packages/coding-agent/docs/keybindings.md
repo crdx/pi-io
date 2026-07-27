@@ -113,11 +113,19 @@ Modifier combinations: `ctrl+shift+x`, `alt+ctrl+x`, `ctrl+shift+alt+x`, `ctrl+1
 
 ### Display and Message Queue
 
-| Keybinding id          | Default     | Description                       |
-|------------------------|-------------|-----------------------------------|
-| `app.tools.expand`     | `ctrl+o`    | Collapse or expand tool output    |
-| `app.message.followUp` | `alt+enter` | Queue follow-up message           |
-| `app.message.dequeue`  | `alt+up`    | Restore queued messages to editor |
+| Keybinding id           | Default          | Description                                              |
+|-------------------------|------------------|----------------------------------------------------------|
+| `app.tools.expand`      | `ctrl+o`         | Collapse or expand tool output                           |
+| `app.message.followUp`  | `alt+enter`      | Queue follow-up message                                  |
+| `app.message.secondary` | `ctrl+alt+enter` | Send whichever of steer or interrupt Enter is not set to |
+| `app.message.steer`     | none             | Steer agent with message                                 |
+| `app.message.interrupt` | none             | Abandon the current turn and send the message            |
+| `app.message.dequeue`   | `alt+up`         | Restore queued messages to editor                        |
+
+Enter itself is `tui.input.submit`; what it does while the agent is busy is the
+`enterBehavior` setting, not a keybinding. `app.message.steer` and
+`app.message.interrupt` are unbound by default because `app.message.secondary`
+already reaches whichever of them Enter does not.
 
 ### Tree Navigation
 

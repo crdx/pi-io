@@ -295,6 +295,7 @@ export {
 	getSettingsListTheme,
 	highlightCode,
 	initTheme,
+	type KnownThemeColor,
 	Theme,
 	type ThemeColor,
 } from "./modes/interactive/theme/theme.js";

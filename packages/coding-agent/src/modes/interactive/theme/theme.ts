@@ -19,11 +19,8 @@ const ColorValueSchema = Type.Union([
 
 type ColorValue = Static<typeof ColorValueSchema>;
 
-const ThemeJsonSchema = Type.Object({
-	$schema: Type.Optional(Type.String()),
-	name: Type.String(),
-	vars: Type.Optional(Type.Record(Type.String(), ColorValueSchema)),
-	colors: Type.Object({
+const ThemeColorsSchema = Type.Object(
+	{
 		// Core UI (10 colors)
 		accent: ColorValueSchema,
 		border: ColorValueSchema,
@@ -82,14 +79,22 @@ const ThemeJsonSchema = Type.Object({
 		thinkingXhigh: ColorValueSchema,
 		// Bash Mode (1 color)
 		bashMode: ColorValueSchema,
-	}),
+	},
+	{ additionalProperties: ColorValueSchema },
+);
+
+const ThemeJsonSchema = Type.Object({
+	$schema: Type.Optional(Type.String()),
+	name: Type.String(),
+	vars: Type.Optional(Type.Record(Type.String(), ColorValueSchema)),
+	colors: ThemeColorsSchema,
 });
 
 type ThemeJson = Static<typeof ThemeJsonSchema>;
 
 const validateThemeJson = TypeCompiler.Compile(ThemeJsonSchema);
 
-export type ThemeColor =
+export type KnownThemeColor =
 	| "accent"
 	| "border"
 	| "borderAccent"
@@ -135,6 +140,8 @@ export type ThemeColor =
 	| "thinkingHigh"
 	| "thinkingXhigh"
 	| "bashMode";
+
+export type ThemeColor = KnownThemeColor | (string & {});
 
 export type ThemeBg =
 	| "selectedBg"
@@ -223,7 +230,7 @@ export class Theme {
 	private bgColors: Map<ThemeBg, string>;
 
 	constructor(
-		fgColors: Record<ThemeColor, string | number>,
+		fgColors: Record<string, string | number>,
 		bgColors: Record<ThemeBg, string | number>,
 		options: { name?: string; sourcePath?: string; sourceInfo?: SourceInfo } = {},
 	) {
@@ -231,7 +238,7 @@ export class Theme {
 		this.sourcePath = options.sourcePath;
 		this.sourceInfo = options.sourceInfo;
 		this.fgColors = new Map();
-		for (const [key, value] of Object.entries(fgColors) as [ThemeColor, string | number][]) {
+		for (const [key, value] of Object.entries(fgColors)) {
 			this.fgColors.set(key, fgAnsi(value));
 		}
 		this.bgColors = new Map();
@@ -446,7 +453,7 @@ function loadThemeJson(name: string): ThemeJson {
 
 function createTheme(themeJson: ThemeJson, sourcePath?: string): Theme {
 	const resolvedColors = resolveThemeColors(themeJson.colors, themeJson.vars);
-	const fgColors: Record<ThemeColor, string | number> = {} as Record<ThemeColor, string | number>;
+	const fgColors: Record<string, string | number> = {};
 	const bgColors: Record<ThemeBg, string | number> = {} as Record<ThemeBg, string | number>;
 	const bgColorKeys: Set<string> = new Set([
 		"selectedBg",
@@ -460,7 +467,7 @@ function createTheme(themeJson: ThemeJson, sourcePath?: string): Theme {
 		if (bgColorKeys.has(key)) {
 			bgColors[key as ThemeBg] = value;
 		} else {
-			fgColors[key as ThemeColor] = value;
+			fgColors[key] = value;
 		}
 	}
 	return new Theme(fgColors, bgColors, {

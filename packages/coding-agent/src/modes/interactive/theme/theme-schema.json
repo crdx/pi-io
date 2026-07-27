@@ -293,7 +293,10 @@
 					"description": "Editor border color in bash mode"
 				}
 			},
-			"additionalProperties": false
+			"additionalProperties": {
+				"$ref": "#/$defs/colorValue",
+				"description": "Extension-defined color, readable with theme.fg()"
+			}
 		}
 	},
 	"additionalProperties": false,

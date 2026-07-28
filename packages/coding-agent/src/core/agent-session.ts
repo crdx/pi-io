@@ -1711,19 +1711,19 @@ export class AgentSession {
 
 		runner.bindCore(
 			{
-				sendMessage: (message, options) => {
+				sendMessage: (message, options, extensionPath) => {
 					this.sendCustomMessage(message, options).catch((err) => {
 						runner.emitError({
-							extensionPath: "<runtime>",
+							extensionPath: extensionPath ?? "<runtime>",
 							event: "send_message",
 							error: err instanceof Error ? err.message : String(err),
 						});
 					});
 				},
-				sendUserMessage: (content, options) => {
+				sendUserMessage: (content, options, extensionPath) => {
 					this.sendUserMessage(content, options).catch((err) => {
 						runner.emitError({
-							extensionPath: "<runtime>",
+							extensionPath: extensionPath ?? "<runtime>",
 							event: "send_user_message",
 							error: err instanceof Error ? err.message : String(err),
 						});

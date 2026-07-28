@@ -194,11 +194,11 @@ function createExtensionAPI(
 
 		// Action methods - delegate to shared runtime
 		sendMessage(message, options): void {
-			runtime.sendMessage(message, options);
+			runtime.sendMessage(message, options, extension.path);
 		},
 
 		sendUserMessage(content, options): void {
-			runtime.sendUserMessage(content, options);
+			runtime.sendUserMessage(content, options, extension.path);
 		},
 
 		appendEntry(customType: string, data?: unknown): void {

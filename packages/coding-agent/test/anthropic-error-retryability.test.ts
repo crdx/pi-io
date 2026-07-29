@@ -46,6 +46,11 @@ describe("Anthropic error messages stay classifiable", () => {
 		expect(described).toMatch(AGENT_SESSION_RETRYABLE_PATTERN);
 	});
 
+	it("omits Anthropic's redundant overload detail", () => {
+		const described = describeAnthropicError(anthropicApiError(529, "overloaded_error", "Overloaded"));
+		expect(described).toBe("Anthropic is overloaded and refusing requests.");
+	});
+
 	it("keeps a server error retryable", () => {
 		const described = describeAnthropicError(anthropicApiError(503, "api_error", DETAIL_WITHOUT_CLASSIFIABLE_TERMS));
 		expect(described).toMatch(AGENT_SESSION_RETRYABLE_PATTERN);

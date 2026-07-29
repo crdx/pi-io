@@ -496,7 +496,8 @@ export function describeAnthropicError(error: unknown): string {
 	}
 
 	if (statusCode === 529 || errorType === "overloaded_error") {
-		return `Anthropic is overloaded and refusing requests.${detailClause}`;
+		const overloadDetailClause = providerMessage?.toLowerCase() === "overloaded" ? "" : detailClause;
+		return `Anthropic is overloaded and refusing requests.${overloadDetailClause}`;
 	}
 
 	if (statusCode !== undefined && statusCode >= 500) {

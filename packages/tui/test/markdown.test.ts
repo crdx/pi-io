@@ -1117,4 +1117,34 @@ bar`,
 			);
 		});
 	});
+
+	describe("Strikethrough", () => {
+		function renderMarkdown(text: string): string {
+			return new Markdown(text, 0, 0, defaultMarkdownTheme).render(80).join("\n");
+		}
+
+		it("should strike out double-tilde text", () => {
+			assert.ok(renderMarkdown("~~gone~~").includes(chalk.strikethrough("gone")));
+		});
+
+		it("should leave single-tilde text alone", () => {
+			const rendered = renderMarkdown("takes ~500ms to finish");
+
+			assert.ok(rendered.includes("~500ms"));
+			assert.ok(!rendered.includes("\x1b[9m"));
+		});
+
+		it("should leave a tilde-wrapped path alone", () => {
+			const rendered = renderMarkdown("edit ~/foo/bar~ now");
+
+			assert.ok(rendered.includes("~/foo/bar~"));
+			assert.ok(!rendered.includes("\x1b[9m"));
+		});
+
+		it("should keep single tildes literal inside double-tilde text", () => {
+			const rendered = renderMarkdown("~~about ~500 items~~");
+
+			assert.ok(rendered.includes(chalk.strikethrough("about ~500 items")));
+		});
+	});
 });

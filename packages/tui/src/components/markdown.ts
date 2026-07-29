@@ -1,7 +1,26 @@
-import { marked, type Token } from "marked";
+import { Marked, type Token } from "marked";
 import { isImageLine } from "../terminal-image.js";
 import type { Component } from "../tui.js";
 import { applyBackgroundToLine, visibleWidth, wrapTextWithAnsi } from "../utils.js";
+
+const doubleTildeStrikethrough = /^~~(?=[^\s~])((?:\\.|[^\\])*?(?:\\.|[^\s~\\]))~~(?=[^~]|$)/;
+
+const marked = new Marked({
+	tokenizer: {
+		del(src) {
+			const match = doubleTildeStrikethrough.exec(src);
+			if (!match) {
+				return undefined;
+			}
+			return {
+				type: "del",
+				raw: match[0],
+				text: match[1],
+				tokens: this.lexer.inlineTokens(match[1]),
+			};
+		},
+	},
+});
 
 /**
  * Default text styling for markdown content.

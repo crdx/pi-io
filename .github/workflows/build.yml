@@ -72,6 +72,13 @@ jobs:
           tar xzf /tmp/pi-stage/mariozechner-pi-coding-agent-*.tgz -C /tmp/pi-stage --strip-components=1
 
           cd /tmp/pi-stage
+
+          if [[ "${{ github.ref_type }}" == "branch" ]]; then
+            VERSION="$(jq -r .version package.json)-${{ steps.tag.outputs.name }}"
+            jq --arg version "$VERSION" '.version = $version' package.json > package.json.new
+            mv package.json.new package.json
+          fi
+
           npm install --no-save /tmp/pi-siblings/*.tgz
           npm pack --pack-destination /tmp/pi-release
 
@@ -108,16 +115,3 @@ jobs:
             --title "$DEV_TAG" \
             --notes "Development build from ${{ github.sha }}" \
             --prerelease
-
-      - name: Prune old dev releases
-        if: github.ref_type == 'branch'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release list --json tagName --jq '.[].tagName' \
-            | grep '^dev-' \
-            | sort -r \
-            | tail -n +2 \
-            | while read -r TAG; do
-                gh release delete "$TAG" --yes --cleanup-tag
-              done

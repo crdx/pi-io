@@ -1,7 +1,7 @@
 // Core session management
 
-// Model utilities (re-exported from pi-ai)
-export { supportsXhigh } from "@mariozechner/pi-ai";
+export * from "@mariozechner/pi-ai";
+export * from "@mariozechner/pi-tui";
 // Config paths
 export { getAgentDir, VERSION } from "./config.js";
 export {

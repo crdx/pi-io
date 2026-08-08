@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.62.0-crdx.18] - 2026-08-08
+
+### Added
+
+- Add interrupt message delivery
+- Implement Kitty's OSC 5522 protocol
+- Add `/version` command
+- Add opt-in debug logging with `PI_LOG=1`
+
+### Changed
+
+- Make `ctx.abort()` asynchronous
+- Require `~~double tildes~~` for strikethrough
+
+### Fixed
+
+- Preserve interrupt delivery when queued turn starts
+- Abort before forking or navigating the session tree
+- Show errors as descriptive sentences
+- Report failed edits only once
+- Handle OSC 5522 packets correctly
+
+### Removed
+
+- Remove compaction and branch summarisation
+- Remove almost all providers
+- Remove RPC mode
+- Remove HTML session export
+- Remove sharing
+- Remove the light theme
+- Remove `/hotkeys`
+- Remove some settings
+- Remove the `install`, `remove`, `uninstall`, `update`, and `list` package-manager subcommands
+- Remove the npm release check
+- Remove the automatic `rg` and `fd` downloads
+- Remove legacy migrations
+- Remove non-Linux and Bun-specific runtime support
+- Remove the iTerm2 image path and legacy X11 mouse, SGR mouse, and xterm `modifyOtherKeys` handling
+
 ## [0.62.0-crdx.17] - 2026-07-24
 
 ### Added

@@ -2,10 +2,9 @@ set quiet := true
 set shell := ["bash", "-cu", "-o", "pipefail"]
 
 mod release 'release.just'
+import? 'internal.just'
 
 TSGO := "npx tsgo"
-
-export PI_CODING_AGENT_DIR := env("HOME") / ".system/config/pi/agent"
 
 [private]
 help:
@@ -31,10 +30,6 @@ dev:
 # commit staged changes
 commit message:
     git commit -m "{{ message }}"
-
-# run pi (pass args after --)
-pi *args: build
-    PI_DEV=1 node packages/coding-agent/dist/cli.js {{ args }}
 
 # time cold startup of the built CLI over N runs, skipping extensions to isolate core startup
 time-startup runs="5": build

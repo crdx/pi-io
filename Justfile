@@ -67,7 +67,7 @@ clean:
 
 # refresh model list from upstream APIs
 generate-models:
-    npx tsx packages/ai/scripts/generate-models.ts
+    npx tsx packages/ai/scripts/generate.ts
 
 [private]
 _copy-assets:

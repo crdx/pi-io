@@ -650,6 +650,10 @@ export class SessionManager {
 		return this.sessionFile;
 	}
 
+	usesDefaultSessionDir(): boolean {
+		return this.sessionDir === getDefaultSessionDir(this.cwd);
+	}
+
 	_persist(entry: SessionEntry): void {
 		if (!this.persist || !this.sessionFile) return;
 

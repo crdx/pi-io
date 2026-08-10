@@ -111,8 +111,6 @@ const ANTHROPIC_NO_THINKING_DISABLED_IDS = ["claude-fable-5"];
 // than the generated registry, since an entry here is by definition absent from the output.
 const ANTHROPIC_EXCLUDED_IDS = [
 	"claude-haiku-4-5-20251001",
-	"claude-opus-4-1",
-	"claude-opus-4-1-20250805",
 	"claude-opus-4-5",
 	"claude-opus-4-5-20251101",
 	"claude-sonnet-4-5",
@@ -260,78 +258,6 @@ async function generateModels() {
 		) {
 			candidate.contextWindow = 1000000;
 		}
-	}
-
-	// Add missing Claude Opus 4.6
-	if (!allModels.some(m => m.provider === "anthropic" && m.id === "claude-opus-4-6")) {
-		allModels.push({
-			id: "claude-opus-4-6",
-			name: "Claude Opus 4.6",
-			api: "anthropic-messages",
-			baseUrl: "https://api.anthropic.com",
-			provider: "anthropic",
-			reasoning: true,
-			input: ["text", "image"],
-			cost: {
-				input: 5,
-				output: 25,
-				cacheRead: 0.5,
-				cacheWrite: 6.25,
-			},
-			contextWindow: 1000000,
-			maxTokens: 128000,
-			thinkingLevelMap: { minimal: "low", low: "low", medium: "medium", high: "high", xhigh: "max" },
-			supportsTemperature: true,
-			supportsThinkingDisabled: true,
-		});
-	}
-
-	// Add missing Claude Opus 4.7
-	if (!allModels.some(m => m.provider === "anthropic" && m.id === "claude-opus-4-7")) {
-		allModels.push({
-			id: "claude-opus-4-7",
-			name: "Claude Opus 4.7",
-			api: "anthropic-messages",
-			baseUrl: "https://api.anthropic.com",
-			provider: "anthropic",
-			reasoning: true,
-			input: ["text", "image"],
-			cost: {
-				input: 5,
-				output: 25,
-				cacheRead: 0.5,
-				cacheWrite: 6.25,
-			},
-			contextWindow: 1000000,
-			maxTokens: 128000,
-			thinkingLevelMap: { minimal: "low", low: "low", medium: "medium", high: "high", xhigh: "xhigh" },
-			supportsTemperature: false,
-			supportsThinkingDisabled: true,
-		});
-	}
-
-	// Add missing Claude Sonnet 4.6
-	if (!allModels.some(m => m.provider === "anthropic" && m.id === "claude-sonnet-4-6")) {
-		allModels.push({
-			id: "claude-sonnet-4-6",
-			name: "Claude Sonnet 4.6",
-			api: "anthropic-messages",
-			baseUrl: "https://api.anthropic.com",
-			provider: "anthropic",
-			reasoning: true,
-			input: ["text", "image"],
-			cost: {
-				input: 3,
-				output: 15,
-				cacheRead: 0.3,
-				cacheWrite: 3.75,
-			},
-			contextWindow: 1000000,
-			maxTokens: 64000,
-			thinkingLevelMap: { minimal: "low", low: "low", medium: "medium", high: "high", xhigh: "max" },
-			supportsTemperature: true,
-			supportsThinkingDisabled: true,
-		});
 	}
 
 	allModels.push(...buildCodexModels(catalog));

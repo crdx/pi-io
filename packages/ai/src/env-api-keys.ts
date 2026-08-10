@@ -13,5 +13,9 @@ export function getEnvApiKey(provider: string): string | undefined {
 		return process.env.OPENAI_API_KEY;
 	}
 
+	if (provider === "opencode" || provider === "opencode-go") {
+		return process.env.OPENCODE_API_KEY;
+	}
+
 	return undefined;
 }

@@ -48,12 +48,14 @@ interface ModelsDevModel {
 	}[];
 }
 
-/** Only the anthropic and openai slices are consumed; every other provider was dropped from the fork. */
 interface ModelsDevApi {
 	anthropic?: {
 		models?: Record<string, ModelsDevModel>;
 	};
 	openai?: {
+		models?: Record<string, ModelsDevModel>;
+	};
+	"opencode-go"?: {
 		models?: Record<string, ModelsDevModel>;
 	};
 }
@@ -220,6 +222,94 @@ function buildCodexModels(catalog: ModelsDevApi): Model<"openai-codex-responses"
 	return models;
 }
 
+const OPENCODE_GO_BASE_URL_ANTHROPIC = "https://opencode.ai/zen/go";
+const OPENCODE_GO_BASE_URL_OPENAI = "https://opencode.ai/zen/go/v1";
+const OPENCODE_GO_OPENAI_COMPLETIONS_IDS = new Set(["minimax-m2.7", "qwen3.5-plus", "qwen3.6-plus"]);
+
+const OPENCODE_GO_KIMI_K26_THINKING_LEVEL_MAP: ThinkingLevelMap = {
+	minimal: null,
+	low: null,
+	medium: null,
+};
+
+const OPENCODE_GO_GLM52_THINKING_LEVEL_MAP: ThinkingLevelMap = {
+	minimal: null,
+	low: null,
+	medium: null,
+	high: "high",
+	xhigh: "max",
+};
+
+const DEEPSEEK_V4_THINKING_LEVEL_MAP: ThinkingLevelMap = {
+	minimal: null,
+	low: null,
+	medium: null,
+	high: "high",
+	xhigh: "max",
+};
+
+function buildOpenCodeGoModels(catalog: ModelsDevApi): Model<any>[] {
+	const models: Model<any>[] = [];
+
+	for (const [modelId, m] of Object.entries(catalog["opencode-go"]?.models ?? {})) {
+		if (m.tool_call !== true) continue;
+		if (modelId === "gpt-5.3-codex-spark") continue;
+
+		const npm = m.provider?.npm;
+		let api: Api;
+		let baseUrl: string;
+
+		if (OPENCODE_GO_OPENAI_COMPLETIONS_IDS.has(modelId)) {
+			api = "openai-completions";
+			baseUrl = OPENCODE_GO_BASE_URL_OPENAI;
+		} else if (npm === "@ai-sdk/anthropic") {
+			api = "anthropic-messages";
+			baseUrl = OPENCODE_GO_BASE_URL_ANTHROPIC;
+		} else {
+			api = "openai-completions";
+			baseUrl = OPENCODE_GO_BASE_URL_OPENAI;
+		}
+
+		let thinkingLevelMap = toThinkingLevelMap(m);
+		if (modelId === "kimi-k2.6") {
+			thinkingLevelMap = { ...thinkingLevelMap, ...OPENCODE_GO_KIMI_K26_THINKING_LEVEL_MAP };
+		}
+		if (modelId === "glm-5.2") {
+			thinkingLevelMap = { ...thinkingLevelMap, ...OPENCODE_GO_GLM52_THINKING_LEVEL_MAP };
+		}
+		if (modelId === "deepseek-v4-pro" || modelId === "deepseek-v4-flash") {
+			thinkingLevelMap = { ...thinkingLevelMap, ...DEEPSEEK_V4_THINKING_LEVEL_MAP };
+		}
+
+		models.push({
+			id: modelId,
+			name: m.name || modelId,
+			api,
+			provider: "opencode-go",
+			baseUrl,
+			reasoning: m.reasoning === true,
+			input: toModelInput(m),
+			cost: toModelCost(m.cost),
+			contextWindow: m.limit?.context || 4096,
+			maxTokens: m.limit?.output || 4096,
+			thinkingLevelMap,
+			supportsTemperature: m.temperature === true,
+			...(api === "openai-completions"
+				? {
+						compat: {
+							supportsDeveloperRole: false,
+							supportsReasoningEffort: false,
+							supportsStore: false,
+						},
+					}
+				: {}),
+		});
+	}
+
+	console.log(`Loaded ${models.length} tool-capable opencode-go models from models.dev`);
+	return models;
+}
+
 /** A models.dev response that parses but carries almost nothing would otherwise gut the registry. */
 const MINIMUM_ANTHROPIC_MODELS = 8;
 
@@ -247,28 +337,18 @@ function assertRegistryIsPlausible(providers: Record<string, Record<string, Mode
 async function generateModels() {
 	const catalog = await fetchModelsDevCatalog();
 	const allModels = buildAnthropicModels(catalog);
+	allModels.push(...buildCodexModels(catalog));
+	allModels.push(...buildOpenCodeGoModels(catalog));
 
-	// Temporary overrides until upstream model metadata is corrected.
 	for (const candidate of allModels) {
-		if (
-			candidate.id === "claude-opus-4-6" ||
-			candidate.id === "claude-sonnet-4-6" ||
-			candidate.id === "claude-opus-4.6" ||
-			candidate.id === "claude-sonnet-4.6"
-		) {
-			candidate.contextWindow = 1000000;
-		}
+		if (candidate.provider !== "opencode-go") continue;
 	}
 
-	allModels.push(...buildCodexModels(catalog));
-
-	// Group by provider and deduplicate by model ID
 	const providers: Record<string, Record<string, Model<any>>> = {};
 	for (const model of allModels) {
 		if (!providers[model.provider]) {
 			providers[model.provider] = {};
 		}
-		// Use model ID as key to automatically deduplicate; first occurrence wins
 		if (!providers[model.provider][model.id]) {
 			providers[model.provider][model.id] = model;
 		}

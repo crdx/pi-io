@@ -19,7 +19,7 @@ export type ModelThinkingLevel = "off" | ThinkingLevel;
  * fallbacks already resolved, so the runtime is a plain lookup. An absent `off` key means the
  * provider has no "no reasoning" effort value and thinking is disabled another way.
  */
-export type ThinkingLevelMap = Partial<Record<ModelThinkingLevel, string>>;
+export type ThinkingLevelMap = Partial<Record<ModelThinkingLevel, string | null>>;
 
 /** Token budgets for each thinking level (token-based providers only) */
 export interface ThinkingBudgets {

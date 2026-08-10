@@ -29,7 +29,7 @@ export function supportsThinkingDisabled(model: Model<Api>): boolean {
  */
 export function mapThinkingLevelToEffort(level: SimpleStreamOptions["reasoning"], model: Model<Api>): AnthropicEffort {
 	const effort = level ? model.thinkingLevelMap?.[level] : undefined;
-	if (effort !== undefined) return effort as AnthropicEffort;
+	if (effort != null) return effort as AnthropicEffort;
 
 	switch (level) {
 		case "minimal":

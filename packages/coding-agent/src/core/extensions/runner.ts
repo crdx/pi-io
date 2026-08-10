@@ -33,6 +33,7 @@ import type {
 	InputEvent,
 	InputEventResult,
 	InputSource,
+	MarkdownTransformer,
 	MessageRenderer,
 	ProviderConfig,
 	RegisteredCommand,
@@ -504,6 +505,10 @@ export class ExtensionRunner {
 
 	getCommand(name: string): ResolvedCommand | undefined {
 		return this.resolveRegisteredCommands().find((command) => command.invocationName === name);
+	}
+
+	getMarkdownTransformers(): MarkdownTransformer[] {
+		return this.extensions.flatMap((ext) => (ext.markdownTransformer ? [ext.markdownTransformer] : []));
 	}
 
 	/**

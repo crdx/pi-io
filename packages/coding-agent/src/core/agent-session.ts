@@ -1514,11 +1514,34 @@ export class AgentSession {
 
 	/**
 	 * Get available thinking levels for current model.
-	 * The provider will clamp to what the specific model supports internally.
+	 * Deduplicates levels that map to the same provider value (e.g. ds4 maps
+	 * minimal/low/medium/high all to "high", so only the first is kept).
 	 */
 	getAvailableThinkingLevels(): ThinkingLevel[] {
 		if (!this.supportsThinking()) return ["off"];
-		return this.supportsXhighThinking() ? THINKING_LEVELS_WITH_XHIGH : THINKING_LEVELS;
+
+		const allLevels = this.supportsXhighThinking() ? THINKING_LEVELS_WITH_XHIGH : THINKING_LEVELS;
+		const map = this.model?.thinkingLevelMap;
+		if (!map) return allLevels;
+
+		const seen = new Map<string, ThinkingLevel>();
+		for (const level of allLevels) {
+			// null and undefined both mean "unsupported" — collapse them.
+			const key = map[level] ?? "";
+			if (!seen.has(key)) {
+				seen.set(key, level);
+			} else if (level === this.thinkingLevel) {
+				// Current level always wins so it stays in the cycle list.
+				seen.set(key, level);
+			}
+		}
+		// Preserve original order among the kept representatives.
+		const deduped: ThinkingLevel[] = [];
+		const kept = new Set(seen.values());
+		for (const level of allLevels) {
+			if (kept.has(level)) deduped.push(level);
+		}
+		return deduped;
 	}
 
 	/**

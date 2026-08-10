@@ -48,12 +48,15 @@ interface ModelsDevModel {
 	}[];
 }
 
-/** Only the anthropic and openai slices are consumed; every other provider was dropped from the fork. */
+/** Only the anthropic, openai, and opencode-go slices are consumed; every other provider was dropped from the fork. */
 interface ModelsDevApi {
 	anthropic?: {
 		models?: Record<string, ModelsDevModel>;
 	};
 	openai?: {
+		models?: Record<string, ModelsDevModel>;
+	};
+	"opencode-go"?: {
 		models?: Record<string, ModelsDevModel>;
 	};
 }
@@ -111,8 +114,6 @@ const ANTHROPIC_NO_THINKING_DISABLED_IDS = ["claude-fable-5"];
 // than the generated registry, since an entry here is by definition absent from the output.
 const ANTHROPIC_EXCLUDED_IDS = [
 	"claude-haiku-4-5-20251001",
-	"claude-opus-4-1",
-	"claude-opus-4-1-20250805",
 	"claude-opus-4-5",
 	"claude-opus-4-5-20251101",
 	"claude-sonnet-4-5",
@@ -222,6 +223,92 @@ function buildCodexModels(catalog: ModelsDevApi): Model<"openai-codex-responses"
 	return models;
 }
 
+const OPENCODE_GO_BASE_URL_ANTHROPIC = "https://opencode.ai/zen/go";
+const OPENCODE_GO_BASE_URL_OPENAI = "https://opencode.ai/zen/go/v1";
+const OPENCODE_GO_OPENAI_COMPLETIONS_IDS = new Set(["minimax-m2.7", "qwen3.5-plus", "qwen3.6-plus"]);
+
+const OPENCODE_GO_KIMI_K26_THINKING_LEVEL_MAP: ThinkingLevelMap = {
+	minimal: null,
+	low: null,
+	medium: null,
+};
+
+const OPENCODE_GO_GLM52_THINKING_LEVEL_MAP: ThinkingLevelMap = {
+	minimal: null,
+	low: null,
+	medium: null,
+	high: "high",
+	xhigh: "max",
+};
+
+// DeepSeek V4 only exposes high/max reasoning effort; lower tiers are unsupported.
+const DEEPSEEK_V4_THINKING_LEVEL_MAP: ThinkingLevelMap = {
+	minimal: null,
+	low: null,
+	medium: null,
+	high: "high",
+	xhigh: "max",
+};
+
+function buildOpenCodeGoModels(catalog: ModelsDevApi): Model<any>[] {
+	const models: Model<any>[] = [];
+
+	for (const [modelId, m] of Object.entries(catalog["opencode-go"]?.models ?? {})) {
+		if (m.tool_call !== true) continue;
+		if (modelId === "gpt-5.3-codex-spark") continue;
+
+		const npm = m.provider?.npm;
+		let api: Api;
+		let baseUrl: string;
+
+		if (OPENCODE_GO_OPENAI_COMPLETIONS_IDS.has(modelId)) {
+			api = "openai-completions";
+			baseUrl = OPENCODE_GO_BASE_URL_OPENAI;
+		} else if (npm === "@ai-sdk/anthropic") {
+			api = "anthropic-messages";
+			baseUrl = OPENCODE_GO_BASE_URL_ANTHROPIC;
+		} else {
+			api = "openai-completions";
+			baseUrl = OPENCODE_GO_BASE_URL_OPENAI;
+		}
+
+		let thinkingLevelMap = toThinkingLevelMap(m);
+		if (modelId === "kimi-k2.6") {
+			thinkingLevelMap = { ...thinkingLevelMap, ...OPENCODE_GO_KIMI_K26_THINKING_LEVEL_MAP };
+		}
+		if (modelId === "glm-5.2") {
+			thinkingLevelMap = { ...thinkingLevelMap, ...OPENCODE_GO_GLM52_THINKING_LEVEL_MAP };
+		}
+
+		models.push({
+			id: modelId,
+			name: m.name || modelId,
+			api,
+			provider: "opencode-go",
+			baseUrl,
+			reasoning: m.reasoning === true,
+			input: toModelInput(m),
+			cost: toModelCost(m.cost),
+			contextWindow: m.limit?.context || 4096,
+			maxTokens: m.limit?.output || 4096,
+			thinkingLevelMap,
+			supportsTemperature: m.temperature === true,
+			...(api === "openai-completions"
+				? {
+						compat: {
+							supportsDeveloperRole: false,
+							supportsReasoningEffort: false,
+							supportsStore: false,
+						},
+					}
+				: {}),
+		});
+	}
+
+	console.log(`Loaded ${models.length} tool-capable opencode-go models from models.dev`);
+	return models;
+}
+
 /** A models.dev response that parses but carries almost nothing would otherwise gut the registry. */
 const MINIMUM_ANTHROPIC_MODELS = 8;
 
@@ -249,9 +336,25 @@ function assertRegistryIsPlausible(providers: Record<string, Record<string, Mode
 async function generateModels() {
 	const catalog = await fetchModelsDevCatalog();
 	const allModels = buildAnthropicModels(catalog);
+	allModels.push(...buildCodexModels(catalog));
+	allModels.push(...buildOpenCodeGoModels(catalog));
 
-	// Temporary overrides until upstream model metadata is corrected.
+	// Post-generation corrections for opencode-go context windows and limits.
 	for (const candidate of allModels) {
+		if (candidate.provider !== "opencode-go") continue;
+
+		// OpenCode Go lists Claude Sonnet 4/4.5 with inflated context; actual limit is 200K.
+		if (candidate.id === "claude-sonnet-4-5" || candidate.id === "claude-sonnet-4") {
+			candidate.contextWindow = 200000;
+		}
+
+		// GPT-5.4 context is capped at 272K on the Go endpoint.
+		if (candidate.id === "gpt-5.4") {
+			candidate.contextWindow = 272000;
+			candidate.maxTokens = 128000;
+		}
+
+		// Claude Opus 4.6 / Sonnet 4.6 context is 1M.
 		if (
 			candidate.id === "claude-opus-4-6" ||
 			candidate.id === "claude-sonnet-4-6" ||
@@ -260,89 +363,21 @@ async function generateModels() {
 		) {
 			candidate.contextWindow = 1000000;
 		}
+
+		// DeepSeek V4 only supports high/max reasoning effort on the Go endpoint.
+		if (candidate.id === "deepseek-v4-pro" || candidate.id === "deepseek-v4-flash") {
+			candidate.thinkingLevelMap = {
+				...candidate.thinkingLevelMap,
+				...DEEPSEEK_V4_THINKING_LEVEL_MAP,
+			};
+		}
 	}
 
-	// Add missing Claude Opus 4.6
-	if (!allModels.some(m => m.provider === "anthropic" && m.id === "claude-opus-4-6")) {
-		allModels.push({
-			id: "claude-opus-4-6",
-			name: "Claude Opus 4.6",
-			api: "anthropic-messages",
-			baseUrl: "https://api.anthropic.com",
-			provider: "anthropic",
-			reasoning: true,
-			input: ["text", "image"],
-			cost: {
-				input: 5,
-				output: 25,
-				cacheRead: 0.5,
-				cacheWrite: 6.25,
-			},
-			contextWindow: 1000000,
-			maxTokens: 128000,
-			thinkingLevelMap: { minimal: "low", low: "low", medium: "medium", high: "high", xhigh: "max" },
-			supportsTemperature: true,
-			supportsThinkingDisabled: true,
-		});
-	}
-
-	// Add missing Claude Opus 4.7
-	if (!allModels.some(m => m.provider === "anthropic" && m.id === "claude-opus-4-7")) {
-		allModels.push({
-			id: "claude-opus-4-7",
-			name: "Claude Opus 4.7",
-			api: "anthropic-messages",
-			baseUrl: "https://api.anthropic.com",
-			provider: "anthropic",
-			reasoning: true,
-			input: ["text", "image"],
-			cost: {
-				input: 5,
-				output: 25,
-				cacheRead: 0.5,
-				cacheWrite: 6.25,
-			},
-			contextWindow: 1000000,
-			maxTokens: 128000,
-			thinkingLevelMap: { minimal: "low", low: "low", medium: "medium", high: "high", xhigh: "xhigh" },
-			supportsTemperature: false,
-			supportsThinkingDisabled: true,
-		});
-	}
-
-	// Add missing Claude Sonnet 4.6
-	if (!allModels.some(m => m.provider === "anthropic" && m.id === "claude-sonnet-4-6")) {
-		allModels.push({
-			id: "claude-sonnet-4-6",
-			name: "Claude Sonnet 4.6",
-			api: "anthropic-messages",
-			baseUrl: "https://api.anthropic.com",
-			provider: "anthropic",
-			reasoning: true,
-			input: ["text", "image"],
-			cost: {
-				input: 3,
-				output: 15,
-				cacheRead: 0.3,
-				cacheWrite: 3.75,
-			},
-			contextWindow: 1000000,
-			maxTokens: 64000,
-			thinkingLevelMap: { minimal: "low", low: "low", medium: "medium", high: "high", xhigh: "max" },
-			supportsTemperature: true,
-			supportsThinkingDisabled: true,
-		});
-	}
-
-	allModels.push(...buildCodexModels(catalog));
-
-	// Group by provider and deduplicate by model ID
 	const providers: Record<string, Record<string, Model<any>>> = {};
 	for (const model of allModels) {
 		if (!providers[model.provider]) {
 			providers[model.provider] = {};
 		}
-		// Use model ID as key to automatically deduplicate; first occurrence wins
 		if (!providers[model.provider][model.id]) {
 			providers[model.provider][model.id] = model;
 		}

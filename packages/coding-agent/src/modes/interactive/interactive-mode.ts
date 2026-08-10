@@ -36,6 +36,7 @@ import {
 	TUI,
 	visibleWidth,
 } from "@mariozechner/pi-tui";
+import chalk from "chalk";
 import { spawn, spawnSync } from "child_process";
 import { APP_NAME, getAgentDir, getAuthPath, getDebugLogPath, VERSION } from "../../config.js";
 import {
@@ -52,6 +53,7 @@ import type {
 	ExtensionUIDialogOptions,
 	ExtensionWidgetOptions,
 } from "../../core/extensions/index.js";
+import type { MarkdownTransformer } from "../../core/extensions/types.js";
 import { FooterDataProvider, type ReadonlyFooterDataProvider } from "../../core/footer-data-provider.js";
 import { type AppKeybinding, KeybindingsManager } from "../../core/keybindings.js";
 import { findExactModelReferenceMatch, resolveModelScope } from "../../core/model-resolver.js";
@@ -87,6 +89,7 @@ import { ExtensionSelectorComponent } from "./components/extension-selector.js";
 import { FooterComponent } from "./components/footer.js";
 import { keyHint, keyText, rawKeyHint } from "./components/keybinding-hints.js";
 import { LoginDialogComponent } from "./components/login-dialog.js";
+import { createMermaidMarkdownTransformer } from "./components/mermaid.js";
 import { ModelSelectorComponent } from "./components/model-selector.js";
 import { OAuthSelectorComponent } from "./components/oauth-selector.js";
 import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.js";
@@ -136,6 +139,27 @@ export interface InteractiveModeOptions {
 	initialMessages?: string[];
 	/** Force verbose startup (overrides quietStartup setting) */
 	verbose?: boolean;
+}
+
+function quoteIfNeeded(value: string): string {
+	return value.includes(" ") ? `"${value}"` : value;
+}
+
+export function formatResumeCommand(
+	sessionManager: import("../../core/session-manager.js").SessionManager,
+): string | undefined {
+	if (!process.stdout.isTTY) return undefined;
+	if (!sessionManager.isPersisted()) return undefined;
+
+	const sessionFile = sessionManager.getSessionFile();
+	if (!sessionFile || !fs.existsSync(sessionFile)) return undefined;
+
+	const args = [APP_NAME];
+	if (!sessionManager.usesDefaultSessionDir()) {
+		args.push("--session-dir", quoteIfNeeded(sessionManager.getSessionDir()));
+	}
+	args.push("--session", sessionManager.getSessionId());
+	return args.join(" ");
 }
 
 export class InteractiveMode {
@@ -227,6 +251,11 @@ export class InteractiveMode {
 
 	// Custom header from extension (undefined = use built-in header)
 	private customHeader: (Component & { dispose?(): void }) | undefined = undefined;
+
+	private readonly mermaidMarkdownTransformer: MarkdownTransformer = createMermaidMarkdownTransformer({
+		getMode: () => this.settingsManager.getMermaidRenderingMode(),
+		theme,
+	});
 
 	// Convenience accessors
 	private get agent() {
@@ -1144,6 +1173,10 @@ export class InteractiveMode {
 	 */
 	private getRegisteredToolDefinition(toolName: string) {
 		return this.session.getToolDefinition(toolName);
+	}
+
+	private getMarkdownTransformers(): MarkdownTransformer[] {
+		return [this.mermaidMarkdownTransformer, ...(this.session.extensionRunner?.getMarkdownTransformers() ?? [])];
 	}
 
 	/**
@@ -2149,10 +2182,11 @@ export class InteractiveMode {
 						undefined,
 						this.hideThinkingBlock,
 						this.getMarkdownThemeWithSettings(),
+						this.getMarkdownTransformers(),
 					);
 					this.streamingMessage = event.message;
 					this.chatContainer.addChild(this.streamingComponent);
-					this.streamingComponent.updateContent(this.streamingMessage);
+					this.streamingComponent.updateContent(this.streamingMessage, true);
 					this.ui.requestRender();
 				}
 				break;
@@ -2437,6 +2471,7 @@ export class InteractiveMode {
 					message,
 					this.hideThinkingBlock,
 					this.getMarkdownThemeWithSettings(),
+					this.getMarkdownTransformers(),
 				);
 				this.chatContainer.addChild(assistantComponent);
 				break;
@@ -2590,6 +2625,12 @@ export class InteractiveMode {
 		await this.ui.terminal.drainInput(1000);
 
 		this.stop();
+
+		const resumeCommand = formatResumeCommand(this.session.sessionManager);
+		if (resumeCommand) {
+			process.stdout.write(`${chalk.dim("To resume this session:")}\n${resumeCommand}\n`);
+		}
+
 		process.exit(0);
 	}
 
@@ -2925,6 +2966,7 @@ export class InteractiveMode {
 					currentTheme: this.settingsManager.getTheme() || "dark",
 					availableThemes: getAvailableThemes(),
 					hideThinkingBlock: this.hideThinkingBlock,
+					mermaidRenderingMode: this.settingsManager.getMermaidRenderingMode(),
 					doubleEscapeAction: this.settingsManager.getDoubleEscapeAction(),
 					treeFilterMode: this.settingsManager.getTreeFilterMode(),
 					quietStartup: this.settingsManager.getQuietStartup(),
@@ -2980,6 +3022,9 @@ export class InteractiveMode {
 						}
 						this.chatContainer.clear();
 						this.rebuildChatFromMessages();
+					},
+					onMermaidRenderingModeChange: (mode) => {
+						this.settingsManager.setMermaidRenderingMode(mode);
 					},
 					onQuietStartupChange: (enabled) => {
 						this.settingsManager.setQuietStartup(enabled);

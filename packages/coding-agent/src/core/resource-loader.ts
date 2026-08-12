@@ -348,7 +348,7 @@ export class DefaultResourceLoader implements ResourceLoader {
 		const enabledThemes = getEnabledPaths(resolvedPaths.themes);
 
 		const mapSkillPath = (resource: { path: string; metadata: PathMetadata }): string => {
-			if (resource.metadata.source !== "auto" && resource.metadata.origin !== "package") {
+			if (resource.metadata.source !== "auto") {
 				return resource.path;
 			}
 			try {
@@ -374,12 +374,12 @@ export class DefaultResourceLoader implements ResourceLoader {
 		// Add CLI paths metadata
 		for (const r of cliExtensionPaths.extensions) {
 			if (!metadataByPath.has(r.path)) {
-				metadataByPath.set(r.path, { source: "cli", scope: "temporary", origin: "top-level" });
+				metadataByPath.set(r.path, { source: "cli", scope: "temporary" });
 			}
 		}
 		for (const r of cliExtensionPaths.skills) {
 			if (!metadataByPath.has(r.path)) {
-				metadataByPath.set(r.path, { source: "cli", scope: "temporary", origin: "top-level" });
+				metadataByPath.set(r.path, { source: "cli", scope: "temporary" });
 			}
 		}
 
@@ -596,7 +596,6 @@ export class DefaultResourceLoader implements ResourceLoader {
 				path: filePath,
 				source: filePath.slice(1, -1).split(":")[0] || "temporary",
 				scope: "temporary",
-				origin: "top-level",
 			};
 		}
 
@@ -616,13 +615,13 @@ export class DefaultResourceLoader implements ResourceLoader {
 
 		for (const root of agentRoots) {
 			if (this.isUnderPath(normalizedPath, root)) {
-				return { path: filePath, source: "local", scope: "user", origin: "top-level", baseDir: root };
+				return { path: filePath, source: "local", scope: "user", baseDir: root };
 			}
 		}
 
 		for (const root of projectRoots) {
 			if (this.isUnderPath(normalizedPath, root)) {
-				return { path: filePath, source: "local", scope: "project", origin: "top-level", baseDir: root };
+				return { path: filePath, source: "local", scope: "project", baseDir: root };
 			}
 		}
 
@@ -630,7 +629,6 @@ export class DefaultResourceLoader implements ResourceLoader {
 			path: filePath,
 			source: "local",
 			scope: "temporary",
-			origin: "top-level",
 			baseDir: statSync(normalizedPath).isDirectory() ? normalizedPath : resolve(normalizedPath, ".."),
 		};
 	}

@@ -76,13 +76,11 @@ describe("AgentSession dynamic tool registration", () => {
 			path: "<inline:1>",
 			source: "inline",
 			scope: "temporary",
-			origin: "top-level",
 		});
 		expect(readTool?.sourceInfo).toMatchObject({
 			path: "<builtin:read>",
 			source: "builtin",
 			scope: "temporary",
-			origin: "top-level",
 		});
 		expect(session.getActiveToolNames()).toContain("dynamic_tool");
 		expect(session.systemPrompt).toContain("- dynamic_tool: Run dynamic test behavior");
@@ -127,7 +125,6 @@ describe("AgentSession dynamic tool registration", () => {
 			path: "<sdk:sdk_tool>",
 			source: "sdk",
 			scope: "temporary",
-			origin: "top-level",
 		});
 		expect(session.getActiveToolNames()).toContain("sdk_tool");
 

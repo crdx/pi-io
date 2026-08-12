@@ -1,28 +1,14 @@
-import { spawn, spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import ignore from "ignore";
 import { minimatch } from "minimatch";
 import { CONFIG_DIR_NAME } from "../config.js";
-import { type GitSource, parseGitUrl } from "../utils/git.js";
-import { isStdoutTakenOver } from "./output-guard.js";
-import type { PackageSource, SettingsManager } from "./settings-manager.js";
-
-const NETWORK_TIMEOUT_MS = 10000;
-const UPDATE_CHECK_CONCURRENCY = 4;
-
-function isOfflineModeEnabled(): boolean {
-	const value = process.env.PI_OFFLINE;
-	if (!value) return false;
-	return value === "1" || value.toLowerCase() === "true" || value.toLowerCase() === "yes";
-}
+import type { SettingsManager } from "./settings-manager.js";
 
 export interface PathMetadata {
 	source: string;
 	scope: SourceScope;
-	origin: "package" | "top-level";
 	baseDir?: string;
 }
 
@@ -39,37 +25,12 @@ export interface ResolvedPaths {
 	themes: ResolvedResource[];
 }
 
-export type MissingSourceAction = "install" | "skip" | "error";
-
-export interface ProgressEvent {
-	type: "start" | "progress" | "complete" | "error";
-	action: "install" | "remove" | "update" | "clone" | "pull";
-	source: string;
-	message?: string;
-}
-
-export type ProgressCallback = (event: ProgressEvent) => void;
-
-export interface PackageUpdate {
-	source: string;
-	displayName: string;
-	type: "npm" | "git";
-	scope: Exclude<SourceScope, "temporary">;
-}
-
 export interface PackageManager {
-	resolve(onMissing?: (source: string) => Promise<MissingSourceAction>): Promise<ResolvedPaths>;
-	install(source: string, options?: { local?: boolean }): Promise<void>;
-	remove(source: string, options?: { local?: boolean }): Promise<void>;
-	update(source?: string): Promise<void>;
+	resolve(): Promise<ResolvedPaths>;
 	resolveExtensionSources(
 		sources: string[],
 		options?: { local?: boolean; temporary?: boolean },
 	): Promise<ResolvedPaths>;
-	addSourceToSettings(source: string, options?: { local?: boolean }): boolean;
-	removeSourceFromSettings(source: string, options?: { local?: boolean }): boolean;
-	setProgressCallback(callback: ProgressCallback | undefined): void;
-	getInstalledPath(source: string, scope: "user" | "project"): string | undefined;
 }
 
 interface PackageManagerOptions {
@@ -79,20 +40,6 @@ interface PackageManagerOptions {
 }
 
 type SourceScope = "user" | "project" | "temporary";
-
-type NpmSource = {
-	type: "npm";
-	spec: string;
-	name: string;
-	pinned: boolean;
-};
-
-type LocalSource = {
-	type: "local";
-	path: string;
-};
-
-type ParsedSource = NpmSource | GitSource | LocalSource;
 
 interface PiManifest {
 	extensions?: string[];
@@ -106,13 +53,6 @@ interface ResourceAccumulator {
 	skills: Map<string, { metadata: PathMetadata; enabled: boolean }>;
 	prompts: Map<string, { metadata: PathMetadata; enabled: boolean }>;
 	themes: Map<string, { metadata: PathMetadata; enabled: boolean }>;
-}
-
-interface PackageFilter {
-	extensions?: string[];
-	skills?: string[];
-	prompts?: string[];
-	themes?: string[];
 }
 
 type ResourceType = "extensions" | "skills" | "prompts" | "themes";
@@ -665,9 +605,6 @@ export class DefaultPackageManager implements PackageManager {
 	private cwd: string;
 	private agentDir: string;
 	private settingsManager: SettingsManager;
-	private globalNpmRoot: string | undefined;
-	private globalNpmRootCommandKey: string | undefined;
-	private progressCallback: ProgressCallback | undefined;
 
 	constructor(options: PackageManagerOptions) {
 		this.cwd = options.cwd;
@@ -675,103 +612,10 @@ export class DefaultPackageManager implements PackageManager {
 		this.settingsManager = options.settingsManager;
 	}
 
-	setProgressCallback(callback: ProgressCallback | undefined): void {
-		this.progressCallback = callback;
-	}
-
-	addSourceToSettings(source: string, options?: { local?: boolean }): boolean {
-		const scope: SourceScope = options?.local ? "project" : "user";
-		const currentSettings =
-			scope === "project" ? this.settingsManager.getProjectSettings() : this.settingsManager.getGlobalSettings();
-		const currentPackages = currentSettings.packages ?? [];
-		const normalizedSource = this.normalizePackageSourceForSettings(source, scope);
-		const exists = currentPackages.some((existing) => this.packageSourcesMatch(existing, source, scope));
-		if (exists) {
-			return false;
-		}
-		const nextPackages = [...currentPackages, normalizedSource];
-		if (scope === "project") {
-			this.settingsManager.setProjectPackages(nextPackages);
-		} else {
-			this.settingsManager.setPackages(nextPackages);
-		}
-		return true;
-	}
-
-	removeSourceFromSettings(source: string, options?: { local?: boolean }): boolean {
-		const scope: SourceScope = options?.local ? "project" : "user";
-		const currentSettings =
-			scope === "project" ? this.settingsManager.getProjectSettings() : this.settingsManager.getGlobalSettings();
-		const currentPackages = currentSettings.packages ?? [];
-		const nextPackages = currentPackages.filter((existing) => !this.packageSourcesMatch(existing, source, scope));
-		const changed = nextPackages.length !== currentPackages.length;
-		if (!changed) {
-			return false;
-		}
-		if (scope === "project") {
-			this.settingsManager.setProjectPackages(nextPackages);
-		} else {
-			this.settingsManager.setPackages(nextPackages);
-		}
-		return true;
-	}
-
-	getInstalledPath(source: string, scope: "user" | "project"): string | undefined {
-		const parsed = this.parseSource(source);
-		if (parsed.type === "npm") {
-			const path = this.getNpmInstallPath(parsed, scope);
-			return existsSync(path) ? path : undefined;
-		}
-		if (parsed.type === "git") {
-			const path = this.getGitInstallPath(parsed, scope);
-			return existsSync(path) ? path : undefined;
-		}
-		if (parsed.type === "local") {
-			const baseDir = this.getBaseDirForScope(scope);
-			const path = this.resolvePathFromBase(parsed.path, baseDir);
-			return existsSync(path) ? path : undefined;
-		}
-		return undefined;
-	}
-
-	private emitProgress(event: ProgressEvent): void {
-		this.progressCallback?.(event);
-	}
-
-	private async withProgress(
-		action: ProgressEvent["action"],
-		source: string,
-		message: string,
-		operation: () => Promise<void>,
-	): Promise<void> {
-		this.emitProgress({ type: "start", action, source, message });
-		try {
-			await operation();
-			this.emitProgress({ type: "complete", action, source });
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			this.emitProgress({ type: "error", action, source, message: errorMessage });
-			throw error;
-		}
-	}
-
-	async resolve(onMissing?: (source: string) => Promise<MissingSourceAction>): Promise<ResolvedPaths> {
+	async resolve(): Promise<ResolvedPaths> {
 		const accumulator = this.createAccumulator();
 		const globalSettings = this.settingsManager.getGlobalSettings();
 		const projectSettings = this.settingsManager.getProjectSettings();
-
-		// Collect all packages with scope (project first so cwd resources win collisions)
-		const allPackages: Array<{ pkg: PackageSource; scope: SourceScope }> = [];
-		for (const pkg of projectSettings.packages ?? []) {
-			allPackages.push({ pkg, scope: "project" });
-		}
-		for (const pkg of globalSettings.packages ?? []) {
-			allPackages.push({ pkg, scope: "user" });
-		}
-
-		// Dedupe: project scope wins over global for same package identity
-		const packageSources = this.dedupePackages(allPackages);
-		await this.resolvePackageSources(packageSources, accumulator, onMissing);
 
 		const globalBaseDir = this.agentDir;
 		const projectBaseDir = join(this.cwd, CONFIG_DIR_NAME);
@@ -784,22 +628,14 @@ export class DefaultPackageManager implements PackageManager {
 				projectEntries,
 				resourceType,
 				target,
-				{
-					source: "local",
-					scope: "project",
-					origin: "top-level",
-				},
+				{ source: "local", scope: "project" },
 				projectBaseDir,
 			);
 			this.resolveLocalEntries(
 				globalEntries,
 				resourceType,
 				target,
-				{
-					source: "local",
-					scope: "user",
-					origin: "top-level",
-				},
+				{ source: "local", scope: "user" },
 				globalBaseDir,
 			);
 		}
@@ -815,243 +651,20 @@ export class DefaultPackageManager implements PackageManager {
 	): Promise<ResolvedPaths> {
 		const accumulator = this.createAccumulator();
 		const scope: SourceScope = options?.temporary ? "temporary" : options?.local ? "project" : "user";
-		const packageSources = sources.map((source) => ({ pkg: source as PackageSource, scope }));
-		await this.resolvePackageSources(packageSources, accumulator);
+		const baseDir = this.getBaseDirForScope(scope);
+		for (const source of sources) {
+			this.resolveLocalExtensionSource(source, accumulator, { source, scope }, baseDir);
+		}
 		return this.toResolvedPaths(accumulator);
 	}
 
-	async install(source: string, options?: { local?: boolean }): Promise<void> {
-		const parsed = this.parseSource(source);
-		const scope: SourceScope = options?.local ? "project" : "user";
-		await this.withProgress("install", source, `Installing ${source}...`, async () => {
-			if (parsed.type === "npm") {
-				await this.installNpm(parsed, scope, false);
-				return;
-			}
-			if (parsed.type === "git") {
-				await this.installGit(parsed, scope);
-				return;
-			}
-			if (parsed.type === "local") {
-				const resolved = this.resolvePath(parsed.path);
-				if (!existsSync(resolved)) {
-					throw new Error(`Path does not exist: ${resolved}`);
-				}
-				return;
-			}
-			throw new Error(`Unsupported install source: ${source}`);
-		});
-	}
-
-	async remove(source: string, options?: { local?: boolean }): Promise<void> {
-		const parsed = this.parseSource(source);
-		const scope: SourceScope = options?.local ? "project" : "user";
-		await this.withProgress("remove", source, `Removing ${source}...`, async () => {
-			if (parsed.type === "npm") {
-				await this.uninstallNpm(parsed, scope);
-				return;
-			}
-			if (parsed.type === "git") {
-				await this.removeGit(parsed, scope);
-				return;
-			}
-			if (parsed.type === "local") {
-				return;
-			}
-			throw new Error(`Unsupported remove source: ${source}`);
-		});
-	}
-
-	async update(source?: string): Promise<void> {
-		const globalSettings = this.settingsManager.getGlobalSettings();
-		const projectSettings = this.settingsManager.getProjectSettings();
-		const identity = source ? this.getPackageIdentity(source) : undefined;
-		let matched = false;
-
-		for (const pkg of globalSettings.packages ?? []) {
-			const sourceStr = typeof pkg === "string" ? pkg : pkg.source;
-			if (identity && this.getPackageIdentity(sourceStr, "user") !== identity) continue;
-			matched = true;
-			await this.updateSourceForScope(sourceStr, "user");
-		}
-		for (const pkg of projectSettings.packages ?? []) {
-			const sourceStr = typeof pkg === "string" ? pkg : pkg.source;
-			if (identity && this.getPackageIdentity(sourceStr, "project") !== identity) continue;
-			matched = true;
-			await this.updateSourceForScope(sourceStr, "project");
-		}
-
-		if (source && !matched) {
-			throw new Error(
-				this.buildNoMatchingPackageMessage(source, [
-					...(globalSettings.packages ?? []),
-					...(projectSettings.packages ?? []),
-				]),
-			);
-		}
-	}
-
-	private async updateSourceForScope(source: string, scope: SourceScope): Promise<void> {
-		if (isOfflineModeEnabled()) {
-			return;
-		}
-		const parsed = this.parseSource(source);
-		if (parsed.type === "npm") {
-			if (parsed.pinned) return;
-			await this.withProgress("update", source, `Updating ${source}...`, async () => {
-				await this.installNpm(
-					{
-						...parsed,
-						spec: `${parsed.name}@latest`,
-					},
-					scope,
-					false,
-				);
-			});
-			return;
-		}
-		if (parsed.type === "git") {
-			if (parsed.pinned) return;
-			await this.withProgress("update", source, `Updating ${source}...`, async () => {
-				await this.updateGit(parsed, scope);
-			});
-			return;
-		}
-	}
-
-	async checkForAvailableUpdates(): Promise<PackageUpdate[]> {
-		if (isOfflineModeEnabled()) {
-			return [];
-		}
-
-		const globalSettings = this.settingsManager.getGlobalSettings();
-		const projectSettings = this.settingsManager.getProjectSettings();
-		const allPackages: Array<{ pkg: PackageSource; scope: SourceScope }> = [];
-		for (const pkg of projectSettings.packages ?? []) {
-			allPackages.push({ pkg, scope: "project" });
-		}
-		for (const pkg of globalSettings.packages ?? []) {
-			allPackages.push({ pkg, scope: "user" });
-		}
-
-		const packageSources = this.dedupePackages(allPackages);
-		const checks = packageSources
-			.filter(
-				(entry): entry is { pkg: PackageSource; scope: Exclude<SourceScope, "temporary"> } =>
-					entry.scope !== "temporary",
-			)
-			.map((entry) => async (): Promise<PackageUpdate | undefined> => {
-				const source = typeof entry.pkg === "string" ? entry.pkg : entry.pkg.source;
-				const parsed = this.parseSource(source);
-				if (parsed.type === "local" || parsed.pinned) {
-					return undefined;
-				}
-
-				if (parsed.type === "npm") {
-					const installedPath = this.getNpmInstallPath(parsed, entry.scope);
-					if (!existsSync(installedPath)) {
-						return undefined;
-					}
-					const hasUpdate = await this.npmHasAvailableUpdate(parsed, installedPath);
-					if (!hasUpdate) {
-						return undefined;
-					}
-					return {
-						source,
-						displayName: parsed.name,
-						type: "npm",
-						scope: entry.scope,
-					};
-				}
-
-				const installedPath = this.getGitInstallPath(parsed, entry.scope);
-				if (!existsSync(installedPath)) {
-					return undefined;
-				}
-				const hasUpdate = await this.gitHasAvailableUpdate(installedPath);
-				if (!hasUpdate) {
-					return undefined;
-				}
-				return {
-					source,
-					displayName: `${parsed.host}/${parsed.path}`,
-					type: "git",
-					scope: entry.scope,
-				};
-			});
-
-		const results = await this.runWithConcurrency(checks, UPDATE_CHECK_CONCURRENCY);
-		return results.filter((result): result is PackageUpdate => result !== undefined);
-	}
-
-	private async resolvePackageSources(
-		sources: Array<{ pkg: PackageSource; scope: SourceScope }>,
-		accumulator: ResourceAccumulator,
-		onMissing?: (source: string) => Promise<MissingSourceAction>,
-	): Promise<void> {
-		for (const { pkg, scope } of sources) {
-			const sourceStr = typeof pkg === "string" ? pkg : pkg.source;
-			const filter = typeof pkg === "object" ? pkg : undefined;
-			const parsed = this.parseSource(sourceStr);
-			const metadata: PathMetadata = { source: sourceStr, scope, origin: "package" };
-
-			if (parsed.type === "local") {
-				const baseDir = this.getBaseDirForScope(scope);
-				this.resolveLocalExtensionSource(parsed, accumulator, filter, metadata, baseDir);
-				continue;
-			}
-
-			const installMissing = async (): Promise<boolean> => {
-				if (isOfflineModeEnabled()) {
-					return false;
-				}
-				if (!onMissing) {
-					await this.installParsedSource(parsed, scope);
-					return true;
-				}
-				const action = await onMissing(sourceStr);
-				if (action === "skip") return false;
-				if (action === "error") throw new Error(`Missing source: ${sourceStr}`);
-				await this.installParsedSource(parsed, scope);
-				return true;
-			};
-
-			if (parsed.type === "npm") {
-				const installedPath = this.getNpmInstallPath(parsed, scope);
-				const needsInstall =
-					!existsSync(installedPath) ||
-					(parsed.pinned && !(await this.installedNpmMatchesPinnedVersion(parsed, installedPath)));
-				if (needsInstall) {
-					const installed = await installMissing();
-					if (!installed) continue;
-				}
-				metadata.baseDir = installedPath;
-				this.collectPackageResources(installedPath, accumulator, filter, metadata);
-				continue;
-			}
-
-			if (parsed.type === "git") {
-				const installedPath = this.getGitInstallPath(parsed, scope);
-				if (!existsSync(installedPath)) {
-					const installed = await installMissing();
-					if (!installed) continue;
-				} else if (scope === "temporary" && !parsed.pinned && !isOfflineModeEnabled()) {
-					await this.refreshTemporaryGitSource(parsed, sourceStr);
-				}
-				metadata.baseDir = installedPath;
-				this.collectPackageResources(installedPath, accumulator, filter, metadata);
-			}
-		}
-	}
-
 	private resolveLocalExtensionSource(
-		source: LocalSource,
+		source: string,
 		accumulator: ResourceAccumulator,
-		filter: PackageFilter | undefined,
 		metadata: PathMetadata,
 		baseDir: string,
 	): void {
-		const resolved = this.resolvePathFromBase(source.path, baseDir);
+		const resolved = this.resolvePathFromBase(source, baseDir);
 		if (!existsSync(resolved)) {
 			return;
 		}
@@ -1065,7 +678,7 @@ export class DefaultPackageManager implements PackageManager {
 			}
 			if (stats.isDirectory()) {
 				metadata.baseDir = resolved;
-				const resources = this.collectPackageResources(resolved, accumulator, filter, metadata);
+				const resources = this.collectPackageResources(resolved, accumulator, metadata);
 				if (!resources) {
 					this.addResource(accumulator.extensions, resolved, metadata, true);
 				}
@@ -1073,556 +686,6 @@ export class DefaultPackageManager implements PackageManager {
 		} catch {
 			return;
 		}
-	}
-
-	private async installParsedSource(parsed: ParsedSource, scope: SourceScope): Promise<void> {
-		if (parsed.type === "npm") {
-			await this.installNpm(parsed, scope, scope === "temporary");
-			return;
-		}
-		if (parsed.type === "git") {
-			await this.installGit(parsed, scope);
-			return;
-		}
-	}
-
-	private getPackageSourceString(pkg: PackageSource): string {
-		return typeof pkg === "string" ? pkg : pkg.source;
-	}
-
-	private getSourceMatchKeyForInput(source: string): string {
-		const parsed = this.parseSource(source);
-		if (parsed.type === "npm") {
-			return `npm:${parsed.name}`;
-		}
-		if (parsed.type === "git") {
-			return `git:${parsed.host}/${parsed.path}`;
-		}
-		return `local:${this.resolvePath(parsed.path)}`;
-	}
-
-	private getSourceMatchKeyForSettings(source: string, scope: SourceScope): string {
-		const parsed = this.parseSource(source);
-		if (parsed.type === "npm") {
-			return `npm:${parsed.name}`;
-		}
-		if (parsed.type === "git") {
-			return `git:${parsed.host}/${parsed.path}`;
-		}
-		const baseDir = this.getBaseDirForScope(scope);
-		return `local:${this.resolvePathFromBase(parsed.path, baseDir)}`;
-	}
-
-	private buildNoMatchingPackageMessage(source: string, configuredPackages: PackageSource[]): string {
-		const suggestion = this.findSuggestedConfiguredSource(source, configuredPackages);
-		if (!suggestion) {
-			return `No matching package found for ${source}`;
-		}
-		return `No matching package found for ${source}. Did you mean ${suggestion}?`;
-	}
-
-	private findSuggestedConfiguredSource(source: string, configuredPackages: PackageSource[]): string | undefined {
-		const trimmedSource = source.trim();
-		const suggestions = new Set<string>();
-
-		for (const pkg of configuredPackages) {
-			const sourceStr = this.getPackageSourceString(pkg);
-			const parsed = this.parseSource(sourceStr);
-			if (parsed.type === "npm") {
-				if (trimmedSource === parsed.name || trimmedSource === parsed.spec) {
-					suggestions.add(sourceStr);
-				}
-				continue;
-			}
-			if (parsed.type === "git") {
-				const shorthand = `${parsed.host}/${parsed.path}`;
-				const shorthandWithRef = parsed.ref ? `${shorthand}@${parsed.ref}` : undefined;
-				if (trimmedSource === shorthand || (shorthandWithRef && trimmedSource === shorthandWithRef)) {
-					suggestions.add(sourceStr);
-				}
-			}
-		}
-
-		return suggestions.values().next().value;
-	}
-
-	private packageSourcesMatch(existing: PackageSource, inputSource: string, scope: SourceScope): boolean {
-		const left = this.getSourceMatchKeyForSettings(this.getPackageSourceString(existing), scope);
-		const right = this.getSourceMatchKeyForInput(inputSource);
-		return left === right;
-	}
-
-	private normalizePackageSourceForSettings(source: string, scope: SourceScope): string {
-		const parsed = this.parseSource(source);
-		if (parsed.type !== "local") {
-			return source;
-		}
-		const baseDir = this.getBaseDirForScope(scope);
-		const resolved = this.resolvePath(parsed.path);
-		const rel = relative(baseDir, resolved);
-		return rel || ".";
-	}
-
-	private parseSource(source: string): ParsedSource {
-		if (source.startsWith("npm:")) {
-			const spec = source.slice("npm:".length).trim();
-			const { name, version } = this.parseNpmSpec(spec);
-			return {
-				type: "npm",
-				spec,
-				name,
-				pinned: Boolean(version),
-			};
-		}
-
-		const trimmed = source.trim();
-		const isLocalPathLike =
-			trimmed.startsWith(".") || trimmed.startsWith("/") || trimmed === "~" || trimmed.startsWith("~/");
-		if (isLocalPathLike) {
-			return { type: "local", path: source };
-		}
-
-		// Try parsing as git URL
-		const gitParsed = parseGitUrl(source);
-		if (gitParsed) {
-			return gitParsed;
-		}
-
-		return { type: "local", path: source };
-	}
-
-	private async installedNpmMatchesPinnedVersion(source: NpmSource, installedPath: string): Promise<boolean> {
-		const installedVersion = this.getInstalledNpmVersion(installedPath);
-		if (!installedVersion) {
-			return false;
-		}
-
-		const { version: pinnedVersion } = this.parseNpmSpec(source.spec);
-		if (!pinnedVersion) {
-			return true;
-		}
-
-		return installedVersion === pinnedVersion;
-	}
-
-	private async npmHasAvailableUpdate(source: NpmSource, installedPath: string): Promise<boolean> {
-		if (isOfflineModeEnabled()) {
-			return false;
-		}
-
-		const installedVersion = this.getInstalledNpmVersion(installedPath);
-		if (!installedVersion) {
-			return false;
-		}
-
-		try {
-			const latestVersion = await this.getLatestNpmVersion(source.name);
-			return latestVersion !== installedVersion;
-		} catch {
-			return false;
-		}
-	}
-
-	private getInstalledNpmVersion(installedPath: string): string | undefined {
-		const packageJsonPath = join(installedPath, "package.json");
-		if (!existsSync(packageJsonPath)) return undefined;
-		try {
-			const content = readFileSync(packageJsonPath, "utf-8");
-			const pkg = JSON.parse(content) as { version?: string };
-			return pkg.version;
-		} catch {
-			return undefined;
-		}
-	}
-
-	private async getLatestNpmVersion(packageName: string): Promise<string> {
-		const response = await fetch(`https://registry.npmjs.org/${packageName}/latest`, {
-			signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
-		});
-		if (!response.ok) throw new Error(`Failed to fetch npm registry: ${response.status}`);
-		const data = (await response.json()) as { version: string };
-		return data.version;
-	}
-
-	private async gitHasAvailableUpdate(installedPath: string): Promise<boolean> {
-		if (isOfflineModeEnabled()) {
-			return false;
-		}
-
-		try {
-			const localHead = await this.runCommandCapture("git", ["rev-parse", "HEAD"], {
-				cwd: installedPath,
-				timeoutMs: NETWORK_TIMEOUT_MS,
-			});
-			const remoteHead = await this.getRemoteGitHead(installedPath);
-			return localHead.trim() !== remoteHead.trim();
-		} catch {
-			return false;
-		}
-	}
-
-	private async getRemoteGitHead(installedPath: string): Promise<string> {
-		const upstreamRef = await this.getGitUpstreamRef(installedPath);
-		if (upstreamRef) {
-			const remoteHead = await this.runGitRemoteCommand(installedPath, ["ls-remote", "origin", upstreamRef]);
-			const match = remoteHead.match(/^([0-9a-f]{40})\s+/m);
-			if (match?.[1]) {
-				return match[1];
-			}
-		}
-
-		const remoteHead = await this.runGitRemoteCommand(installedPath, ["ls-remote", "origin", "HEAD"]);
-		const match = remoteHead.match(/^([0-9a-f]{40})\s+HEAD$/m);
-		if (!match?.[1]) {
-			throw new Error("Failed to determine remote HEAD");
-		}
-		return match[1];
-	}
-
-	private async getLocalGitUpdateTarget(installedPath: string): Promise<{ ref: string; head: string }> {
-		try {
-			const head = await this.runCommandCapture("git", ["rev-parse", "@{upstream}"], {
-				cwd: installedPath,
-				timeoutMs: NETWORK_TIMEOUT_MS,
-			});
-			return { ref: "@{upstream}", head };
-		} catch {
-			await this.runCommand("git", ["remote", "set-head", "origin", "-a"], { cwd: installedPath }).catch(() => {});
-			const head = await this.runCommandCapture("git", ["rev-parse", "origin/HEAD"], {
-				cwd: installedPath,
-				timeoutMs: NETWORK_TIMEOUT_MS,
-			});
-			return { ref: "origin/HEAD", head };
-		}
-	}
-
-	private async getGitUpstreamRef(installedPath: string): Promise<string | undefined> {
-		try {
-			const upstream = await this.runCommandCapture("git", ["rev-parse", "--abbrev-ref", "@{upstream}"], {
-				cwd: installedPath,
-				timeoutMs: NETWORK_TIMEOUT_MS,
-			});
-			const trimmed = upstream.trim();
-			if (!trimmed.startsWith("origin/")) {
-				return undefined;
-			}
-			const branch = trimmed.slice("origin/".length);
-			return branch ? `refs/heads/${branch}` : undefined;
-		} catch {
-			return undefined;
-		}
-	}
-
-	private runGitRemoteCommand(installedPath: string, args: string[]): Promise<string> {
-		return this.runCommandCapture("git", args, {
-			cwd: installedPath,
-			timeoutMs: NETWORK_TIMEOUT_MS,
-			env: {
-				GIT_TERMINAL_PROMPT: "0",
-			},
-		});
-	}
-
-	private async runWithConcurrency<T>(tasks: Array<() => Promise<T>>, limit: number): Promise<T[]> {
-		if (tasks.length === 0) {
-			return [];
-		}
-
-		const results: T[] = new Array(tasks.length);
-		let nextIndex = 0;
-		const workerCount = Math.max(1, Math.min(limit, tasks.length));
-
-		const worker = async () => {
-			while (true) {
-				const index = nextIndex;
-				nextIndex += 1;
-				if (index >= tasks.length) {
-					return;
-				}
-				results[index] = await tasks[index]();
-			}
-		};
-
-		await Promise.all(Array.from({ length: workerCount }, () => worker()));
-		return results;
-	}
-
-	/**
-	 * Get a unique identity for a package, ignoring version/ref.
-	 * Used to detect when the same package is in both global and project settings.
-	 * For git packages, uses normalized host/path to ensure SSH and HTTPS URLs
-	 * for the same repository are treated as identical.
-	 */
-	private getPackageIdentity(source: string, scope?: SourceScope): string {
-		const parsed = this.parseSource(source);
-		if (parsed.type === "npm") {
-			return `npm:${parsed.name}`;
-		}
-		if (parsed.type === "git") {
-			// Use host/path for identity to normalize SSH and HTTPS
-			return `git:${parsed.host}/${parsed.path}`;
-		}
-		if (scope) {
-			const baseDir = this.getBaseDirForScope(scope);
-			return `local:${this.resolvePathFromBase(parsed.path, baseDir)}`;
-		}
-		return `local:${this.resolvePath(parsed.path)}`;
-	}
-
-	/**
-	 * Dedupe packages: if same package identity appears in both global and project,
-	 * keep only the project one (project wins).
-	 */
-	private dedupePackages(
-		packages: Array<{ pkg: PackageSource; scope: SourceScope }>,
-	): Array<{ pkg: PackageSource; scope: SourceScope }> {
-		const seen = new Map<string, { pkg: PackageSource; scope: SourceScope }>();
-
-		for (const entry of packages) {
-			const sourceStr = typeof entry.pkg === "string" ? entry.pkg : entry.pkg.source;
-			const identity = this.getPackageIdentity(sourceStr, entry.scope);
-
-			const existing = seen.get(identity);
-			if (!existing) {
-				seen.set(identity, entry);
-			} else if (entry.scope === "project" && existing.scope === "user") {
-				// Project wins over user
-				seen.set(identity, entry);
-			}
-			// If existing is project and new is global, keep existing (project)
-			// If both are same scope, keep first one
-		}
-
-		return Array.from(seen.values());
-	}
-
-	private parseNpmSpec(spec: string): { name: string; version?: string } {
-		const match = spec.match(/^(@?[^@]+(?:\/[^@]+)?)(?:@(.+))?$/);
-		if (!match) {
-			return { name: spec };
-		}
-		const name = match[1] ?? spec;
-		const version = match[2];
-		return { name, version };
-	}
-
-	private getNpmCommand(): { command: string; args: string[] } {
-		const configuredCommand = this.settingsManager.getNpmCommand();
-		if (!configuredCommand || configuredCommand.length === 0) {
-			return { command: "npm", args: [] };
-		}
-		const [command, ...args] = configuredCommand;
-		if (!command) {
-			throw new Error("Invalid npmCommand: first array entry must be a non-empty command");
-		}
-		return { command, args };
-	}
-
-	private async runNpmCommand(args: string[], options?: { cwd?: string }): Promise<void> {
-		const npmCommand = this.getNpmCommand();
-		await this.runCommand(npmCommand.command, [...npmCommand.args, ...args], options);
-	}
-
-	private runNpmCommandSync(args: string[]): string {
-		const npmCommand = this.getNpmCommand();
-		return this.runCommandSync(npmCommand.command, [...npmCommand.args, ...args]);
-	}
-
-	private async installNpm(source: NpmSource, scope: SourceScope, temporary: boolean): Promise<void> {
-		if (scope === "user" && !temporary) {
-			await this.runNpmCommand(["install", "-g", source.spec]);
-			return;
-		}
-		const installRoot = this.getNpmInstallRoot(scope, temporary);
-		this.ensureNpmProject(installRoot);
-		await this.runNpmCommand(["install", source.spec, "--prefix", installRoot]);
-	}
-
-	private async uninstallNpm(source: NpmSource, scope: SourceScope): Promise<void> {
-		if (scope === "user") {
-			await this.runNpmCommand(["uninstall", "-g", source.name]);
-			return;
-		}
-		const installRoot = this.getNpmInstallRoot(scope, false);
-		if (!existsSync(installRoot)) {
-			return;
-		}
-		await this.runNpmCommand(["uninstall", source.name, "--prefix", installRoot]);
-	}
-
-	private async installGit(source: GitSource, scope: SourceScope): Promise<void> {
-		const targetDir = this.getGitInstallPath(source, scope);
-		if (existsSync(targetDir)) {
-			return;
-		}
-		const gitRoot = this.getGitInstallRoot(scope);
-		if (gitRoot) {
-			this.ensureGitIgnore(gitRoot);
-		}
-		mkdirSync(dirname(targetDir), { recursive: true });
-
-		await this.runCommand("git", ["clone", source.repo, targetDir]);
-		if (source.ref) {
-			await this.runCommand("git", ["checkout", source.ref], { cwd: targetDir });
-		}
-		const packageJsonPath = join(targetDir, "package.json");
-		if (existsSync(packageJsonPath)) {
-			await this.runNpmCommand(["install"], { cwd: targetDir });
-		}
-	}
-
-	private async updateGit(source: GitSource, scope: SourceScope): Promise<void> {
-		const targetDir = this.getGitInstallPath(source, scope);
-		if (!existsSync(targetDir)) {
-			await this.installGit(source, scope);
-			return;
-		}
-
-		// Fetch latest from remote (handles force-push by getting new history)
-		await this.runCommand("git", ["fetch", "--prune", "origin"], { cwd: targetDir });
-
-		const localHead = await this.runCommandCapture("git", ["rev-parse", "HEAD"], {
-			cwd: targetDir,
-			timeoutMs: NETWORK_TIMEOUT_MS,
-		});
-		const target = await this.getLocalGitUpdateTarget(targetDir);
-		if (localHead.trim() === target.head.trim()) {
-			return;
-		}
-
-		await this.runCommand("git", ["reset", "--hard", target.ref], { cwd: targetDir });
-
-		// Clean untracked files (extensions should be pristine)
-		await this.runCommand("git", ["clean", "-fdx"], { cwd: targetDir });
-
-		const packageJsonPath = join(targetDir, "package.json");
-		if (existsSync(packageJsonPath)) {
-			await this.runNpmCommand(["install"], { cwd: targetDir });
-		}
-	}
-
-	private async refreshTemporaryGitSource(source: GitSource, sourceStr: string): Promise<void> {
-		if (isOfflineModeEnabled()) {
-			return;
-		}
-		try {
-			await this.withProgress("pull", sourceStr, `Refreshing ${sourceStr}...`, async () => {
-				await this.updateGit(source, "temporary");
-			});
-		} catch {
-			// Keep cached temporary checkout if refresh fails.
-		}
-	}
-
-	private async removeGit(source: GitSource, scope: SourceScope): Promise<void> {
-		const targetDir = this.getGitInstallPath(source, scope);
-		if (!existsSync(targetDir)) return;
-		rmSync(targetDir, { recursive: true, force: true });
-		this.pruneEmptyGitParents(targetDir, this.getGitInstallRoot(scope));
-	}
-
-	private pruneEmptyGitParents(targetDir: string, installRoot: string | undefined): void {
-		if (!installRoot) return;
-		const resolvedRoot = resolve(installRoot);
-		let current = dirname(targetDir);
-		while (current.startsWith(resolvedRoot) && current !== resolvedRoot) {
-			if (!existsSync(current)) {
-				current = dirname(current);
-				continue;
-			}
-			const entries = readdirSync(current);
-			if (entries.length > 0) {
-				break;
-			}
-			try {
-				rmSync(current, { recursive: true, force: true });
-			} catch {
-				break;
-			}
-			current = dirname(current);
-		}
-	}
-
-	private ensureNpmProject(installRoot: string): void {
-		if (!existsSync(installRoot)) {
-			mkdirSync(installRoot, { recursive: true });
-		}
-		this.ensureGitIgnore(installRoot);
-		const packageJsonPath = join(installRoot, "package.json");
-		if (!existsSync(packageJsonPath)) {
-			const pkgJson = { name: "pi-extensions", private: true };
-			writeFileSync(packageJsonPath, JSON.stringify(pkgJson, null, 2), "utf-8");
-		}
-	}
-
-	private ensureGitIgnore(dir: string): void {
-		if (!existsSync(dir)) {
-			mkdirSync(dir, { recursive: true });
-		}
-		const ignorePath = join(dir, ".gitignore");
-		if (!existsSync(ignorePath)) {
-			writeFileSync(ignorePath, "*\n!.gitignore\n", "utf-8");
-		}
-	}
-
-	private getNpmInstallRoot(scope: SourceScope, temporary: boolean): string {
-		if (temporary) {
-			return this.getTemporaryDir("npm");
-		}
-		if (scope === "project") {
-			return join(this.cwd, CONFIG_DIR_NAME, "npm");
-		}
-		return join(this.getGlobalNpmRoot(), "..");
-	}
-
-	private getGlobalNpmRoot(): string {
-		const npmCommand = this.getNpmCommand();
-		const commandKey = [npmCommand.command, ...npmCommand.args].join("\0");
-		if (this.globalNpmRoot && this.globalNpmRootCommandKey === commandKey) {
-			return this.globalNpmRoot;
-		}
-		const result = this.runNpmCommandSync(["root", "-g"]);
-		this.globalNpmRoot = result.trim();
-		this.globalNpmRootCommandKey = commandKey;
-		return this.globalNpmRoot;
-	}
-
-	private getNpmInstallPath(source: NpmSource, scope: SourceScope): string {
-		if (scope === "temporary") {
-			return join(this.getTemporaryDir("npm"), "node_modules", source.name);
-		}
-		if (scope === "project") {
-			return join(this.cwd, CONFIG_DIR_NAME, "npm", "node_modules", source.name);
-		}
-		return join(this.getGlobalNpmRoot(), source.name);
-	}
-
-	private getGitInstallPath(source: GitSource, scope: SourceScope): string {
-		if (scope === "temporary") {
-			return this.getTemporaryDir(`git-${source.host}`, source.path);
-		}
-		if (scope === "project") {
-			return join(this.cwd, CONFIG_DIR_NAME, "git", source.host, source.path);
-		}
-		return join(this.agentDir, "git", source.host, source.path);
-	}
-
-	private getGitInstallRoot(scope: SourceScope): string | undefined {
-		if (scope === "temporary") {
-			return undefined;
-		}
-		if (scope === "project") {
-			return join(this.cwd, CONFIG_DIR_NAME, "git");
-		}
-		return join(this.agentDir, "git");
-	}
-
-	private getTemporaryDir(prefix: string, suffix?: string): string {
-		const hash = createHash("sha256")
-			.update(`${prefix}-${suffix ?? ""}`)
-			.digest("hex")
-			.slice(0, 8);
-		return join(tmpdir(), "pi-extensions", prefix, hash, suffix ?? "");
 	}
 
 	private getBaseDirForScope(scope: SourceScope): string {
@@ -1635,159 +698,12 @@ export class DefaultPackageManager implements PackageManager {
 		return this.cwd;
 	}
 
-	private resolvePath(input: string): string {
-		const trimmed = input.trim();
-		if (trimmed === "~") return getHomeDir();
-		if (trimmed.startsWith("~/")) return join(getHomeDir(), trimmed.slice(2));
-		if (trimmed.startsWith("~")) return join(getHomeDir(), trimmed.slice(1));
-		return resolve(this.cwd, trimmed);
-	}
-
 	private resolvePathFromBase(input: string, baseDir: string): string {
 		const trimmed = input.trim();
 		if (trimmed === "~") return getHomeDir();
 		if (trimmed.startsWith("~/")) return join(getHomeDir(), trimmed.slice(2));
 		if (trimmed.startsWith("~")) return join(getHomeDir(), trimmed.slice(1));
 		return resolve(baseDir, trimmed);
-	}
-
-	private collectPackageResources(
-		packageRoot: string,
-		accumulator: ResourceAccumulator,
-		filter: PackageFilter | undefined,
-		metadata: PathMetadata,
-	): boolean {
-		if (filter) {
-			for (const resourceType of RESOURCE_TYPES) {
-				const patterns = filter[resourceType as keyof PackageFilter];
-				const target = this.getTargetMap(accumulator, resourceType);
-				if (patterns !== undefined) {
-					this.applyPackageFilter(packageRoot, patterns, resourceType, target, metadata);
-				} else {
-					this.collectDefaultResources(packageRoot, resourceType, target, metadata);
-				}
-			}
-			return true;
-		}
-
-		const manifest = this.readPiManifest(packageRoot);
-		if (manifest) {
-			for (const resourceType of RESOURCE_TYPES) {
-				const entries = manifest[resourceType as keyof PiManifest];
-				this.addManifestEntries(
-					entries,
-					packageRoot,
-					resourceType,
-					this.getTargetMap(accumulator, resourceType),
-					metadata,
-				);
-			}
-			return true;
-		}
-
-		let hasAnyDir = false;
-		for (const resourceType of RESOURCE_TYPES) {
-			const dir = join(packageRoot, resourceType);
-			if (existsSync(dir)) {
-				// Collect all files from the directory (all enabled by default)
-				const files = collectResourceFiles(dir, resourceType);
-				for (const f of files) {
-					this.addResource(this.getTargetMap(accumulator, resourceType), f, metadata, true);
-				}
-				hasAnyDir = true;
-			}
-		}
-		return hasAnyDir;
-	}
-
-	private collectDefaultResources(
-		packageRoot: string,
-		resourceType: ResourceType,
-		target: Map<string, { metadata: PathMetadata; enabled: boolean }>,
-		metadata: PathMetadata,
-	): void {
-		const manifest = this.readPiManifest(packageRoot);
-		const entries = manifest?.[resourceType as keyof PiManifest];
-		if (entries) {
-			this.addManifestEntries(entries, packageRoot, resourceType, target, metadata);
-			return;
-		}
-		const dir = join(packageRoot, resourceType);
-		if (existsSync(dir)) {
-			// Collect all files from the directory (all enabled by default)
-			const files = collectResourceFiles(dir, resourceType);
-			for (const f of files) {
-				this.addResource(target, f, metadata, true);
-			}
-		}
-	}
-
-	private applyPackageFilter(
-		packageRoot: string,
-		userPatterns: string[],
-		resourceType: ResourceType,
-		target: Map<string, { metadata: PathMetadata; enabled: boolean }>,
-		metadata: PathMetadata,
-	): void {
-		const { allFiles } = this.collectManifestFiles(packageRoot, resourceType);
-
-		if (userPatterns.length === 0) {
-			// Empty array explicitly disables all resources of this type
-			for (const f of allFiles) {
-				this.addResource(target, f, metadata, false);
-			}
-			return;
-		}
-
-		// Apply user patterns
-		const enabledByUser = applyPatterns(allFiles, userPatterns, packageRoot);
-
-		for (const f of allFiles) {
-			const enabled = enabledByUser.has(f);
-			this.addResource(target, f, metadata, enabled);
-		}
-	}
-
-	/**
-	 * Collect all files from a package for a resource type, applying manifest patterns.
-	 * Returns { allFiles, enabledByManifest } where enabledByManifest is the set of files
-	 * that pass the manifest's own patterns.
-	 */
-	private collectManifestFiles(
-		packageRoot: string,
-		resourceType: ResourceType,
-	): { allFiles: string[]; enabledByManifest: Set<string> } {
-		const manifest = this.readPiManifest(packageRoot);
-		const entries = manifest?.[resourceType as keyof PiManifest];
-		if (entries && entries.length > 0) {
-			const allFiles = this.collectFilesFromManifestEntries(entries, packageRoot, resourceType);
-			const manifestPatterns = entries.filter(isPattern);
-			const enabledByManifest =
-				manifestPatterns.length > 0 ? applyPatterns(allFiles, manifestPatterns, packageRoot) : new Set(allFiles);
-			return { allFiles: Array.from(enabledByManifest), enabledByManifest };
-		}
-
-		const conventionDir = join(packageRoot, resourceType);
-		if (!existsSync(conventionDir)) {
-			return { allFiles: [], enabledByManifest: new Set() };
-		}
-		const allFiles = collectResourceFiles(conventionDir, resourceType);
-		return { allFiles, enabledByManifest: new Set(allFiles) };
-	}
-
-	private readPiManifest(packageRoot: string): PiManifest | null {
-		const packageJsonPath = join(packageRoot, "package.json");
-		if (!existsSync(packageJsonPath)) {
-			return null;
-		}
-
-		try {
-			const content = readFileSync(packageJsonPath, "utf-8");
-			const pkg = JSON.parse(content) as { pi?: PiManifest };
-			return pkg.pi ?? null;
-		} catch {
-			return null;
-		}
 	}
 
 	private addManifestEntries(
@@ -1839,6 +755,43 @@ export class DefaultPackageManager implements PackageManager {
 		}
 	}
 
+	/**
+	 * Collect resources from a package-shaped directory: a `pi` manifest in
+	 * package.json if present, otherwise the convention directories.
+	 * Returns false when the directory is neither.
+	 */
+	private collectPackageResources(
+		packageRoot: string,
+		accumulator: ResourceAccumulator,
+		metadata: PathMetadata,
+	): boolean {
+		const manifest = readPiManifestFile(join(packageRoot, "package.json"));
+		if (manifest) {
+			for (const resourceType of RESOURCE_TYPES) {
+				this.addManifestEntries(
+					manifest[resourceType as keyof PiManifest],
+					packageRoot,
+					resourceType,
+					this.getTargetMap(accumulator, resourceType),
+					metadata,
+				);
+			}
+			return true;
+		}
+
+		let hasAnyDir = false;
+		for (const resourceType of RESOURCE_TYPES) {
+			const dir = join(packageRoot, resourceType);
+			if (existsSync(dir)) {
+				for (const file of collectResourceFiles(dir, resourceType)) {
+					this.addResource(this.getTargetMap(accumulator, resourceType), file, metadata, true);
+				}
+				hasAnyDir = true;
+			}
+		}
+		return hasAnyDir;
+	}
+
 	private addAutoDiscoveredResources(
 		accumulator: ResourceAccumulator,
 		globalSettings: ReturnType<SettingsManager["getGlobalSettings"]>,
@@ -1849,13 +802,11 @@ export class DefaultPackageManager implements PackageManager {
 		const userMetadata: PathMetadata = {
 			source: "auto",
 			scope: "user",
-			origin: "top-level",
 			baseDir: globalBaseDir,
 		};
 		const projectMetadata: PathMetadata = {
 			source: "auto",
 			scope: "project",
-			origin: "top-level",
 			baseDir: projectBaseDir,
 		};
 
@@ -2038,80 +989,5 @@ export class DefaultPackageManager implements PackageManager {
 			prompts: toResolved(accumulator.prompts),
 			themes: toResolved(accumulator.themes),
 		};
-	}
-
-	private runCommandCapture(
-		command: string,
-		args: string[],
-		options?: { cwd?: string; timeoutMs?: number; env?: Record<string, string> },
-	): Promise<string> {
-		return new Promise((resolvePromise, reject) => {
-			const child = spawn(command, args, {
-				cwd: options?.cwd,
-				stdio: ["ignore", "pipe", "pipe"],
-				env: options?.env ? { ...process.env, ...options.env } : process.env,
-			});
-			let stdout = "";
-			let stderr = "";
-			let timedOut = false;
-			const timeout =
-				typeof options?.timeoutMs === "number"
-					? setTimeout(() => {
-							timedOut = true;
-							child.kill();
-						}, options.timeoutMs)
-					: undefined;
-
-			child.stdout?.on("data", (data) => {
-				stdout += data.toString();
-			});
-			child.stderr?.on("data", (data) => {
-				stderr += data.toString();
-			});
-			child.on("error", (error) => {
-				if (timeout) clearTimeout(timeout);
-				reject(error);
-			});
-			child.on("exit", (code) => {
-				if (timeout) clearTimeout(timeout);
-				if (timedOut) {
-					reject(new Error(`${command} ${args.join(" ")} timed out after ${options?.timeoutMs}ms`));
-					return;
-				}
-				if (code === 0) {
-					resolvePromise(stdout.trim());
-					return;
-				}
-				reject(new Error(`${command} ${args.join(" ")} failed with code ${code}: ${stderr || stdout}`));
-			});
-		});
-	}
-
-	private runCommand(command: string, args: string[], options?: { cwd?: string }): Promise<void> {
-		return new Promise((resolvePromise, reject) => {
-			const child = spawn(command, args, {
-				cwd: options?.cwd,
-				stdio: isStdoutTakenOver() ? ["ignore", 2, 2] : "inherit",
-			});
-			child.on("error", reject);
-			child.on("exit", (code) => {
-				if (code === 0) {
-					resolvePromise();
-				} else {
-					reject(new Error(`${command} ${args.join(" ")} failed with code ${code}`));
-				}
-			});
-		});
-	}
-
-	private runCommandSync(command: string, args: string[]): string {
-		const result = spawnSync(command, args, {
-			stdio: ["ignore", "pipe", "pipe"],
-			encoding: "utf-8",
-		});
-		if (result.status !== 0) {
-			throw new Error(`Failed to run ${command} ${args.join(" ")}: ${result.stderr || result.stdout}`);
-		}
-		return (result.stdout || result.stderr || "").trim();
 	}
 }

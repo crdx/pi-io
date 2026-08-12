@@ -39,7 +39,6 @@ export interface Args {
 	noThemes?: boolean;
 	listModels?: string | true;
 	buildInfo?: boolean;
-	offline?: boolean;
 	verbose?: boolean;
 	messages: string[];
 	fileArgs: string[];
@@ -155,8 +154,6 @@ export function parseArgs(args: string[], extensionFlags?: Map<string, { type: "
 			result.buildInfo = true;
 		} else if (arg === "--verbose") {
 			result.verbose = true;
-		} else if (arg === "--offline") {
-			result.offline = true;
 		} else if (arg.startsWith("@")) {
 			result.fileArgs.push(arg.slice(1)); // Remove @ prefix
 		} else if (arg.startsWith("--") && extensionFlags) {
@@ -184,9 +181,6 @@ export function printHelp(): void {
 
 ${chalk.bold("Usage:")}
   ${APP_NAME} [options] [@files...] [messages...]
-
-${chalk.bold("Commands:")}
-  ${APP_NAME} config                    Open TUI to enable/disable package resources
 
 ${chalk.bold("Options:")}
   --provider <name>              Provider name (used with --model)
@@ -218,7 +212,6 @@ ${chalk.bold("Options:")}
   --no-themes                    Disable theme discovery and loading
   --list-models [search]         List available models (with optional fuzzy search)
   --verbose                      Force verbose startup (overrides quietStartup setting)
-  --offline                      Disable startup network operations (same as PI_OFFLINE=1)
   --help, -h                     Show this help
   --version, -v                  Show version number
   --build-info                   Show detailed build information
@@ -274,7 +267,6 @@ ${chalk.bold("Environment Variables:")}
   OPENAI_API_KEY                   - OpenAI API key
   ${ENV_AGENT_DIR.padEnd(32)} - Session storage directory (default: ~/${CONFIG_DIR_NAME}/agent)
   PI_PACKAGE_DIR                   - Override package directory (for Nix/Guix store paths)
-  PI_OFFLINE                       - Disable startup network operations when set to 1/true/yes
 
 ${chalk.bold("Available Tools (default: read, bash, edit, write):")}
   read   - Read file contents

@@ -223,13 +223,6 @@ describe("parseArgs", () => {
 		});
 	});
 
-	describe("--offline flag", () => {
-		test("parses --offline flag", () => {
-			const result = parseArgs(["--offline"]);
-			expect(result.offline).toBe(true);
-		});
-	});
-
 	describe("--no-tools flag", () => {
 		test("parses --no-tools flag", () => {
 			const result = parseArgs(["--no-tools"]);

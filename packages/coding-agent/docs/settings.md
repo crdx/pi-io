@@ -86,18 +86,9 @@ Follow-up has Alt+Enter to itself. Steering and interrupt compete for Enter, so 
 
 ### Shell
 
-| Setting              | Type     | Default | Description                                                                                                    |
-|----------------------|----------|---------|----------------------------------------------------------------------------------------------------------------|
-| `shellCommandPrefix` | string   | -       | Prefix for every bash command (e.g., `"shopt -s expand_aliases"`)                                              |
-| `npmCommand`         | string[] | -       | Command argv used for npm package lookup/install operations (e.g., `["mise", "exec", "node@20", "--", "npm"]`) |
-
-```json
-{
-  "npmCommand": ["mise", "exec", "node@20", "--", "npm"]
-}
-```
-
-`npmCommand` is used for all npm package-manager operations, including `npm root -g`, installs, uninstalls, and `npm install` inside git packages. Use argv-style entries exactly as the process should be launched.
+| Setting              | Type   | Default | Description                                                       |
+|----------------------|--------|---------|-------------------------------------------------------------------|
+| `shellCommandPrefix` | string | -       | Prefix for every bash command (e.g., `"shopt -s expand_aliases"`) |
 
 ### Model Cycling
 
@@ -125,7 +116,6 @@ Paths in `~/.pi/agent/settings.json` resolve relative to `~/.pi/agent`. Paths in
 
 | Setting               | Type     | Default | Description                                |
 |-----------------------|----------|---------|--------------------------------------------|
-| `packages`            | array    | `[]`    | npm/git packages to load resources from    |
 | `extensions`          | string[] | `[]`    | Local extension file paths or directories  |
 | `skills`              | string[] | `[]`    | Local skill file paths or directories      |
 | `prompts`             | string[] | `[]`    | Local prompt template paths or directories |
@@ -133,32 +123,6 @@ Paths in `~/.pi/agent/settings.json` resolve relative to `~/.pi/agent`. Paths in
 | `enableSkillCommands` | boolean  | `true`  | Register skills as `/skill:name` commands  |
 
 Arrays support glob patterns and exclusions. Use `!pattern` to exclude. Use `+path` to force-include an exact path and `-path` to force-exclude an exact path.
-
-#### packages
-
-String form loads all resources from a package:
-
-```json
-{
-  "packages": ["pi-skills", "@org/my-extension"]
-}
-```
-
-Object form filters which resources to load:
-
-```json
-{
-  "packages": [
-    {
-      "source": "pi-skills",
-      "skills": ["brave-search", "transcribe"],
-      "extensions": []
-    }
-  ]
-}
-```
-
-See [packages.md](packages.md) for package management details.
 
 ## Example
 
@@ -173,7 +137,7 @@ See [packages.md](packages.md) for package management details.
     "maxRetries": 3
   },
   "enabledModels": ["claude-*", "gpt-4o"],
-  "packages": ["pi-skills"]
+  "extensions": ["extensions/review.ts"]
 }
 ```
 

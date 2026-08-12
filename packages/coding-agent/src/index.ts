@@ -134,14 +134,7 @@ export {
 export type { ReadonlyFooterDataProvider } from "./core/footer-data-provider.js";
 export { convertToLlm } from "./core/messages.js";
 export { ModelRegistry } from "./core/model-registry.js";
-export type {
-	PackageManager,
-	PathMetadata,
-	ProgressCallback,
-	ProgressEvent,
-	ResolvedPaths,
-	ResolvedResource,
-} from "./core/package-manager.js";
+export type { PackageManager, PathMetadata, ResolvedPaths, ResolvedResource } from "./core/package-manager.js";
 export { DefaultPackageManager } from "./core/package-manager.js";
 export type { ResourceCollision, ResourceDiagnostic, ResourceLoader } from "./core/resource-loader.js";
 export { DefaultResourceLoader } from "./core/resource-loader.js";
@@ -164,12 +157,7 @@ export {
 	type SessionMessageEntry,
 	type ThinkingLevelChangeEntry,
 } from "./core/session-manager.js";
-export {
-	type ImageSettings,
-	type PackageSource,
-	type RetrySettings,
-	SettingsManager,
-} from "./core/settings-manager.js";
+export { type ImageSettings, type RetrySettings, SettingsManager } from "./core/settings-manager.js";
 // Skills
 export {
 	formatSkillsForPrompt,

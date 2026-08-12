@@ -21,8 +21,7 @@
 	"files": [
 		"dist",
 		"docs",
-		"meta.json",
-		"CHANGELOG.md"
+		"meta.json"
 	],
 	"scripts": {},
 	"dependencies": {

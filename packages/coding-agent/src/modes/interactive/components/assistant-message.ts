@@ -32,14 +32,14 @@ export class AssistantMessageComponent extends Container {
 		this.addChild(this.contentContainer);
 
 		if (message) {
-			this.updateContent(message);
+			this.updateContent(message, false);
 		}
 	}
 
 	override invalidate(): void {
 		super.invalidate();
 		if (this.lastMessage) {
-			this.updateContent(this.lastMessage);
+			this.updateContent(this.lastMessage, this.isStreaming);
 		}
 	}
 
@@ -47,7 +47,7 @@ export class AssistantMessageComponent extends Container {
 		this.hideThinkingBlock = hide;
 	}
 
-	updateContent(message: AssistantMessage, isStreaming = this.isStreaming): void {
+	updateContent(message: AssistantMessage, isStreaming: boolean): void {
 		this.lastMessage = message;
 		this.isStreaming = isStreaming;
 

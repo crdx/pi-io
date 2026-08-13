@@ -67,7 +67,7 @@ async function main() {
 			content: [{ type: "thinking", thinking: thinkingBuffer }],
 		} as AssistantMessage;
 
-		component.updateContent(updatedMessage);
+		component.updateContent(updatedMessage, true);
 		tui.requestRender();
 
 		await sleep(15); // Simulate token delay
@@ -84,7 +84,7 @@ async function main() {
 		],
 	} as AssistantMessage;
 
-	component.updateContent(finalMessage);
+	component.updateContent(finalMessage, false);
 	tui.requestRender();
 
 	// Keep alive for a moment to see the result

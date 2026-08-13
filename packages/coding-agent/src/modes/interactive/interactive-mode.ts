@@ -2085,7 +2085,7 @@ export class InteractiveMode {
 			case "message_update":
 				if (this.streamingComponent && event.message.role === "assistant") {
 					this.streamingMessage = event.message;
-					this.streamingComponent.updateContent(this.streamingMessage);
+					this.streamingComponent.updateContent(this.streamingMessage, true);
 
 					for (const content of this.streamingMessage.content) {
 						if (content.type === "toolCall") {
@@ -2124,7 +2124,7 @@ export class InteractiveMode {
 							this.streamingMessage.errorMessage = errorMessage;
 						}
 					}
-					this.streamingComponent.updateContent(this.streamingMessage);
+					this.streamingComponent.updateContent(this.streamingMessage, false);
 
 					if (this.streamingMessage.stopReason === "aborted" || this.streamingMessage.stopReason === "error") {
 						if (!errorMessage) {
@@ -2658,15 +2658,12 @@ export class InteractiveMode {
 	private toggleThinkingBlockVisibility(): void {
 		this.hideThinkingBlock = !this.hideThinkingBlock;
 		this.settingsManager.setHideThinkingBlock(this.hideThinkingBlock);
-
-		// Rebuild chat from session messages
 		this.chatContainer.clear();
 		this.rebuildChatFromMessages();
 
-		// If streaming, re-add the streaming component with updated visibility and re-render
 		if (this.streamingComponent && this.streamingMessage) {
 			this.streamingComponent.setHideThinkingBlock(this.hideThinkingBlock);
-			this.streamingComponent.updateContent(this.streamingMessage);
+			this.streamingComponent.updateContent(this.streamingMessage, true);
 			this.chatContainer.addChild(this.streamingComponent);
 		}
 

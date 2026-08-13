@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.62.0-crdx.19] - 2026-08-13
+
+### Added
+
+- Render mermaid diagrams as terminal art
+- Add a markdown transformer hook (so extensions can rewrite it before render)
+- Print the command to resume the session on exit
+- Add the opencode-go provider
+
+### Changed
+
+- Hide thinking levels that map to the same underlying provider value
+- Stop capping `maxTokens` at 32,000 when the model allows more
+- Refresh model pricing from models.dev
+
+### Removed
+
+- Remove packages, the `config` subcommand, the `--offline` flag, and `PI_OFFLINE`
+- Remove obsolete upstream documentation and per-package readmes and changelogs
+
 ## [0.62.0-crdx.18] - 2026-08-08
 
 ### Added

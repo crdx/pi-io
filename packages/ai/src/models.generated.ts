@@ -322,7 +322,7 @@ export const MODELS = {
 		} satisfies Model<"openai-completions">,
 		"deepseek-v4-pro": {
 			id: "deepseek-v4-pro",
-			name: "DeepSeek V4 Pro",
+			name: "DeepSeek V4 Pro (New)",
 			api: "openai-completions",
 			provider: "opencode-go",
 			baseUrl: "https://opencode.ai/zen/go/v1",

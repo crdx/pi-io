@@ -24,6 +24,11 @@ function transformMermaid(markdown: string, options: TransformOptions = {}): str
 	});
 }
 
+const tagTheme = {
+	fg: (color: string, text: string) => `<${color}>${text}</${color}>`,
+	bold: (text: string) => `<bold>${text}</bold>`,
+} as Theme;
+
 describe("Mermaid rendering", () => {
 	it("replaces Mermaid code blocks with Unicode diagrams", () => {
 		const markdown = "Before\n\n```mermaid\nflowchart LR\n  A[Start] --> B[Done]\n```\nAfter";
@@ -37,20 +42,42 @@ describe("Mermaid rendering", () => {
 		expect(rendered).toContain("After");
 	});
 
-	it("leaves unsupported and oversized diagrams unchanged", () => {
+	it("distinguishes an unsupported diagram type from one it could not parse", () => {
 		const unsupported = '```mermaid\npie\n  title Pets\n  "Dogs" : 4\n```';
-		const oversized = "```mermaid\nflowchart LR\n  A[Start] --> B[Done]\n```";
+		const unparseable = "```mermaid\nflowchart LR\n  ???!!!\n```";
 
-		expect(transformMermaid(unsupported)).toBe(unsupported);
-		expect(transformMermaid(oversized, { maxWidth: 10 })).toBe(oversized);
+		expect(transformMermaid(unsupported)).toContain(
+			"[Mermaid diagram not drawn: that diagram type is not supported]",
+		);
+		expect(transformMermaid(unsupported)).toContain(unsupported);
+		expect(transformMermaid(unparseable)).toContain("[Mermaid diagram not drawn: it could not be parsed]");
+		expect(transformMermaid(unparseable)).toContain(unparseable);
+	});
+
+	it("says so when a diagram does not fit, rather than falling back in silence", () => {
+		const oversized = "```mermaid\nflowchart LR\n  A[Start] --> B[Done]\n```";
+		const rendered = transformMermaid(oversized, { maxWidth: 10 });
+		const themed = transformMermaid(oversized, { maxWidth: 10, theme: tagTheme });
+
+		expect(rendered).toContain(oversized);
+		expect(rendered).toContain("[Mermaid diagram not drawn: need 21 columns (have 10)]");
+		expect(rendered.indexOf("need 21 columns")).toBeLessThan(rendered.indexOf("```mermaid"));
+		expect(themed).toContain("<warning>[Mermaid diagram not drawn: need 21 columns (have 10)]</warning>");
+	});
+
+	it("says nothing at all while streaming, whatever the reason", () => {
+		const oversized = "```mermaid\nflowchart LR\n  A[Start] --> B[Done]\n```";
+		const unsupported = '```mermaid\npie\n  title Pets\n  "Dogs" : 4\n```';
+		const partial = "```mermaid\nflowchart LR\n  A[Foo]:::highlight --> B[Bar]\n```";
+
+		expect(transformMermaid(oversized, { maxWidth: 10, isStreaming: true })).toBe(oversized);
+		expect(transformMermaid(unsupported, { isStreaming: true })).toBe(unsupported);
+		expect(transformMermaid(partial, { isStreaming: true })).not.toContain("Mermaid diagram");
+		expect(transformMermaid(partial, { isStreaming: true })).toContain("│ Foo │");
 	});
 
 	it("maps semantic spans through the Pi theme", () => {
-		const theme = {
-			fg: (color: string, text: string) => `<${color}>${text}</${color}>`,
-			bold: (text: string) => `<bold>${text}</bold>`,
-		} as Theme;
-		const rendered = transformMermaid("```mermaid\nflowchart LR\n  A --> B\n```", { theme });
+		const rendered = transformMermaid("```mermaid\nflowchart LR\n  A --> B\n```", { theme: tagTheme });
 
 		expect(rendered).toContain("<borderMuted>");
 		expect(rendered).toContain("<accent>");
@@ -62,27 +89,22 @@ describe("Mermaid rendering", () => {
 		expect(transformMermaid(partialMarkdown, { isStreaming: true })).toContain("───▶");
 	});
 
-	it("falls back to the code block with a warning after streaming", () => {
+	it("draws a partly parsed diagram and captions what was dropped, rather than withholding it", () => {
 		const markdown = "```mermaid\nflowchart LR\n  A[Foo]:::highlight --> B[Bar]\n```";
 		const final = transformMermaid(markdown);
-		const followedByText = transformMermaid(`${markdown}\nFollowing text`);
-		const streaming = transformMermaid(markdown, { isStreaming: true });
 
-		expect(final).toContain(markdown);
-		expect(final).toContain("```\n`Mermaid diagram not rendered");
-		expect(final).toContain('dropped, expected a link: ":::highlight --> B[Bar]"');
+		expect(final).toContain("│ Foo │");
+		expect(final).not.toContain("```mermaid");
+		expect(final).toContain('[Mermaid diagram incomplete: dropped, expected a link: ":::highlight --> B[Bar]"]');
+		expect(final.indexOf("Mermaid diagram incomplete")).toBeLessThan(final.indexOf("│ Foo │"));
 		expect(final).not.toContain("more)");
-		expect(followedByText).toContain("  \nFollowing text");
-		expect(streaming).not.toContain("Mermaid diagram not rendered");
-		expect(streaming).not.toContain("```mermaid");
-		expect(streaming).toContain("│ Foo │");
 	});
 
 	it("summarizes additional partial-render warnings", () => {
 		const markdown = "```mermaid\nflowchart LR\n  A[Foo]:::highlight --> B[Bar]\n  C[Baz]:::other --> D[Qux]\n```";
 		const rendered = transformMermaid(markdown);
 
-		expect(rendered).toContain(markdown);
+		expect(rendered).not.toContain("```mermaid");
 		expect(rendered).toContain('dropped, expected a link: ":::highlight --> B[Bar]"');
 		expect(rendered).toContain("(+1 more)");
 		expect(rendered).not.toContain('dropped, expected a link: ":::other --> D[Qux]"');

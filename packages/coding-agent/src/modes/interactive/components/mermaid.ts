@@ -1,5 +1,5 @@
 import { Marked, type Token } from "@mariozechner/pi-tui";
-import { type MermaidArt, render, type Span } from "grok-mermaid";
+import { diagramKind, type MermaidArt, render, type Span } from "grok-mermaid";
 import type { MarkdownTransformer } from "../../../core/extensions/types.ts";
 import type { MermaidRenderingMode } from "../../../core/settings-manager.ts";
 import type { Theme } from "../theme/theme.ts";
@@ -24,6 +24,16 @@ function codeSpan(line: string): string {
 	const fence = "`".repeat(longestBacktickRun + 1);
 	const padding = content.startsWith("`") || content.endsWith("`") ? " " : "";
 	return `${fence}${padding}${content}${padding}${fence}`;
+}
+
+function notice(text: string, theme?: Theme): string {
+	const line = `[${text}]`;
+	return `${theme ? theme.fg("warning", line) : line}\n\n`;
+}
+
+function diagram(art: MermaidArt, theme?: Theme): string {
+	const lines = theme ? themedLines(art, theme) : art.plain;
+	return `${lines.map(codeSpan).join("  \n")}\n`;
 }
 
 function styleSpan(span: Span, theme: Theme): string {
@@ -64,15 +74,29 @@ export function createMermaidMarkdownTransformer(options: MermaidTransformerOpti
 			.map((token) => {
 				if (!isMermaid(token)) return token.raw;
 				const art = render(token.text);
-				if (!art || art.width > context.availableWidth) return token.raw;
-				if (!context.isStreaming && art.warnings.length > 0) {
-					const suffix = art.warnings.length > 1 ? ` (+${art.warnings.length - 1} more)` : "";
-					const warning = `Mermaid diagram not rendered: ${art.warnings[0]}${suffix}`;
-					const styledWarning = options.theme ? options.theme.fg("warning", warning) : warning;
-					return `${token.raw}\n${codeSpan(styledWarning)}  \n`;
+
+				if (context.isStreaming) {
+					const fits = art && art.width <= context.availableWidth;
+					return fits ? diagram(art, options.theme) : token.raw;
 				}
-				const lines = options.theme ? themedLines(art, options.theme) : art.plain;
-				return `${lines.map(codeSpan).join("  \n")}\n`;
+
+				if (!art) {
+					const reason = diagramKind(token.text) ? "it could not be parsed" : "that diagram type is not supported";
+					return `${notice(`Mermaid diagram not drawn: ${reason}`, options.theme)}${token.raw}`;
+				}
+
+				if (art.width > context.availableWidth) {
+					const tooWide = `Mermaid diagram not drawn: need ${art.width} columns (have ${context.availableWidth})`;
+					return `${notice(tooWide, options.theme)}${token.raw}`;
+				}
+
+				if (art.warnings.length === 0) {
+					return diagram(art, options.theme);
+				}
+
+				const suffix = art.warnings.length > 1 ? ` (+${art.warnings.length - 1} more)` : "";
+				const incomplete = `Mermaid diagram incomplete: ${art.warnings[0]}${suffix}`;
+				return `${notice(incomplete, options.theme)}${diagram(art, options.theme)}`;
 			})
 			.join("");
 	};

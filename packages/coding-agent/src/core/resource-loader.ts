@@ -20,6 +20,11 @@ import { loadSkills } from "./skills.js";
 import { createSourceInfo, type SourceInfo } from "./source-info.js";
 import { time } from "./timings.js";
 
+export interface ContextFile {
+	path: string;
+	content: string;
+}
+
 export interface ResourceExtensionPaths {
 	skillPaths?: Array<{ path: string; metadata: PathMetadata }>;
 	promptPaths?: Array<{ path: string; metadata: PathMetadata }>;
@@ -31,7 +36,7 @@ export interface ResourceLoader {
 	getSkills(): { skills: Skill[]; diagnostics: ResourceDiagnostic[] };
 	getPrompts(): { prompts: PromptTemplate[]; diagnostics: ResourceDiagnostic[] };
 	getThemes(): { themes: Theme[]; diagnostics: ResourceDiagnostic[] };
-	getAgentsFiles(): { agentsFiles: Array<{ path: string; content: string }> };
+	getAgentsFiles(): { agentsFiles: Array<ContextFile> };
 	getSystemPrompt(): string | undefined;
 	getAppendSystemPrompt(): string[];
 	extendResources(paths: ResourceExtensionPaths): void;
@@ -55,50 +60,64 @@ function resolvePromptInput(input: string | undefined, description: string): str
 	return input;
 }
 
-function loadContextFileFromDir(dir: string): { path: string; content: string } | null {
-	const candidates = ["AGENTS.md", "CLAUDE.md"];
-	for (const filename of candidates) {
-		const filePath = join(dir, filename);
-		if (existsSync(filePath)) {
-			try {
-				return {
-					path: filePath,
-					content: readFileSync(filePath, "utf-8"),
-				};
-			} catch (error) {
-				console.error(chalk.yellow(`Warning: Could not read ${filePath}: ${error}`));
-			}
-		}
+function readContextFile(filePath: string): ContextFile | null {
+	if (!existsSync(filePath)) {
+		return null;
 	}
-	return null;
+
+	try {
+		return {
+			path: filePath,
+			content: readFileSync(filePath, "utf-8"),
+		};
+	} catch (error) {
+		console.error(chalk.yellow(`Warning: Could not read ${filePath}: ${error}`));
+		return null;
+	}
 }
 
-function loadProjectContextFiles(
-	options: { cwd?: string; agentDir?: string } = {},
-): Array<{ path: string; content: string }> {
+export const CONTEXT_FILE_NAMES = ["AGENTS.md", "CLAUDE.md"];
+export const LOCAL_CONTEXT_FILE_NAMES = ["AGENTS.local.md", "CLAUDE.local.md"];
+
+function* readPresentContextFiles(dir: string, filenames: string[]): Generator<ContextFile> {
+	for (const filename of filenames) {
+		const contextFile = readContextFile(join(dir, filename));
+		if (contextFile) {
+			yield contextFile;
+		}
+	}
+}
+
+function loadContextFilesFromDir(dir: string): Array<ContextFile> {
+	const [mainContextFile] = readPresentContextFiles(dir, CONTEXT_FILE_NAMES);
+	const localContextFiles = [...readPresentContextFiles(dir, LOCAL_CONTEXT_FILE_NAMES)];
+
+	return mainContextFile ? [mainContextFile, ...localContextFiles] : localContextFiles;
+}
+
+function loadProjectContextFiles(options: { cwd?: string; agentDir?: string } = {}): Array<ContextFile> {
 	const resolvedCwd = options.cwd ?? process.cwd();
 	const resolvedAgentDir = options.agentDir ?? getAgentDir();
 
-	const contextFiles: Array<{ path: string; content: string }> = [];
+	const contextFiles: Array<ContextFile> = [];
 	const seenPaths = new Set<string>();
 
-	const globalContext = loadContextFileFromDir(resolvedAgentDir);
-	if (globalContext) {
+	for (const globalContext of loadContextFilesFromDir(resolvedAgentDir)) {
 		contextFiles.push(globalContext);
 		seenPaths.add(globalContext.path);
 	}
 
-	const ancestorContextFiles: Array<{ path: string; content: string }> = [];
+	const ancestorContextFiles: Array<ContextFile> = [];
 
 	let currentDir = resolvedCwd;
 	const root = resolve("/");
 
 	while (true) {
-		const contextFile = loadContextFileFromDir(currentDir);
-		if (contextFile && !seenPaths.has(contextFile.path)) {
-			ancestorContextFiles.unshift(contextFile);
-			seenPaths.add(contextFile.path);
+		const dirContextFiles = loadContextFilesFromDir(currentDir).filter((file) => !seenPaths.has(file.path));
+		for (const file of dirContextFiles) {
+			seenPaths.add(file.path);
 		}
+		ancestorContextFiles.unshift(...dirContextFiles);
 
 		if (currentDir === root) break;
 
@@ -141,8 +160,8 @@ export interface DefaultResourceLoaderOptions {
 		themes: Theme[];
 		diagnostics: ResourceDiagnostic[];
 	};
-	agentsFilesOverride?: (base: { agentsFiles: Array<{ path: string; content: string }> }) => {
-		agentsFiles: Array<{ path: string; content: string }>;
+	agentsFilesOverride?: (base: { agentsFiles: Array<ContextFile> }) => {
+		agentsFiles: Array<ContextFile>;
 	};
 	systemPromptOverride?: (base: string | undefined) => string | undefined;
 	appendSystemPromptOverride?: (base: string[]) => string[];
@@ -178,8 +197,8 @@ export class DefaultResourceLoader implements ResourceLoader {
 		themes: Theme[];
 		diagnostics: ResourceDiagnostic[];
 	};
-	private agentsFilesOverride?: (base: { agentsFiles: Array<{ path: string; content: string }> }) => {
-		agentsFiles: Array<{ path: string; content: string }>;
+	private agentsFilesOverride?: (base: { agentsFiles: Array<ContextFile> }) => {
+		agentsFiles: Array<ContextFile>;
 	};
 	private systemPromptOverride?: (base: string | undefined) => string | undefined;
 	private appendSystemPromptOverride?: (base: string[]) => string[];
@@ -191,7 +210,7 @@ export class DefaultResourceLoader implements ResourceLoader {
 	private promptDiagnostics: ResourceDiagnostic[];
 	private themes: Theme[];
 	private themeDiagnostics: ResourceDiagnostic[];
-	private agentsFiles: Array<{ path: string; content: string }>;
+	private agentsFiles: Array<ContextFile>;
 	private systemPrompt?: string;
 	private appendSystemPrompt: string[];
 	private lastSkillPaths: string[];
@@ -263,7 +282,7 @@ export class DefaultResourceLoader implements ResourceLoader {
 		return { themes: this.themes, diagnostics: this.themeDiagnostics };
 	}
 
-	getAgentsFiles(): { agentsFiles: Array<{ path: string; content: string }> } {
+	getAgentsFiles(): { agentsFiles: Array<ContextFile> } {
 		return { agentsFiles: this.agentsFiles };
 	}
 

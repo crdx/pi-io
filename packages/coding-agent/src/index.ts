@@ -136,8 +136,17 @@ export { convertToLlm } from "./core/messages.js";
 export { ModelRegistry } from "./core/model-registry.js";
 export type { PackageManager, PathMetadata, ResolvedPaths, ResolvedResource } from "./core/package-manager.js";
 export { DefaultPackageManager } from "./core/package-manager.js";
-export type { ResourceCollision, ResourceDiagnostic, ResourceLoader } from "./core/resource-loader.js";
-export { DefaultResourceLoader } from "./core/resource-loader.js";
+export type {
+	ContextFile,
+	ResourceCollision,
+	ResourceDiagnostic,
+	ResourceLoader,
+} from "./core/resource-loader.js";
+export {
+	CONTEXT_FILE_NAMES,
+	DefaultResourceLoader,
+	LOCAL_CONTEXT_FILE_NAMES,
+} from "./core/resource-loader.js";
 export {
 	buildSessionContext,
 	CURRENT_SESSION_VERSION,

@@ -299,6 +299,81 @@ Content`,
 		});
 	});
 
+	describe("context files", () => {
+		async function loadContextFileNames(options: { cwd: string; agentDir: string }): Promise<string[]> {
+			const loader = new DefaultResourceLoader(options);
+			await loader.reload();
+
+			return loader
+				.getAgentsFiles()
+				.agentsFiles.filter((file) => file.path.startsWith(`${tempDir}/`))
+				.map((file) => file.path.slice(tempDir.length + 1));
+		}
+
+		it("should prefer AGENTS.md over CLAUDE.md in the same directory", async () => {
+			writeFileSync(join(cwd, "AGENTS.md"), "# Agents");
+			writeFileSync(join(cwd, "CLAUDE.md"), "# Claude");
+
+			expect(await loadContextFileNames({ cwd, agentDir })).toEqual(["project/AGENTS.md"]);
+		});
+
+		it("should fall back to CLAUDE.md when AGENTS.md is absent", async () => {
+			writeFileSync(join(cwd, "CLAUDE.md"), "# Claude");
+
+			expect(await loadContextFileNames({ cwd, agentDir })).toEqual(["project/CLAUDE.md"]);
+		});
+
+		it("should load local context files after the main context file", async () => {
+			writeFileSync(join(cwd, "CLAUDE.local.md"), "# Claude Local");
+			writeFileSync(join(cwd, "AGENTS.local.md"), "# Agents Local");
+			writeFileSync(join(cwd, "AGENTS.md"), "# Agents");
+
+			expect(await loadContextFileNames({ cwd, agentDir })).toEqual([
+				"project/AGENTS.md",
+				"project/AGENTS.local.md",
+				"project/CLAUDE.local.md",
+			]);
+		});
+
+		it("should load local context files with no main context file present", async () => {
+			writeFileSync(join(cwd, "AGENTS.local.md"), "# Agents Local");
+
+			expect(await loadContextFileNames({ cwd, agentDir })).toEqual(["project/AGENTS.local.md"]);
+		});
+
+		it("should load the agent dir first, then ancestors, then cwd", async () => {
+			const nested = join(cwd, "nested");
+			mkdirSync(nested, { recursive: true });
+			writeFileSync(join(agentDir, "AGENTS.md"), "# Global");
+			writeFileSync(join(agentDir, "AGENTS.local.md"), "# Global Local");
+			writeFileSync(join(cwd, "AGENTS.md"), "# Project");
+			writeFileSync(join(nested, "AGENTS.md"), "# Nested");
+
+			expect(await loadContextFileNames({ cwd: nested, agentDir })).toEqual([
+				"agent/AGENTS.md",
+				"agent/AGENTS.local.md",
+				"project/AGENTS.md",
+				"project/nested/AGENTS.md",
+			]);
+		});
+
+		it("should not load a context file twice when the agent dir is an ancestor of cwd", async () => {
+			const nested = join(cwd, "nested");
+			mkdirSync(nested, { recursive: true });
+			writeFileSync(join(cwd, "AGENTS.md"), "# Project");
+			writeFileSync(join(cwd, "AGENTS.local.md"), "# Project Local");
+
+			expect(await loadContextFileNames({ cwd: nested, agentDir: cwd })).toEqual([
+				"project/AGENTS.md",
+				"project/AGENTS.local.md",
+			]);
+		});
+
+		it("should return no context files when none exist", async () => {
+			expect(await loadContextFileNames({ cwd, agentDir })).toEqual([]);
+		});
+	});
+
 	describe("extendResources", () => {
 		it("should load skills and prompts with extension metadata", async () => {
 			const extraSkillDir = join(tempDir, "extra-skills", "extra-skill");

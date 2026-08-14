@@ -2,6 +2,7 @@
  * System prompt construction and project context loading
  */
 
+import type { ContextFile } from "./resource-loader.js";
 import { formatSkillsForPrompt, type Skill } from "./skills.js";
 
 export interface BuildSystemPromptOptions {
@@ -18,7 +19,7 @@ export interface BuildSystemPromptOptions {
 	/** Working directory. Default: process.cwd() */
 	cwd?: string;
 	/** Pre-loaded context files. */
-	contextFiles?: Array<{ path: string; content: string }>;
+	contextFiles?: Array<ContextFile>;
 	/** Pre-loaded skills. */
 	skills?: Skill[];
 }

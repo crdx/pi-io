@@ -1726,16 +1726,11 @@ export class InteractiveMode {
 				this.updateEditorBorderColor();
 			} else if (!this.editor.getText().trim()) {
 				// Double-escape with empty editor triggers /tree, /fork, or nothing based on setting
-				const action = this.settingsManager.getDoubleEscapeAction();
-				if (action !== "none") {
+				if (this.settingsManager.getDoubleEscapeAction() !== "none") {
 					const now = Date.now();
 					if (now - this.lastEscapeTime < 500) {
-						if (action === "tree") {
-							this.showTreeSelector();
-						} else {
-							this.showUserMessageSelector();
-						}
 						this.lastEscapeTime = 0;
+						this.runDoubleEscapeAction();
 					} else {
 						this.lastEscapeTime = now;
 					}
@@ -2474,10 +2469,20 @@ export class InteractiveMode {
 	// Key handlers
 	// =========================================================================
 
+	private runDoubleEscapeAction(): void {
+		const action = this.settingsManager.getDoubleEscapeAction();
+		if (action === "tree") {
+			this.showTreeSelector();
+		} else if (action === "fork") {
+			this.showUserMessageSelector();
+		}
+	}
+
 	private handleCtrlC(): void {
 		const now = Date.now();
 		if (now - this.lastSigintTime < 500) {
-			void this.shutdown();
+			this.lastSigintTime = 0;
+			this.runDoubleEscapeAction();
 		} else {
 			this.clearEditor();
 			this.lastSigintTime = now;

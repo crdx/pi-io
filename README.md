@@ -134,7 +134,8 @@ Customize via `~/.pi/agent/keybindings.json`. See [docs/keybindings.md](packages
 | Key                   | Action                               |
 |-----------------------|--------------------------------------|
 | Ctrl+C                | Clear editor                         |
-| Ctrl+C twice          | Quit                                 |
+| Ctrl+C twice          | Open `/tree`                         |
+| Ctrl+D                | Quit (empty editor)                  |
 | Escape                | Cancel/abort                         |
 | Escape twice          | Open `/tree`                         |
 | Ctrl+L                | Open model selector                  |

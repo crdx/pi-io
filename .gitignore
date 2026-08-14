@@ -2,3 +2,4 @@ node_modules/
 packages/*/dist/
 pi.log
 /internal.just
+/tmp/

@@ -38,7 +38,7 @@ import {
 } from "@mariozechner/pi-tui";
 import chalk from "chalk";
 import { spawn, spawnSync } from "child_process";
-import { APP_NAME, getAuthPath, getDebugLogPath, VERSION } from "../../config.js";
+import { APP_NAME, getAuthPath, getDebugLogPath } from "../../config.js";
 import {
 	type AgentSession,
 	type AgentSessionEvent,
@@ -46,6 +46,7 @@ import {
 	type StreamingBehavior,
 } from "../../core/agent-session.js";
 import { describeBuild } from "../../core/build-info.js";
+import { estimateTextTokenRange } from "../../core/context-tokens.js";
 import type {
 	ExtensionContext,
 	ExtensionRunner,
@@ -83,8 +84,8 @@ import { CustomMessageComponent } from "./components/custom-message.js";
 import { ExtensionEditorComponent } from "./components/extension-editor.js";
 import { ExtensionInputComponent } from "./components/extension-input.js";
 import { ExtensionSelectorComponent } from "./components/extension-selector.js";
-import { FooterComponent } from "./components/footer.js";
-import { keyHint, keyText, rawKeyHint } from "./components/keybinding-hints.js";
+import { FooterComponent, formatTokens } from "./components/footer.js";
+import { keyText } from "./components/keybinding-hints.js";
 import { LoginDialogComponent } from "./components/login-dialog.js";
 import { createMermaidMarkdownTransformer } from "./components/mermaid.js";
 import { ModelSelectorComponent } from "./components/model-selector.js";
@@ -134,8 +135,6 @@ export interface InteractiveModeOptions {
 	initialImages?: ImageContent[];
 	/** Additional messages to send after the initial message */
 	initialMessages?: string[];
-	/** Force verbose startup (overrides quietStartup setting) */
-	verbose?: boolean;
 }
 
 function quoteIfNeeded(value: string): string {
@@ -174,7 +173,6 @@ export class InteractiveMode {
 	private footerDataProvider: FooterDataProvider;
 	// Stored so the same manager can be injected into custom editors, selectors, and extension UI.
 	private keybindings: KeybindingsManager;
-	private version: string;
 	private isInitialized = false;
 	/** Pastes are read one at a time: each is a round-trip on the shared terminal stream. */
 	private pasteQueue: Promise<void> = Promise.resolve();
@@ -270,7 +268,6 @@ export class InteractiveMode {
 		private options: InteractiveModeOptions = {},
 	) {
 		this.session = session;
-		this.version = VERSION;
 		this.ui = new TUI(new ProcessTerminal());
 		this.headerContainer = new Container();
 		this.chatContainer = new Container();
@@ -421,48 +418,12 @@ export class InteractiveMode {
 		// Add header container as first child
 		this.ui.addChild(this.headerContainer);
 
-		// Add header with keybindings from config (unless silenced)
-		if (this.options.verbose || !this.settingsManager.getQuietStartup()) {
-			const logo = theme.bold(theme.fg("accent", APP_NAME)) + theme.fg("dim", ` v${this.version}`);
-
-			// Build startup instructions using keybinding hint helpers
-			const hint = (keybinding: AppKeybinding, description: string) => keyHint(keybinding, description);
-
-			const instructions = [
-				hint("app.interrupt", "to interrupt"),
-				hint("app.clear", "to clear"),
-				rawKeyHint(`${keyText("app.clear")} twice`, "to exit"),
-				hint("app.exit", "to exit (empty)"),
-				hint("app.suspend", "to suspend"),
-				keyHint("tui.editor.deleteToLineEnd", "to delete to end"),
-				hint("app.thinking.cycle", "to cycle thinking level"),
-				rawKeyHint(`${keyText("app.model.cycleForward")}/${keyText("app.model.cycleBackward")}`, "to cycle models"),
-				hint("app.model.select", "to select model"),
-				hint("app.tools.expand", "to expand tools"),
-				hint("app.thinking.toggle", "to expand thinking"),
-				hint("app.editor.external", "for external editor"),
-				rawKeyHint("/", "for commands"),
-				rawKeyHint("!", "to run bash"),
-				rawKeyHint("!!", "to run bash (no context)"),
-				hint("app.message.followUp", "to queue follow-up"),
-				hint("app.message.dequeue", "to edit all queued messages"),
-				rawKeyHint("drop files", "to attach"),
-			].join("\n");
-			this.builtInHeader = new Text(`${logo}\n${instructions}`, 1, 0);
-
-			// Setup UI layout
+		this.builtInHeader = new Text("", 0, 0);
+		if (process.env.PI_DEV) {
 			this.headerContainer.addChild(new Spacer(1));
-			this.headerContainer.addChild(this.builtInHeader);
-			this.headerContainer.addChild(new Spacer(1));
-		} else {
-			// Minimal header when silenced
-			this.builtInHeader = new Text("", 0, 0);
-			if (process.env.PI_DEV) {
-				this.headerContainer.addChild(new Spacer(1));
-				this.headerContainer.addChild(new Text(theme.fg("warning", " ⚠ Running in development mode"), 0, 0));
-			}
-			this.headerContainer.addChild(this.builtInHeader);
+			this.headerContainer.addChild(new Text(theme.fg("warning", " ⚠ Running in development mode"), 0, 0));
 		}
+		this.headerContainer.addChild(this.builtInHeader);
 
 		this.ui.addChild(this.chatContainer);
 		this.ui.addChild(this.pendingMessagesContainer);
@@ -681,53 +642,6 @@ export class InteractiveMode {
 		return { label: source, scopeLabel, color: "accent" };
 	}
 
-	private getScopeGroup(sourceInfo?: SourceInfo): "user" | "project" | "path" {
-		const source = sourceInfo?.source ?? "local";
-		const scope = sourceInfo?.scope ?? "project";
-		if (source === "cli" || scope === "temporary") return "path";
-		if (scope === "user") return "user";
-		if (scope === "project") return "project";
-		return "path";
-	}
-
-	private buildScopeGroups(items: Array<{ path: string; sourceInfo?: SourceInfo }>): Array<{
-		scope: "user" | "project" | "path";
-		paths: Array<{ path: string; sourceInfo?: SourceInfo }>;
-	}> {
-		const groups: Record<
-			"user" | "project" | "path",
-			{ scope: "user" | "project" | "path"; paths: Array<{ path: string; sourceInfo?: SourceInfo }> }
-		> = {
-			user: { scope: "user", paths: [] },
-			project: { scope: "project", paths: [] },
-			path: { scope: "path", paths: [] },
-		};
-
-		for (const item of items) {
-			groups[this.getScopeGroup(item.sourceInfo)].paths.push(item);
-		}
-
-		return [groups.project, groups.user, groups.path].filter((group) => group.paths.length > 0);
-	}
-
-	private formatScopeGroups(
-		groups: Array<{ scope: "user" | "project" | "path"; paths: Array<{ path: string; sourceInfo?: SourceInfo }> }>,
-		options: { formatPath: (item: { path: string; sourceInfo?: SourceInfo }) => string },
-	): string {
-		const lines: string[] = [];
-
-		for (const group of groups) {
-			lines.push(`  ${theme.fg("accent", group.scope)}`);
-
-			const sortedPaths = [...group.paths].sort((a, b) => a.path.localeCompare(b.path));
-			for (const item of sortedPaths) {
-				lines.push(theme.fg("dim", `    ${options.formatPath(item)}`));
-			}
-		}
-
-		return lines.join("\n");
-	}
-
 	private findSourceInfoForPath(p: string, sourceInfos: Map<string, SourceInfo>): SourceInfo | undefined {
 		const exact = sourceInfos.get(p);
 		if (exact) return exact;
@@ -805,18 +719,13 @@ export class InteractiveMode {
 		return lines.join("\n");
 	}
 
-	private showLoadedResources(options?: {
-		extensions?: Array<{ path: string; sourceInfo?: SourceInfo }>;
-		force?: boolean;
-		showDiagnosticsWhenQuiet?: boolean;
-	}): void {
-		const showListing = options?.force || this.options.verbose || !this.settingsManager.getQuietStartup();
-		const showDiagnostics = showListing || options?.showDiagnosticsWhenQuiet === true;
-		if (!showListing && !showDiagnostics) {
-			return;
-		}
-
+	private showLoadedResources(options?: { extensions?: Array<{ path: string; sourceInfo?: SourceInfo }> }): void {
 		const sectionHeader = (name: string, color: ThemeColor = "mdHeading") => theme.fg(color, `[${name}]`);
+
+		const addSection = (content: string) => {
+			this.chatContainer.addChild(new Spacer(1));
+			this.chatContainer.addChild(new Text(content, 0, 0));
+		};
 
 		const skillsResult = this.session.resourceLoader.getSkills();
 		const promptsResult = this.session.resourceLoader.getPrompts();
@@ -849,118 +758,78 @@ export class InteractiveMode {
 			}
 		}
 
-		if (showListing) {
-			const contextFiles = this.session.resourceLoader.getAgentsFiles().agentsFiles;
-			if (contextFiles.length > 0) {
-				this.chatContainer.addChild(new Spacer(1));
-				const contextList = contextFiles
-					.map((f) => theme.fg("dim", `  ${this.formatDisplayPath(f.path)}`))
-					.join("\n");
-				this.chatContainer.addChild(new Text(`${sectionHeader("Context")}\n${contextList}`, 0, 0));
-				this.chatContainer.addChild(new Spacer(1));
-			}
+		const resourceCounts = [
+			{ label: "skill", count: skillsResult.skills.length },
+			{ label: "command", count: this.session.promptTemplates.length },
+			{ label: "extension", count: extensions.length },
+			{ label: "theme", count: themesResult.themes.filter((t) => t.sourcePath).length },
+		].filter((resource) => resource.count > 0);
 
-			const skills = skillsResult.skills;
-			if (skills.length > 0) {
-				const groups = this.buildScopeGroups(
-					skills.map((skill) => ({ path: skill.filePath, sourceInfo: skill.sourceInfo })),
-				);
-				const skillList = this.formatScopeGroups(groups, {
-					formatPath: (item) => this.formatDisplayPath(item.path),
-				});
-				this.chatContainer.addChild(new Text(`${sectionHeader("Skills")}\n${skillList}`, 0, 0));
-				this.chatContainer.addChild(new Spacer(1));
-			}
+		const resourceSummary = resourceCounts
+			.map((resource) => `${resource.count} ${resource.label}${resource.count === 1 ? "" : "s"}`)
+			.join(" · ");
 
-			const templates = this.session.promptTemplates;
-			if (templates.length > 0) {
-				const groups = this.buildScopeGroups(
-					templates.map((template) => ({ path: template.filePath, sourceInfo: template.sourceInfo })),
-				);
-				const templateByPath = new Map(templates.map((t) => [t.filePath, t]));
-				const templateList = this.formatScopeGroups(groups, {
-					formatPath: (item) => {
-						const template = templateByPath.get(item.path);
-						return template ? `/${template.name}` : this.formatDisplayPath(item.path);
-					},
-				});
-				this.chatContainer.addChild(new Text(`${sectionHeader("Prompts")}\n${templateList}`, 0, 0));
-				this.chatContainer.addChild(new Spacer(1));
-			}
+		const contextFiles = this.session.resourceLoader.getAgentsFiles().agentsFiles;
+		if (contextFiles.length > 0) {
+			const header = resourceSummary
+				? `${sectionHeader("Context")} ${theme.fg("muted", resourceSummary)}`
+				: sectionHeader("Context");
+			const contextList = contextFiles
+				.map((file) => {
+					const estimate = estimateTextTokenRange(file.content);
+					const path = theme.fg(
+						"dim",
+						`  ${this.formatDisplayPath(file.path)} (${formatTokens(estimate.tokens)} tokens,`,
+					);
+					const range = theme.fg("muted", ` ${formatTokens(estimate.low)}–${formatTokens(estimate.high)}`);
+					return `${path}${range}${theme.fg("dim", ")")}`;
+				})
+				.join("\n");
+			addSection(`${header}\n${contextList}`);
+		} else if (resourceSummary) {
+			addSection(theme.fg("muted", `  ${resourceSummary}`));
+		}
 
-			if (extensions.length > 0) {
-				const groups = this.buildScopeGroups(extensions);
-				const extList = this.formatScopeGroups(groups, {
-					formatPath: (item) => this.formatDisplayPath(item.path),
-				});
-				this.chatContainer.addChild(new Text(`${sectionHeader("Extensions", "mdHeading")}\n${extList}`, 0, 0));
-				this.chatContainer.addChild(new Spacer(1));
-			}
+		const skillDiagnostics = skillsResult.diagnostics;
+		if (skillDiagnostics.length > 0) {
+			addSection(
+				`${theme.fg("warning", "[Skill conflicts]")}\n${this.formatDiagnostics(skillDiagnostics, sourceInfos)}`,
+			);
+		}
 
-			// Show loaded themes (excluding built-in)
-			const loadedThemes = themesResult.themes;
-			const customThemes = loadedThemes.filter((t) => t.sourcePath);
-			if (customThemes.length > 0) {
-				const groups = this.buildScopeGroups(
-					customThemes.map((loadedTheme) => ({
-						path: loadedTheme.sourcePath!,
-						sourceInfo: loadedTheme.sourceInfo,
-					})),
-				);
-				const themeList = this.formatScopeGroups(groups, {
-					formatPath: (item) => this.formatDisplayPath(item.path),
-				});
-				this.chatContainer.addChild(new Text(`${sectionHeader("Themes")}\n${themeList}`, 0, 0));
-				this.chatContainer.addChild(new Spacer(1));
+		const promptDiagnostics = promptsResult.diagnostics;
+		if (promptDiagnostics.length > 0) {
+			addSection(
+				`${theme.fg("warning", "[Prompt conflicts]")}\n${this.formatDiagnostics(promptDiagnostics, sourceInfos)}`,
+			);
+		}
+
+		const extensionDiagnostics: ResourceDiagnostic[] = [];
+		const extensionErrors = this.session.resourceLoader.getExtensions().errors;
+		if (extensionErrors.length > 0) {
+			for (const error of extensionErrors) {
+				extensionDiagnostics.push({ type: "error", message: error.error, path: error.path });
 			}
 		}
 
-		if (showDiagnostics) {
-			const skillDiagnostics = skillsResult.diagnostics;
-			if (skillDiagnostics.length > 0) {
-				const warningLines = this.formatDiagnostics(skillDiagnostics, sourceInfos);
-				this.chatContainer.addChild(new Text(`${theme.fg("warning", "[Skill conflicts]")}\n${warningLines}`, 0, 0));
-				this.chatContainer.addChild(new Spacer(1));
-			}
+		const commandDiagnostics = this.session.extensionRunner?.getCommandDiagnostics() ?? [];
+		extensionDiagnostics.push(...commandDiagnostics);
+		extensionDiagnostics.push(...this.getBuiltInCommandConflictDiagnostics(this.session.extensionRunner));
 
-			const promptDiagnostics = promptsResult.diagnostics;
-			if (promptDiagnostics.length > 0) {
-				const warningLines = this.formatDiagnostics(promptDiagnostics, sourceInfos);
-				this.chatContainer.addChild(
-					new Text(`${theme.fg("warning", "[Prompt conflicts]")}\n${warningLines}`, 0, 0),
-				);
-				this.chatContainer.addChild(new Spacer(1));
-			}
+		const shortcutDiagnostics = this.session.extensionRunner?.getShortcutDiagnostics() ?? [];
+		extensionDiagnostics.push(...shortcutDiagnostics);
 
-			const extensionDiagnostics: ResourceDiagnostic[] = [];
-			const extensionErrors = this.session.resourceLoader.getExtensions().errors;
-			if (extensionErrors.length > 0) {
-				for (const error of extensionErrors) {
-					extensionDiagnostics.push({ type: "error", message: error.error, path: error.path });
-				}
-			}
+		if (extensionDiagnostics.length > 0) {
+			addSection(
+				`${theme.fg("warning", "[Extension issues]")}\n${this.formatDiagnostics(extensionDiagnostics, sourceInfos)}`,
+			);
+		}
 
-			const commandDiagnostics = this.session.extensionRunner?.getCommandDiagnostics() ?? [];
-			extensionDiagnostics.push(...commandDiagnostics);
-			extensionDiagnostics.push(...this.getBuiltInCommandConflictDiagnostics(this.session.extensionRunner));
-
-			const shortcutDiagnostics = this.session.extensionRunner?.getShortcutDiagnostics() ?? [];
-			extensionDiagnostics.push(...shortcutDiagnostics);
-
-			if (extensionDiagnostics.length > 0) {
-				const warningLines = this.formatDiagnostics(extensionDiagnostics, sourceInfos);
-				this.chatContainer.addChild(
-					new Text(`${theme.fg("warning", "[Extension issues]")}\n${warningLines}`, 0, 0),
-				);
-				this.chatContainer.addChild(new Spacer(1));
-			}
-
-			const themeDiagnostics = themesResult.diagnostics;
-			if (themeDiagnostics.length > 0) {
-				const warningLines = this.formatDiagnostics(themeDiagnostics, sourceInfos);
-				this.chatContainer.addChild(new Text(`${theme.fg("warning", "[Theme conflicts]")}\n${warningLines}`, 0, 0));
-				this.chatContainer.addChild(new Spacer(1));
-			}
+		const themeDiagnostics = themesResult.diagnostics;
+		if (themeDiagnostics.length > 0) {
+			addSection(
+				`${theme.fg("warning", "[Theme conflicts]")}\n${this.formatDiagnostics(themeDiagnostics, sourceInfos)}`,
+			);
 		}
 	}
 
@@ -1051,12 +920,12 @@ export class InteractiveMode {
 
 		const extensionRunner = this.session.extensionRunner;
 		if (!extensionRunner) {
-			this.showLoadedResources({ extensions: [], force: false });
+			this.showLoadedResources({ extensions: [] });
 			return;
 		}
 
 		this.setupExtensionShortcuts(extensionRunner);
-		this.showLoadedResources({ force: false });
+		this.showLoadedResources();
 	}
 
 	/**
@@ -2844,7 +2713,6 @@ export class InteractiveMode {
 					mermaidRenderingMode: this.settingsManager.getMermaidRenderingMode(),
 					doubleEscapeAction: this.settingsManager.getDoubleEscapeAction(),
 					treeFilterMode: this.settingsManager.getTreeFilterMode(),
-					quietStartup: this.settingsManager.getQuietStartup(),
 				},
 				{
 					onAutoResizeImagesChange: (enabled) => {
@@ -2900,9 +2768,6 @@ export class InteractiveMode {
 					},
 					onMermaidRenderingModeChange: (mode) => {
 						this.settingsManager.setMermaidRenderingMode(mode);
-					},
-					onQuietStartupChange: (enabled) => {
-						this.settingsManager.setQuietStartup(enabled);
 					},
 					onDoubleEscapeActionChange: (action) => {
 						this.settingsManager.setDoubleEscapeAction(action);
@@ -3450,10 +3315,7 @@ export class InteractiveMode {
 			}
 			this.rebuildChatFromMessages();
 			dismissLoader(this.editor as Component);
-			this.showLoadedResources({
-				force: false,
-				showDiagnosticsWhenQuiet: true,
-			});
+			this.showLoadedResources();
 			const modelsJsonError = this.session.modelRegistry.getError();
 			if (modelsJsonError) {
 				this.showError(`models.json error: ${modelsJsonError}`);

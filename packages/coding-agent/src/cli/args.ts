@@ -39,7 +39,6 @@ export interface Args {
 	noThemes?: boolean;
 	listModels?: string | true;
 	buildInfo?: boolean;
-	verbose?: boolean;
 	messages: string[];
 	fileArgs: string[];
 	/** Unknown flags (potentially extension flags) - map of flag name to value */
@@ -152,8 +151,6 @@ export function parseArgs(args: string[], extensionFlags?: Map<string, { type: "
 			}
 		} else if (arg === "--build-info") {
 			result.buildInfo = true;
-		} else if (arg === "--verbose") {
-			result.verbose = true;
 		} else if (arg.startsWith("@")) {
 			result.fileArgs.push(arg.slice(1)); // Remove @ prefix
 		} else if (arg.startsWith("--") && extensionFlags) {
@@ -211,7 +208,6 @@ ${chalk.bold("Options:")}
   --theme <path>                 Load a theme file or directory (can be used multiple times)
   --no-themes                    Disable theme discovery and loading
   --list-models [search]         List available models (with optional fuzzy search)
-  --verbose                      Force verbose startup (overrides quietStartup setting)
   --help, -h                     Show this help
   --version, -v                  Show version number
   --build-info                   Show detailed build information

@@ -43,7 +43,6 @@ export interface SettingsConfig {
 	mermaidRenderingMode: MermaidRenderingMode;
 	doubleEscapeAction: "fork" | "tree" | "none";
 	treeFilterMode: "default" | "no-tools" | "user-only" | "labeled-only" | "all";
-	quietStartup: boolean;
 }
 
 export interface SettingsCallbacks {
@@ -60,7 +59,6 @@ export interface SettingsCallbacks {
 	onMermaidRenderingModeChange: (mode: MermaidRenderingMode) => void;
 	onDoubleEscapeActionChange: (action: "fork" | "tree" | "none") => void;
 	onTreeFilterModeChange: (mode: "default" | "no-tools" | "user-only" | "labeled-only" | "all") => void;
-	onQuietStartupChange: (enabled: boolean) => void;
 	onCancel: () => void;
 }
 
@@ -187,13 +185,6 @@ export class SettingsSelectorComponent extends Container {
 				values: ["off", "final", "streaming"],
 			},
 			{
-				id: "quiet-startup",
-				label: "Quiet startup",
-				description: "Disable verbose printing at startup",
-				currentValue: config.quietStartup ? "true" : "false",
-				values: ["true", "false"],
-			},
-			{
 				id: "double-escape-action",
 				label: "Double-escape action",
 				description: "Action when pressing Escape twice with empty editor",
@@ -311,9 +302,6 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "mermaid-rendering":
 						callbacks.onMermaidRenderingModeChange(newValue as MermaidRenderingMode);
-						break;
-					case "quiet-startup":
-						callbacks.onQuietStartupChange(newValue === "true");
 						break;
 					case "double-escape-action":
 						callbacks.onDoubleEscapeActionChange(newValue as "fork" | "tree");

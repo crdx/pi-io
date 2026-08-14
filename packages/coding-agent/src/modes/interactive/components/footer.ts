@@ -18,12 +18,21 @@ function sanitizeStatusText(text: string): string {
 /**
  * Format token counts (similar to web-ui)
  */
-function formatTokens(count: number): string {
+export function formatTokens(count: number): string {
 	if (count < 1000) return count.toString();
-	if (count < 10000) return `${(count / 1000).toFixed(1)}k`;
-	if (count < 1000000) return `${Math.round(count / 1000)}k`;
+	if (count < 10000) return `${(count / 1000).toFixed(1)}K`;
+	if (count < 1000000) return `${Math.round(count / 1000)}K`;
 	if (count < 10000000) return `${(count / 1000000).toFixed(1)}M`;
 	return `${Math.round(count / 1000000)}M`;
+}
+
+/**
+ * Format a token count with an explicit unit suffix ("850t", "2K", "4.5K", "1.2M"). Counts under
+ * 1000 carry no suffix of their own, so they get "t".
+ */
+export function formatUnitTokens(count: number): string {
+	const tokens = formatTokens(count).replace(/\.0(?=[KM]$)/, "");
+	return /[KM]$/.test(tokens) ? tokens : `${tokens}t`;
 }
 
 /**

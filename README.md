@@ -374,7 +374,6 @@ Combine `--no-*` with explicit flags to load exactly what you need, ignoring set
 |---------------------------------|------------------------------------------------------------------|
 | `--system-prompt <text>`        | Replace default prompt (context files and skills still appended) |
 | `--append-system-prompt <text>` | Append to system prompt                                          |
-| `--verbose`                     | Force verbose startup                                            |
 | `-h`, `--help`                  | Show help                                                        |
 | `-v`, `--version`               | Show version                                                     |
 

@@ -556,22 +556,11 @@ export async function main(args: string[]) {
 	time("session + model setup");
 
 	if (isInteractive) {
-		if (scopedModels.length > 0 && (parsed.verbose || !settingsManager.getQuietStartup())) {
-			const modelList = scopedModels
-				.map((sm) => {
-					const thinkingStr = sm.thinkingLevel ? `:${sm.thinkingLevel}` : "";
-					return `${sm.model.id}${thinkingStr}`;
-				})
-				.join(", ");
-			console.log(chalk.dim(`Model scope: ${modelList} ${chalk.gray("(Ctrl+P to cycle)")}`));
-		}
-
 		const interactiveMode = new InteractiveMode(session, {
 			modelFallbackMessage,
 			initialMessage,
 			initialImages,
 			initialMessages: parsed.messages,
-			verbose: parsed.verbose,
 		});
 		if (startupBenchmark) {
 			await interactiveMode.init();

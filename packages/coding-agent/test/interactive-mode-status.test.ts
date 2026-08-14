@@ -1,4 +1,5 @@
 import { Container } from "@mariozechner/pi-tui";
+import stripAnsi from "strip-ansi";
 import { beforeAll, describe, expect, test, vi } from "vitest";
 import { InteractiveMode } from "../src/modes/interactive/interactive-mode.js";
 import { initTheme } from "../src/modes/interactive/theme/theme.js";
@@ -66,36 +67,32 @@ describe("InteractiveMode.showLoadedResources", () => {
 	});
 
 	function createShowLoadedResourcesThis(options: {
-		quietStartup: boolean;
-		verbose?: boolean;
+		contextFiles?: Array<{ path: string; content: string }>;
 		extensions?: Array<{ path: string; sourceInfo?: unknown }>;
 		skills?: Array<{ filePath: string }>;
+		prompts?: Array<{ filePath: string; name: string }>;
+		themes?: Array<{ sourcePath?: string }>;
 		skillDiagnostics?: Array<{ type: "warning" | "error" | "collision"; message: string }>;
 	}) {
 		const fakeThis: any = {
-			options: { verbose: options.verbose ?? false },
+			options: {},
 			chatContainer: new Container(),
-			settingsManager: {
-				getQuietStartup: () => options.quietStartup,
-			},
 			session: {
-				promptTemplates: [],
+				promptTemplates: options.prompts ?? [],
 				extensionRunner: undefined,
 				resourceLoader: {
 					getPathMetadata: () => new Map(),
-					getAgentsFiles: () => ({ agentsFiles: [] }),
+					getAgentsFiles: () => ({ agentsFiles: options.contextFiles ?? [] }),
 					getSkills: () => ({
 						skills: options.skills ?? [],
 						diagnostics: options.skillDiagnostics ?? [],
 					}),
-					getPrompts: () => ({ prompts: [], diagnostics: [] }),
+					getPrompts: () => ({ prompts: options.prompts ?? [], diagnostics: [] }),
 					getExtensions: () => ({ extensions: options.extensions ?? [], errors: [], runtime: {} }),
-					getThemes: () => ({ themes: [], diagnostics: [] }),
+					getThemes: () => ({ themes: options.themes ?? [], diagnostics: [] }),
 				},
 			},
 			formatDisplayPath: (p: string) => p,
-			buildScopeGroups: () => [],
-			formatScopeGroups: () => "resource-list",
 			getShortPath: (p: string) => p,
 			formatDiagnostics: () => "diagnostics",
 			getBuiltInCommandConflictDiagnostics: () => [],
@@ -104,32 +101,70 @@ describe("InteractiveMode.showLoadedResources", () => {
 		return fakeThis;
 	}
 
-	test("does not show verbose listing on quiet startup during reload", () => {
+	test("lists the loaded context files with estimated token counts", () => {
 		const fakeThis = createShowLoadedResourcesThis({
-			quietStartup: true,
-			skills: [{ filePath: "/tmp/skill/SKILL.md" }],
+			contextFiles: [
+				{ path: "/project/AGENTS.md", content: "x".repeat(8000) },
+				{ path: "/project/AGENTS.local.md", content: "x".repeat(400) },
+			],
+		});
+
+		(InteractiveMode as any).prototype.showLoadedResources.call(fakeThis);
+
+		const output = stripAnsi(renderAll(fakeThis.chatContainer));
+		expect(output).toContain("[Context]");
+		expect(output).toContain("/project/AGENTS.md (2K)");
+		expect(output).toContain("/project/AGENTS.local.md (100t)");
+	});
+
+	test("summarises other resources as counts in the context header", () => {
+		const fakeThis = createShowLoadedResourcesThis({
+			contextFiles: [{ path: "/project/AGENTS.md", content: "" }],
+			skills: [{ filePath: "/tmp/skill/SKILL.md" }, { filePath: "/tmp/skill2/SKILL.md" }],
+			prompts: [{ filePath: "/tmp/prompt.md", name: "prompt" }],
+			themes: [{ sourcePath: "/tmp/theme.json" }, {}],
 		});
 
 		(InteractiveMode as any).prototype.showLoadedResources.call(fakeThis, {
 			extensions: [{ path: "/tmp/ext/index.ts" }],
-			force: false,
-			showDiagnosticsWhenQuiet: true,
 		});
+
+		const output = renderAll(fakeThis.chatContainer);
+		expect(stripAnsi(output)).toContain("[Context] 2 skills · 1 command · 1 extension · 1 theme");
+		expect(output).not.toContain("[Skills]");
+		expect(output).not.toContain("[Prompts]");
+		expect(output).not.toContain("[Extensions]");
+		expect(output).not.toContain("[Themes]");
+		expect(output).not.toContain("/tmp/skill/SKILL.md");
+	});
+
+	test("shows the counts alone when no context files are loaded", () => {
+		const fakeThis = createShowLoadedResourcesThis({
+			skills: [{ filePath: "/tmp/skill/SKILL.md" }],
+		});
+
+		(InteractiveMode as any).prototype.showLoadedResources.call(fakeThis);
+
+		const output = renderAll(fakeThis.chatContainer);
+		expect(output).toContain("1 skill");
+		expect(output).not.toContain("[Context]");
+	});
+
+	test("shows nothing when no resources are loaded", () => {
+		const fakeThis = createShowLoadedResourcesThis({});
+
+		(InteractiveMode as any).prototype.showLoadedResources.call(fakeThis);
 
 		expect(fakeThis.chatContainer.children).toHaveLength(0);
 	});
 
-	test("still shows diagnostics on quiet startup when requested", () => {
+	test("shows diagnostics", () => {
 		const fakeThis = createShowLoadedResourcesThis({
-			quietStartup: true,
 			skills: [{ filePath: "/tmp/skill/SKILL.md" }],
 			skillDiagnostics: [{ type: "warning", message: "duplicate skill name" }],
 		});
 
-		(InteractiveMode as any).prototype.showLoadedResources.call(fakeThis, {
-			force: false,
-			showDiagnosticsWhenQuiet: true,
-		});
+		(InteractiveMode as any).prototype.showLoadedResources.call(fakeThis);
 
 		const output = renderAll(fakeThis.chatContainer);
 		expect(output).toContain("[Skill conflicts]");

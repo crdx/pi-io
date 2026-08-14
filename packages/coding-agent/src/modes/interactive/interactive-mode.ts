@@ -755,15 +755,23 @@ export class InteractiveMode {
 			}
 		}
 
+		const projectSkillCount = skillsResult.skills.filter((skill) => skill.sourceInfo.scope === "project").length;
+		const globalSkillCount = skillsResult.skills.length - projectSkillCount;
+		const skillBreakdown =
+			projectSkillCount > 0 && globalSkillCount > 0
+				? ` (${globalSkillCount} global, ${projectSkillCount} project)`
+				: "";
+
 		const resourceCounts = [
-			{ label: "skill", count: skillsResult.skills.length },
+			{ label: "skill", count: skillsResult.skills.length, suffix: skillBreakdown },
 			{ label: "command", count: this.session.promptTemplates.length },
-			{ label: "extension", count: extensions.length },
-			{ label: "theme", count: themesResult.themes.filter((t) => t.sourcePath).length },
 		].filter((resource) => resource.count > 0);
 
 		const resourceSummary = resourceCounts
-			.map((resource) => `${resource.count} ${resource.label}${resource.count === 1 ? "" : "s"}`)
+			.map(
+				(resource) =>
+					`${resource.count} ${resource.label}${resource.count === 1 ? "" : "s"}${resource.suffix ?? ""}`,
+			)
 			.join(" · ");
 
 		const contextFiles = this.session.resourceLoader.getAgentsFiles().agentsFiles;

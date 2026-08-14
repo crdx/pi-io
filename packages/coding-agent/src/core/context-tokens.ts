@@ -95,59 +95,111 @@ export function estimateContextTokens(messages: AgentMessage[]): ContextUsageEst
 	};
 }
 
+const CHARS_PER_PROSE_TOKEN = 4;
+const CHARS_PER_CODE_TOKEN = 3;
+const CHARS_PER_PROSE_TOKEN_BOUNDS = { fewest: 3.5, most: 4.5 };
+const CHARS_PER_CODE_TOKEN_BOUNDS = { fewest: 2.3, most: 3.8 };
+const TOKENS_PER_IMAGE = 1200;
+const FENCE_PATTERN = /^\s*(```|~~~)/;
+
+export interface TokenEstimate {
+	tokens: number;
+	low: number;
+	high: number;
+}
+
 /**
- * Estimate token count for a message using chars/4 heuristic.
- * This is conservative (overestimates tokens).
+ * Split text into prose characters and fenced code characters, which tokenise at different rates.
+ */
+function countTokenisableChars(text: string): { proseChars: number; codeChars: number } {
+	const lines = text.split("\n");
+	let proseChars = lines.length - 1; // newlines
+	let codeChars = 0;
+	let insideFence = false;
+
+	for (const line of lines) {
+		if (FENCE_PATTERN.test(line)) {
+			insideFence = !insideFence;
+			proseChars += line.length;
+		} else if (insideFence) {
+			codeChars += line.length;
+		} else {
+			proseChars += line.length;
+		}
+	}
+
+	return { proseChars, codeChars };
+}
+
+export function estimateTextTokens(text: string): number {
+	const { proseChars, codeChars } = countTokenisableChars(text);
+
+	return Math.ceil(proseChars / CHARS_PER_PROSE_TOKEN + codeChars / CHARS_PER_CODE_TOKEN);
+}
+
+export function estimateTextTokenRange(text: string): TokenEstimate {
+	const { proseChars, codeChars } = countTokenisableChars(text);
+
+	return {
+		tokens: Math.ceil(proseChars / CHARS_PER_PROSE_TOKEN + codeChars / CHARS_PER_CODE_TOKEN),
+		low: Math.ceil(proseChars / CHARS_PER_PROSE_TOKEN_BOUNDS.most + codeChars / CHARS_PER_CODE_TOKEN_BOUNDS.most),
+		high: Math.ceil(
+			proseChars / CHARS_PER_PROSE_TOKEN_BOUNDS.fewest + codeChars / CHARS_PER_CODE_TOKEN_BOUNDS.fewest,
+		),
+	};
+}
+
+/**
+ * Estimate token count for a message.
  */
 export function estimateTokens(message: AgentMessage): number {
-	let chars = 0;
+	let tokens = 0;
 
 	switch (message.role) {
 		case "user": {
 			const content = (message as { content: string | Array<{ type: string; text?: string }> }).content;
 			if (typeof content === "string") {
-				chars = content.length;
+				tokens = estimateTextTokens(content);
 			} else if (Array.isArray(content)) {
 				for (const block of content) {
 					if (block.type === "text" && block.text) {
-						chars += block.text.length;
+						tokens += estimateTextTokens(block.text);
 					}
 				}
 			}
-			return Math.ceil(chars / 4);
+			return tokens;
 		}
 		case "assistant": {
 			const assistant = message as AssistantMessage;
 			for (const block of assistant.content) {
 				if (block.type === "text") {
-					chars += block.text.length;
+					tokens += estimateTextTokens(block.text);
 				} else if (block.type === "thinking") {
-					chars += block.thinking.length;
+					tokens += estimateTextTokens(block.thinking);
 				} else if (block.type === "toolCall") {
-					chars += block.name.length + JSON.stringify(block.arguments).length;
+					tokens += estimateTextTokens(block.name) + estimateTextTokens(JSON.stringify(block.arguments));
 				}
 			}
-			return Math.ceil(chars / 4);
+			return tokens;
 		}
 		case "custom":
 		case "toolResult": {
 			if (typeof message.content === "string") {
-				chars = message.content.length;
+				tokens = estimateTextTokens(message.content);
 			} else {
 				for (const block of message.content) {
 					if (block.type === "text" && block.text) {
-						chars += block.text.length;
+						tokens += estimateTextTokens(block.text);
 					}
 					if (block.type === "image") {
-						chars += 4800; // Estimate images as 4000 chars, or 1200 tokens
+						tokens += TOKENS_PER_IMAGE;
 					}
 				}
 			}
-			return Math.ceil(chars / 4);
+			return tokens;
 		}
 		case "bashExecution": {
-			chars = message.command.length + message.output.length;
-			return Math.ceil(chars / 4);
+			return estimateTextTokens(message.command) + estimateTextTokens(message.output);
 		}
 	}
 

@@ -29,6 +29,8 @@ export {
 export {
 	calculateContextTokens,
 	estimateContextTokens,
+	estimateTextTokenRange,
+	estimateTextTokens,
 	estimateTokens,
 	getLastAssistantUsage,
 } from "./core/context-tokens.js";

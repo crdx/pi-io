@@ -310,10 +310,10 @@ pi [options] [@files...] [messages...]
 
 ### Modes
 
-| Flag            | Description                                                        |
-|-----------------|--------------------------------------------------------------------|
-| (default)       | Interactive mode                                                   |
-| `-p`, `--print` | Print response and exit                                            |
+| Flag            | Description                                                                              |
+|-----------------|------------------------------------------------------------------------------------------|
+| (default)       | Interactive mode                                                                         |
+| `-p`, `--print` | Print response and exit                                                                  |
 | `--mode json`   | Output all events as JSON lines (see [docs/json.md](packages/coding-agent/docs/json.md)) |
 
 In print mode, pi also reads piped stdin and merges it into the initial prompt:
@@ -355,16 +355,16 @@ Available built-in tools: `read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`
 
 ### Resource Options
 
-| Option                       | Description                                        |
-|------------------------------|----------------------------------------------------|
-| `-e`, `--extension <path>`   | Load extension from a path (repeatable)            |
-| `--no-extensions`            | Disable extension discovery                        |
-| `--skill <path>`             | Load skill (repeatable)                            |
-| `--no-skills`                | Disable skill discovery                            |
-| `--prompt-template <path>`   | Load prompt template (repeatable)                  |
-| `--no-prompt-templates`      | Disable prompt template discovery                  |
-| `--theme <path>`             | Load theme (repeatable)                            |
-| `--no-themes`                | Disable theme discovery                            |
+| Option                     | Description                             |
+|----------------------------|-----------------------------------------|
+| `-e`, `--extension <path>` | Load extension from a path (repeatable) |
+| `--no-extensions`          | Disable extension discovery             |
+| `--skill <path>`           | Load skill (repeatable)                 |
+| `--no-skills`              | Disable skill discovery                 |
+| `--prompt-template <path>` | Load prompt template (repeatable)       |
+| `--no-prompt-templates`    | Disable prompt template discovery       |
+| `--theme <path>`           | Load theme (repeatable)                 |
+| `--no-themes`              | Disable theme discovery                 |
 
 Combine `--no-*` with explicit flags to load exactly what you need, ignoring settings.json (e.g., `--no-extensions -e ./my-ext.ts`).
 
@@ -420,12 +420,12 @@ pi --thinking high "Solve this complex problem"
 
 ### Environment Variables
 
-| Variable                | Description                                                                        |
-|-------------------------|------------------------------------------------------------------------------------|
-| `PI_CODING_AGENT_DIR`   | Override config directory (default: `~/.pi/agent`)                                 |
-| `PI_PACKAGE_DIR`        | Override package directory (useful for Nix/Guix where store paths tokenize poorly) |
-| `PI_CACHE_RETENTION`    | Set to `long` for extended prompt cache (Anthropic: 1h, OpenAI: 24h)               |
-| `VISUAL`, `EDITOR`      | External editor for Ctrl+G                                                         |
+| Variable              | Description                                                                        |
+|-----------------------|------------------------------------------------------------------------------------|
+| `PI_CODING_AGENT_DIR` | Override config directory (default: `~/.pi/agent`)                                 |
+| `PI_PACKAGE_DIR`      | Override package directory (useful for Nix/Guix where store paths tokenize poorly) |
+| `PI_CACHE_RETENTION`  | Set to `long` for extended prompt cache (Anthropic: 1h, OpenAI: 24h)               |
+| `VISUAL`, `EDITOR`    | External editor for Ctrl+G                                                         |
 
 ---
 

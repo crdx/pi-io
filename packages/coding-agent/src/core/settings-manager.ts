@@ -50,7 +50,6 @@ export interface Settings {
 	theme?: string;
 	retry?: RetrySettings;
 	hideThinkingBlock?: boolean;
-	quietStartup?: boolean;
 	shellCommandPrefix?: string; // Prefix prepended to every bash command (e.g., "shopt -s expand_aliases" for alias support)
 	extensions?: string[]; // Array of local extension file paths or directories
 	skills?: string[]; // Array of local skill file paths or directories
@@ -560,16 +559,6 @@ export class SettingsManager {
 	setHideThinkingBlock(hide: boolean): void {
 		this.globalSettings.hideThinkingBlock = hide;
 		this.settings = deepMergeSettings(this.globalSettings, this.projectSettings);
-	}
-
-	getQuietStartup(): boolean {
-		return this.settings.quietStartup ?? false;
-	}
-
-	setQuietStartup(quiet: boolean): void {
-		this.globalSettings.quietStartup = quiet;
-		this.markModified("quietStartup");
-		this.save();
 	}
 
 	getShellCommandPrefix(): string | undefined {
